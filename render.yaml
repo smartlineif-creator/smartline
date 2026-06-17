@@ -13,7 +13,9 @@ services:
       - key: PORT
         value: 4000
       - key: DATABASE_URL
-        sync: false
+        fromDatabase:
+          name: smartline-db
+          property: connectionString
       - key: JWT_SECRET
         sync: false
       - key: JWT_REFRESH_SECRET
@@ -64,3 +66,10 @@ services:
         sync: false
       - key: NEXT_PUBLIC_META_PIXEL
         sync: false
+
+# ── PostgreSQL Database (free 90 days) ───────────────────────────────────
+databases:
+  - name: smartline-db
+    databaseName: smartline
+    user: smartline
+    plan: free
