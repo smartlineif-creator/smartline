@@ -1,0 +1,12 @@
+{
+  "framework": "nextjs",
+  "buildCommand": "npm run build",
+  "outputDirectory": ".next",
+  "installCommand": "npm install",
+  "env": {
+    "NEXT_PUBLIC_API_URL": "@smartline_api_url",
+    "NEXT_PUBLIC_SITE_URL": "@smartline_site_url",
+    "NEXT_PUBLIC_GA_ID": "@smartline_ga_id",
+    "NEXT_PUBLIC_META_PIXEL_ID": "@smartline_meta_pixel_id"
+  }
+}

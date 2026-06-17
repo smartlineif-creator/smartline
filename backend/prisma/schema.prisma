@@ -1,0 +1,352 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ──────────────────────────────────────────────────────────────────
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum OrderStatus {
+  NEW
+  CONFIRMED
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+enum ProductRelationType {
+  RECOMMENDED
+  WITH_THIS_BUY
+}
+
+enum ProductCategoryLinkType {
+  ACCESSORY
+  RECOMMENDED_CATEGORY
+  WITH_THIS_BUY_CATEGORY
+}
+
+// ─── User ───────────────────────────────────────────────────────────────────
+
+model User {
+  id             String         @id @default(cuid())
+  email          String         @unique
+  password       String
+  name           String?
+  phone          String?
+  telegramChatId String?
+  role           Role           @default(USER)
+  discount       Int            @default(0)
+  adminNote      String?
+  orders         Order[]
+  cartItems      CartItem[]
+  reviews        Review[]
+  refreshTokens  RefreshToken[]
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  email     String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+// ─── Category ───────────────────────────────────────────────────────────────
+
+model Category {
+  id                 String              @id @default(cuid())
+  name               String
+  slug               String              @unique
+  parentId           String?
+  parent             Category?           @relation("CategoryTree", fields: [parentId], references: [id])
+  children           Category[]          @relation("CategoryTree")
+  icon               String?
+  seoText            String?
+  attributeTemplates AttributeTemplate[]
+  products           Product[]
+  productLinks       ProductCategoryLink[]
+  promotions         Promotion[]
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+}
+
+model AttributeTemplate {
+  id         String   @id @default(cuid())
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  name       String
+  unit       String?
+  sortOrder  Int      @default(0)
+}
+
+// ─── Product ────────────────────────────────────────────────────────────────
+
+model Product {
+  id                    String                 @id @default(cuid())
+  name                  String
+  slug                  String                 @unique
+  sku                   String?
+  description           String?
+  basePrice             Decimal?               @db.Decimal(10, 2)
+  compareAtPrice        Decimal?               @db.Decimal(10, 2)
+  stock                 Int                    @default(0)
+  videoUrl              String?
+  isFeatured            Boolean                @default(false)
+  isActive              Boolean                @default(true)
+  categoryId            String
+  category              Category               @relation(fields: [categoryId], references: [id])
+  optionGroups          ProductOptionGroup[]
+  variants              Variant[]
+  attributes            Attribute[]
+  images                ProductImage[]
+  reviews               Review[]
+  promotions            ProductPromotion[]
+  crossSellsFrom        CrossSell[]            @relation("ProductCrossSellFrom")
+  crossSellsTo          CrossSell[]            @relation("ProductCrossSellTo")
+  relationsFrom         ProductRelation[]      @relation("ProductRelationFrom")
+  relationsTo           ProductRelation[]      @relation("ProductRelationTo")
+  categoryLinks         ProductCategoryLink[]
+  orderItems            OrderItem[]
+  cartItems             CartItem[]
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+}
+
+model ProductOptionGroup {
+  id        String              @id @default(cuid())
+  productId String
+  product   Product             @relation(fields: [productId], references: [id], onDelete: Cascade)
+  name      String
+  sortOrder Int                 @default(0)
+  values    ProductOptionValue[]
+
+  @@unique([productId, name])
+}
+
+model ProductOptionValue {
+  id        String                 @id @default(cuid())
+  groupId   String
+  group     ProductOptionGroup     @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  value     String
+  sortOrder Int                    @default(0)
+  selections VariantOptionSelection[]
+
+  @@unique([groupId, value])
+}
+
+model Variant {
+  id         String      @id @default(cuid())
+  productId  String
+  product    Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  name       String
+  slug       String?     @unique
+  price      Decimal     @db.Decimal(10, 2)
+  compareAtPrice Decimal? @db.Decimal(10, 2)
+  stock      Int         @default(0)
+  sku        String?
+  isActive   Boolean     @default(true)
+  selections VariantOptionSelection[]
+  cartItems  CartItem[]
+  orderItems OrderItem[]
+  createdAt  DateTime    @default(now())
+}
+
+model VariantOptionSelection {
+  id            String             @id @default(cuid())
+  variantId      String
+  optionValueId  String
+  variant        Variant           @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  optionValue    ProductOptionValue @relation(fields: [optionValueId], references: [id], onDelete: Cascade)
+
+  @@unique([variantId, optionValueId])
+}
+
+model Attribute {
+  id        String  @id @default(cuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  name      String
+  value     String
+  unit      String?
+  sortOrder Int     @default(0)
+}
+
+model ProductImage {
+  id        String  @id @default(cuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  url       String
+  alt       String?
+  isMain    Boolean @default(false)
+  sortOrder Int     @default(0)
+}
+
+model CrossSell {
+  id        String  @id @default(cuid())
+  productId String
+  product   Product @relation("ProductCrossSellFrom", fields: [productId], references: [id], onDelete: Cascade)
+  relatedId String
+  related   Product @relation("ProductCrossSellTo", fields: [relatedId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, relatedId])
+}
+
+model ProductRelation {
+  id        String              @id @default(cuid())
+  productId String
+  relatedId String
+  type      ProductRelationType
+  sortOrder Int                 @default(0)
+  product   Product             @relation("ProductRelationFrom", fields: [productId], references: [id], onDelete: Cascade)
+  related   Product             @relation("ProductRelationTo", fields: [relatedId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, relatedId, type])
+}
+
+model ProductCategoryLink {
+  id         String                  @id @default(cuid())
+  productId  String
+  categoryId String
+  type       ProductCategoryLinkType
+  product    Product                 @relation(fields: [productId], references: [id], onDelete: Cascade)
+  category   Category                @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, categoryId, type])
+}
+
+// ─── Order ──────────────────────────────────────────────────────────────────
+
+model Order {
+  id            String      @id @default(cuid())
+  orderNumber   Int         @unique @default(autoincrement())
+  userId        String?
+  user          User?       @relation(fields: [userId], references: [id])
+  status        OrderStatus @default(NEW)
+  totalAmount   Decimal     @db.Decimal(10, 2)
+  items         OrderItem[]
+  delivery      Json
+  payment       Json
+  ttn           String?
+  adminNote     String?
+  customerName  String
+  customerPhone String
+  customerEmail String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+}
+
+model OrderItem {
+  id          String   @id @default(cuid())
+  orderId     String
+  order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId   String
+  product     Product  @relation(fields: [productId], references: [id])
+  variantId   String?
+  variant     Variant? @relation(fields: [variantId], references: [id])
+  name        String
+  variantName String?
+  price       Decimal  @db.Decimal(10, 2)
+  quantity    Int
+}
+
+// ─── Cart ───────────────────────────────────────────────────────────────────
+
+model CartItem {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product  @relation(fields: [productId], references: [id])
+  variantId String?
+  variant   Variant? @relation(fields: [variantId], references: [id])
+  quantity  Int      @default(1)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, productId, variantId])
+}
+
+// ─── Promotion ──────────────────────────────────────────────────────────────
+
+model Promotion {
+  id              String             @id @default(cuid())
+  name            String
+  discountPercent Int
+  startDate       DateTime
+  endDate         DateTime
+  isActive        Boolean            @default(true)
+  categoryId      String?
+  category        Category?          @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  products        ProductPromotion[]
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+}
+
+model ProductPromotion {
+  id          String    @id @default(cuid())
+  promotionId String
+  promotion   Promotion @relation(fields: [promotionId], references: [id], onDelete: Cascade)
+  productId   String
+  product     Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([promotionId, productId])
+}
+
+// ─── Banner ─────────────────────────────────────────────────────────────────
+
+model Banner {
+  id        String   @id @default(cuid())
+  title     String
+  imageUrl  String
+  link      String?
+  position  String   @default("home")
+  isActive  Boolean  @default(true)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ─── Homepage ───────────────────────────────────────────────────────────────
+
+model HomepageSection {
+  id        String   @id @default(cuid())
+  type      String   // hero | marquee | banners | categories | carousel | promo | reviews | trust
+  order     Int
+  isActive  Boolean  @default(true)
+  config    Json     @default("{}")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ─── Review ─────────────────────────────────────────────────────────────────
+
+model Review {
+  id         String   @id @default(cuid())
+  productId  String
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id])
+  authorName String
+  rating     Int
+  text       String?
+  isApproved Boolean  @default(false)
+  createdAt  DateTime @default(now())
+}

@@ -1,0 +1,576 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-ui);
+  --font-mono: var(--font-code);
+  --font-heading: var(--font-display);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+:root {
+  /* ── shadcn/admin tokens (unchanged) ─────────────────────────────── */
+  --font-ui: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", "Roboto", "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+  --font-display: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", "Roboto", "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+  --font-code: "SFMono-Regular", "SF Mono", Consolas, "Liberation Mono", Menlo, monospace;
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --radius: 0.625rem;
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
+
+  /* ── SmartLine Store Design Tokens — DARK (default) ─────────────────── */
+  /* Inspired by the tech/laptop Instagram page: deep blue-black + electric blue */
+  --sl-bg-primary:         #080C18;
+  --sl-bg-surface:         #0F1523;
+  --sl-bg-elevated:        #162033;
+  --sl-bg-surface-glass:   rgba(10, 14, 30, 0.88);
+  --sl-accent:             #0082FF;
+  --sl-accent-hover:       #3399FF;
+  --sl-accent-muted:       rgba(0, 130, 255, 0.12);
+  --sl-accent-gradient:    linear-gradient(135deg, #0055FF 0%, #5B21B6 100%);
+  --sl-accent-glow:        rgba(0, 130, 255, 0.22);
+  --sl-accent-glow-strong: rgba(0, 130, 255, 0.45);
+  --sl-text-primary:       #EEF2FF;
+  --sl-text-secondary:     #8899BB;
+  --sl-text-muted:         #4A5A7A;
+  --sl-border:             rgba(0, 130, 255, 0.10);
+  --sl-border-hover:       rgba(0, 130, 255, 0.40);
+  --sl-font-display: 'Bebas Neue', sans-serif;
+  --sl-font-heading: 'DM Serif Display', serif;
+  --sl-font-body:    'DM Sans', sans-serif;
+  --sl-font-mono:    'JetBrains Mono', monospace;
+  --sl-radius-sm: 6px;
+  --sl-radius-md: 12px;
+  --sl-radius-lg: 20px;
+  --sl-transition:      0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  --sl-transition-slow: 0.6s  cubic-bezier(0.16, 1, 0.3, 1);
+  /* ── Status / semantic tokens ── */
+  --sl-status-success:     #10b981;
+  --sl-status-warning:     #f59e0b;
+  --sl-status-error:       #ef4444;
+  --sl-status-info:        #3b82f6;
+  --sl-text-on-accent:     #ffffff;
+}
+
+/* ── SmartLine Light Theme ────────────────────────────────────────────────── */
+html.light {
+  --sl-bg-primary:         #F5F7FF;   /* дуже ледь блакитний фон сторінки */
+  --sl-bg-surface:         #FFFFFF;   /* чисто білі картки / рядки */
+  --sl-bg-elevated:        #E8EEF8;   /* виразніший фон для заголовків секцій */
+  --sl-bg-surface-glass:   rgba(245, 247, 255, 0.92);
+  --sl-accent:             #0055CC;
+  --sl-accent-hover:       #0077FF;
+  --sl-accent-muted:       rgba(0, 85, 204, 0.10);
+  --sl-accent-gradient:    linear-gradient(135deg, #0055FF 0%, #5B21B6 100%);
+  --sl-accent-glow:        rgba(0, 85, 204, 0.18);
+  --sl-accent-glow-strong: rgba(0, 85, 204, 0.38);
+  --sl-text-primary:       #0A0E1A;   /* майже чорний */
+  --sl-text-secondary:     #2C3A5A;   /* темно-синій для вторинного */
+  --sl-text-muted:         #6070A0;   /* видимий сірувато-синій для лейблів */
+  --sl-border:             rgba(0, 50, 180, 0.10);
+  --sl-border-hover:       rgba(0, 85, 204, 0.35);
+}
+
+/* Admin panel — always light regardless of html.dark class */
+.admin-panel {
+  color-scheme: light;
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+}
+
+.dark {
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.205 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.922 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.556 0 0);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.556 0 0);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    font-family: var(--font-ui);
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    text-rendering: optimizeLegibility;
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
+  h1, h2, h3, h4 {
+    font-family: var(--font-display);
+    letter-spacing: 0;
+    @apply font-semibold text-gray-950;
+  }
+  input, button, textarea, select {
+    font: inherit;
+  }
+  input[type="checkbox"],
+  input[type="radio"] {
+    all: revert;
+    cursor: pointer;
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   STORE LAYOUT — scoped to .sl-theme wrapper in app/(store)/layout.tsx
+   Does NOT affect admin panel
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.sl-theme {
+  background-color: var(--sl-bg-primary);
+  color: var(--sl-text-primary);
+  font-family: var(--sl-font-body);
+}
+
+.sl-theme h1,
+.sl-theme h2,
+.sl-theme h3,
+.sl-theme h4,
+.sl-theme h5,
+.sl-theme h6 {
+  font-family: var(--sl-font-display);
+  color: var(--sl-text-primary);
+  font-weight: 400;
+  letter-spacing: 0.02em;
+}
+
+/* ── Scroll reveal ──────────────────────────────────────────────────────── */
+.sl-theme .reveal {
+  position: relative;
+  isolation: isolate;
+  opacity: 0;
+  transform: translateY(30px);
+  transition: opacity var(--sl-transition-slow), transform var(--sl-transition-slow);
+}
+.sl-theme .reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ── Page load hero animations ──────────────────────────────────────────── */
+@keyframes sl-fadein-up {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.sl-hero-title    { animation: sl-fadein-up 0.6s cubic-bezier(0.16,1,0.3,1) both; animation-delay: 0ms;   }
+.sl-hero-subtitle { animation: sl-fadein-up 0.6s cubic-bezier(0.16,1,0.3,1) both; animation-delay: 150ms; }
+.sl-hero-cta      { animation: sl-fadein-up 0.6s cubic-bezier(0.16,1,0.3,1) both; animation-delay: 300ms; }
+
+/* ── Ticker marquee ─────────────────────────────────────────────────────── */
+@keyframes sl-marquee {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+
+/* ── Custom cursor ──────────────────────────────────────────────────────── */
+#sl-cursor {
+  position: fixed;
+  top: 0; left: 0;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--sl-accent);
+  opacity: 0.7;
+  pointer-events: none;
+  z-index: 9999;
+  transform: translate(-50%, -50%);
+  transition: width 0.2s ease, height 0.2s ease, opacity 0.2s ease;
+  will-change: transform;
+}
+#sl-cursor.sl-cursor-expanded {
+  width: 36px;
+  height: 36px;
+  opacity: 0.25;
+  background: var(--sl-accent);
+}
+
+/* ── Product card hover ─────────────────────────────────────────────────── */
+.sl-product-card {
+  background: var(--sl-bg-surface);
+  border: 1px solid var(--sl-border);
+  border-radius: var(--sl-radius-lg);
+  box-shadow: 0 2px 10px rgba(0,0,0,0.07), 0 1px 3px rgba(0,0,0,0.05);
+  transition: transform var(--sl-transition), border-color var(--sl-transition), box-shadow var(--sl-transition);
+}
+.sl-product-card:hover {
+  transform: translateY(-3px);
+  border-color: var(--sl-border-hover);
+  box-shadow: 0 10px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.06);
+}
+.sl-product-card:hover .sl-product-image {
+  transform: scale(1.03);
+}
+.sl-product-card:hover .sl-product-price {
+  color: var(--sl-accent);
+}
+
+/* ── Button variants ────────────────────────────────────────────────────── */
+.sl-btn-primary {
+  background: var(--sl-accent-gradient);
+  color: #fff;
+  border: none;
+  border-radius: var(--sl-radius-md);
+  font-family: var(--sl-font-body);
+  font-weight: 600;
+  transition: filter var(--sl-transition), box-shadow var(--sl-transition);
+}
+.sl-btn-primary:hover {
+  filter: brightness(1.12);
+  box-shadow: 0 0 20px var(--sl-accent-glow-strong);
+}
+.sl-btn-ghost {
+  background: transparent;
+  color: var(--sl-accent);
+  border: 1px solid var(--sl-accent);
+  border-radius: var(--sl-radius-md);
+  font-family: var(--sl-font-body);
+  font-weight: 500;
+  transition: background var(--sl-transition), color var(--sl-transition), box-shadow var(--sl-transition);
+}
+.sl-btn-ghost:hover {
+  background: var(--sl-accent);
+  color: #fff;
+  box-shadow: 0 0 16px var(--sl-accent-glow);
+}
+
+/* ── Header glass on scroll ─────────────────────────────────────────────── */
+.sl-header {
+  z-index: 200;
+  background: var(--sl-bg-surface);
+  border-bottom: 1px solid transparent;
+  transition: border-color var(--sl-transition), backdrop-filter var(--sl-transition), background var(--sl-transition);
+}
+.sl-header.sl-scrolled {
+  background: var(--sl-bg-surface-glass);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom-color: var(--sl-border);
+}
+
+/* ── Announcement bar pulse dot ─────────────────────────────────────────── */
+@keyframes sl-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}
+.sl-pulse { animation: sl-pulse 1.8s ease-in-out infinite; }
+
+/* ── Cart button add animation ──────────────────────────────────────────── */
+@keyframes sl-cart-pop {
+  0%   { transform: scale(1); }
+  30%  { transform: scale(0.93); }
+  60%  { transform: scale(1.04); }
+  100% { transform: scale(1); }
+}
+@keyframes sl-cart-ripple {
+  0%   { box-shadow: 0 0 0 0 color-mix(in srgb, var(--sl-accent) 55%, transparent); }
+  70%  { box-shadow: 0 0 0 14px color-mix(in srgb, var(--sl-accent) 0%, transparent); }
+  100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--sl-accent) 0%, transparent); }
+}
+@keyframes sl-icon-bounce {
+  0%, 100% { transform: translateY(0); }
+  40%       { transform: translateY(-4px); }
+  70%       { transform: translateY(2px); }
+}
+.sl-btn-cart-animate {
+  animation: sl-cart-pop 0.38s cubic-bezier(0.36, 0.07, 0.19, 0.97),
+             sl-cart-ripple 0.6s ease-out;
+}
+.sl-btn-cart-animate .sl-cart-icon {
+  animation: sl-icon-bounce 0.45s ease;
+}
+
+/* ── Noise texture overlay ──────────────────────────────────────────────── */
+.sl-noise::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 0;
+  border-radius: inherit;
+}
+
+/* ── Section title underline ────────────────────────────────────────────── */
+.sl-section-title::after {
+  content: '';
+  display: block;
+  width: 48px;
+  height: 2px;
+  background: var(--sl-accent);
+  margin-top: 8px;
+}
+
+/* ── Server-component-safe hover utilities ──────────────────────────────── */
+/* These replace JS onMouseEnter/onMouseLeave in Server Components           */
+
+/* Amber text links (e.g. "See all" links) */
+.sl-hover-accent { transition: color var(--sl-transition); }
+.sl-hover-accent:hover { color: var(--sl-accent-hover) !important; }
+
+/* Gradient fill buttons (primary CTAs) */
+.sl-hover-btn-primary { transition: filter var(--sl-transition), box-shadow var(--sl-transition); }
+.sl-hover-btn-primary:hover {
+  filter: brightness(1.12) !important;
+  box-shadow: 0 0 24px var(--sl-accent-glow-strong) !important;
+}
+
+.sl-hero-primary-cta {
+  isolation: isolate;
+  box-shadow: 0 0 20px var(--sl-accent-glow-strong), 0 12px 28px rgba(0, 85, 204, 0.22);
+  animation: sl-hero-cta-pulse 2.8s ease-in-out infinite;
+}
+
+.sl-hero-primary-cta::after {
+  content: '';
+  position: absolute;
+  inset: -80% -55%;
+  z-index: 0;
+  pointer-events: none;
+  background: linear-gradient(115deg, transparent 38%, rgba(255, 255, 255, 0.5) 50%, transparent 62%);
+  opacity: 0;
+  transform: translateX(-70%) rotate(8deg);
+  animation: sl-hero-cta-shine 3.4s ease-in-out infinite;
+}
+
+.sl-hero-primary-cta > * {
+  position: relative;
+  z-index: 1;
+}
+
+@keyframes sl-hero-cta-pulse {
+  0%, 100% {
+    box-shadow: 0 0 18px var(--sl-accent-glow-strong), 0 12px 28px rgba(0, 85, 204, 0.22);
+  }
+  50% {
+    box-shadow: 0 0 34px var(--sl-accent-glow-strong), 0 18px 38px rgba(0, 85, 204, 0.34);
+  }
+}
+
+@keyframes sl-hero-cta-shine {
+  0%, 42% {
+    opacity: 0;
+    transform: translateX(-70%) rotate(8deg);
+  }
+  52% {
+    opacity: 1;
+  }
+  70%, 100% {
+    opacity: 0;
+    transform: translateX(70%) rotate(8deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sl-hero-primary-cta,
+  .sl-hero-primary-cta::after {
+    animation: none;
+  }
+}
+
+/* Secondary/outline button (text + border change) */
+.sl-hover-btn-secondary { transition: color var(--sl-transition), border-color var(--sl-transition); }
+.sl-hover-btn-secondary:hover {
+  color: var(--sl-text-primary) !important;
+  border-color: var(--sl-border-hover) !important;
+}
+
+/* Card hover: border glow + lift */
+.sl-hover-card { transition: border-color var(--sl-transition), transform var(--sl-transition); }
+.sl-hover-card:hover {
+  border-color: var(--sl-border-hover) !important;
+  transform: translateY(-4px);
+}
+
+/* Card hover: border glow only (no lift) */
+.sl-hover-border { transition: border-color var(--sl-transition); }
+.sl-hover-border:hover { border-color: var(--sl-border-hover) !important; }
+
+/* Muted text → primary on hover (footer nav links) */
+.sl-hover-text-primary { transition: color var(--sl-transition); }
+.sl-hover-text-primary:hover { color: var(--sl-text-primary) !important; }
+
+/* Ghost accent button (fills on hover) */
+.sl-hover-ghost { transition: background var(--sl-transition), box-shadow var(--sl-transition); }
+.sl-hover-ghost:hover {
+  background: var(--sl-accent-muted) !important;
+  box-shadow: 0 0 12px var(--sl-accent-glow);
+}
+
+/* Tab trigger (product page tabs: Характеристики / Опис / Відгуки) */
+.sl-tab-trigger {
+  background: var(--sl-bg-elevated);
+  border: 1px solid var(--sl-border);
+  color: var(--sl-text-secondary);
+  font-family: var(--sl-font-mono);
+  transition: background var(--sl-transition), border-color var(--sl-transition), color var(--sl-transition);
+}
+.sl-tab-trigger:hover {
+  background: var(--sl-bg-surface) !important;
+  border-color: var(--sl-border-hover) !important;
+  color: var(--sl-text-primary) !important;
+}
+.sl-tab-trigger[data-state="active"] {
+  background: var(--sl-accent) !important;
+  border-color: var(--sl-accent) !important;
+  color: #fff !important;
+  box-shadow: 0 0 12px var(--sl-accent-glow);
+}
+
+/* ── Mobile sticky bar ──────────────────────────────────────────────────── */
+.sl-sticky-bar {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  z-index: 50;
+  background: var(--sl-bg-surface);
+  border-top: 1px solid var(--sl-border);
+  box-shadow: 0 -18px 36px rgba(15, 23, 42, 0.12);
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  font-family: var(--sl-font-mono);
+  font-size: 11px;
+  color: var(--sl-text-secondary);
+}
+
+/* ── Rich Editor (Tiptap admin) ─────────────────────────────────────────── */
+.rich-editor-content { font-size: 14px; line-height: 1.7; color: #111; }
+.rich-editor-content p { margin: 0 0 0.6em; }
+.rich-editor-content h2 { font-size: 1.2em; font-weight: 700; margin: 1em 0 0.4em; }
+.rich-editor-content h3 { font-size: 1.05em; font-weight: 600; margin: 0.9em 0 0.3em; }
+.rich-editor-content strong { font-weight: 700; }
+.rich-editor-content em { font-style: italic; }
+.rich-editor-content u { text-decoration: underline; }
+.rich-editor-content ul { list-style: disc; padding-left: 1.4em; margin: 0.5em 0; }
+.rich-editor-content ol { list-style: decimal; padding-left: 1.4em; margin: 0.5em 0; }
+.rich-editor-content li { margin: 0.2em 0; }
+.rich-editor-content a { color: #2563eb; text-decoration: underline; }
+.rich-editor-content hr { border: none; border-top: 1px solid #e5e7eb; margin: 1em 0; }
+.rich-editor-content p.is-editor-empty:first-child::before { content: attr(data-placeholder); float: left; color: #9ca3af; pointer-events: none; height: 0; }
+
+/* ── Rich Content (storefront product description) ───────────────────────── */
+.rich-content { font-size: 0.9rem; line-height: 1.75; }
+.rich-content p { margin: 0 0 0.75em; }
+.rich-content h2 { font-size: 1.15em; font-weight: 700; margin: 1.2em 0 0.5em; color: var(--sl-text-primary); }
+.rich-content h3 { font-size: 1em; font-weight: 600; margin: 1em 0 0.4em; color: var(--sl-text-primary); }
+.rich-content strong { font-weight: 700; color: var(--sl-text-primary); }
+.rich-content em { font-style: italic; }
+.rich-content u { text-decoration: underline; }
+.rich-content ul { list-style: disc; padding-left: 1.5em; margin: 0.5em 0; }
+.rich-content ol { list-style: decimal; padding-left: 1.5em; margin: 0.5em 0; }
+.rich-content li { margin: 0.3em 0; }
+.rich-content a { color: var(--sl-accent); text-decoration: underline; }
+.rich-content hr { border: none; border-top: 1px solid var(--sl-border); margin: 1.2em 0; }

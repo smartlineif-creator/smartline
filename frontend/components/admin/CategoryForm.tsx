@@ -1,0 +1,170 @@
+'use client';
+
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { adminCreateCategory, adminUpdateCategory, getCategories } from '@/lib/api';
+import { Category } from '@/types';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Check, ChevronDown } from 'lucide-react';
+import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
+
+type Mode = 'create' | 'edit';
+
+interface Props {
+  mode: Mode;
+  category?: Category;
+}
+
+function flattenCategories(categories: Category[], excludeId?: string): Category[] {
+  return categories.flatMap((category) => {
+    if (category.id === excludeId) return [];
+    return [category, ...flattenCategories(category.children || [], excludeId)];
+  });
+}
+
+export default function CategoryForm({ mode, category }: Props) {
+  const router = useRouter();
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [name, setName] = useState(category?.name || '');
+  const [parentId, setParentId] = useState(category?.parentId || '');
+  const [selectorOpen, setSelectorOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const selectorRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    getCategories().then(setCategories).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (!selectorOpen) return;
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!selectorRef.current?.contains(event.target as Node)) {
+        setSelectorOpen(false);
+      }
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setSelectorOpen(false);
+    };
+
+    document.addEventListener('pointerdown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [selectorOpen]);
+
+  const parentOptions = useMemo(
+    () => flattenCategories(categories, category?.id),
+    [categories, category?.id],
+  );
+
+  const selectedParent = parentOptions.find((item) => item.id === parentId);
+
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim()) {
+      toast.error('Вкажіть назву категорії');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const payload = {
+        name: name.trim(),
+        icon: '',
+        parentId: parentId || undefined,
+      };
+
+      if (mode === 'edit' && category) {
+        await adminUpdateCategory(category.id, payload);
+        toast.success('Категорію оновлено');
+      } else {
+        await adminCreateCategory(payload);
+        toast.success('Категорію створено');
+      }
+      router.push('/admin/categories');
+      router.refresh();
+    } catch {
+      toast.error('Не вдалося зберегти категорію');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSave} className="max-w-2xl">
+      <div className="rounded-lg border bg-white p-6 shadow-sm">
+        <div className="space-y-5">
+          <div>
+            <Label htmlFor="category-name">Назва *</Label>
+            <Input
+              id="category-name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              autoFocus
+              placeholder="Наприклад, Смартфони"
+              className="mt-2 h-11"
+            />
+          </div>
+
+          <div>
+            <Label>Батьківська категорія</Label>
+            <div ref={selectorRef} className="relative mt-2">
+              <button
+                type="button"
+                onClick={() => setSelectorOpen((open) => !open)}
+                className="flex h-11 w-full items-center justify-between rounded-lg border border-gray-200 bg-white px-3 text-left text-sm transition-colors hover:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <span className={selectedParent ? 'text-gray-900' : 'text-muted-foreground'}>
+                  {selectedParent?.name || 'Коренева категорія'}
+                </span>
+                <ChevronDown className={cn('h-4 w-4 text-muted-foreground transition-transform', selectorOpen && 'rotate-180')} />
+              </button>
+
+              {selectorOpen && (
+                <div className="absolute z-20 mt-2 max-h-72 w-full overflow-y-auto rounded-lg border bg-white p-1 shadow-xl">
+                  <button
+                    type="button"
+                    onClick={() => { setParentId(''); setSelectorOpen(false); }}
+                    className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm hover:bg-blue-50"
+                  >
+                    <Check className={cn('h-4 w-4 text-blue-600', parentId && 'invisible')} />
+                    Коренева категорія
+                  </button>
+                  {parentOptions.map((option) => (
+                    <button
+                      key={option.id}
+                      type="button"
+                      onClick={() => { setParentId(option.id); setSelectorOpen(false); }}
+                      className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm hover:bg-blue-50"
+                    >
+                      <Check className={cn('h-4 w-4 text-blue-600', parentId !== option.id && 'invisible')} />
+                      <span className="truncate">{option.name}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-8 flex justify-end gap-2">
+          <Button type="button" variant="outline" asChild>
+            <Link href="/admin/categories">Скасувати</Link>
+          </Button>
+          <Button type="submit" disabled={saving}>
+            {saving ? 'Збереження...' : 'Зберегти'}
+          </Button>
+        </div>
+      </div>
+    </form>
+  );
+}

@@ -1,0 +1,34 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "Frontend (Next.js)",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "cwd": "frontend",
+      "port": 3000,
+      "autoPort": false
+    },
+    {
+      "name": "Backend (NestJS)",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "start:dev"],
+      "cwd": "backend",
+      "port": 4000
+    },
+    {
+      "name": "Both (concurrently)",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "cwd": ".",
+      "port": 3003
+    },
+    {
+      "name": "Prisma Studio",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "prisma:studio"],
+      "cwd": "backend",
+      "port": 5555
+    }
+  ]
+}

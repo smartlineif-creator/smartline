@@ -1,0 +1,167 @@
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
+import { CreateCategoryDto, UpdateCategoryDto } from './dto/category.dto';
+
+@Injectable()
+export class CategoriesService {
+  constructor(private prisma: PrismaService) {}
+
+  async findAll() {
+    const categories = await this.prisma.category.findMany({
+      where: { parentId: null },
+      include: {
+        children: {
+          include: {
+            children: true,
+            attributeTemplates: true,
+            _count: {
+              select: {
+                children: true,
+                products: true,
+              },
+            },
+          },
+        },
+        attributeTemplates: true,
+        _count: {
+          select: {
+            children: true,
+            products: true,
+          },
+        },
+      },
+      orderBy: { name: 'asc' },
+    });
+    return categories;
+  }
+
+  async findOne(id: string) {
+    const category = await this.prisma.category.findUnique({
+      where: { id },
+      include: { children: true, attributeTemplates: true },
+    });
+    if (!category) throw new NotFoundException('Category not found');
+    return category;
+  }
+
+  async findBySlug(slug: string) {
+    const category = await this.prisma.category.findUnique({
+      where: { slug },
+      include: {
+        children: { include: { attributeTemplates: true } },
+        attributeTemplates: true,
+      },
+    });
+    if (!category) throw new NotFoundException('Category not found');
+    return category;
+  }
+
+  async create(dto: CreateCategoryDto) {
+    const slug = dto.slug || this.toSlug(dto.name);
+    const { attributeTemplates, ...rest } = dto;
+    return this.prisma.category.create({
+      data: {
+        ...rest,
+        slug,
+        attributeTemplates: attributeTemplates
+          ? { create: attributeTemplates }
+          : undefined,
+      },
+      include: { attributeTemplates: true },
+    });
+  }
+
+  async update(id: string, dto: UpdateCategoryDto) {
+    const { attributeTemplates, ...rest } = dto;
+    return this.prisma.category.update({
+      where: { id },
+      data: {
+        ...rest,
+        ...(dto.slug ? {} : { slug: this.toSlug(dto.name || '') }),
+        ...(attributeTemplates !== undefined
+          ? {
+              attributeTemplates: {
+                deleteMany: {},
+                create: attributeTemplates,
+              },
+            }
+          : {}),
+      },
+      include: { attributeTemplates: true },
+    });
+  }
+
+  async remove(id: string) {
+    const [children, products] = await Promise.all([
+      this.prisma.category.count({ where: { parentId: id } }),
+      this.prisma.product.count({ where: { categoryId: id } }),
+    ]);
+
+    if (children > 0) {
+      throw new BadRequestException({
+        code: 'CATEGORY_HAS_CHILDREN',
+        message:
+          'У категорії є підкатегорії. Спочатку перенесіть або видаліть їх.',
+        childrenCount: children,
+      });
+    }
+    if (products > 0) {
+      throw new BadRequestException({
+        code: 'CATEGORY_HAS_PRODUCTS',
+        message:
+          'У категорії є товари. Спочатку перенесіть їх в іншу категорію або видаліть.',
+        productsCount: products,
+      });
+    }
+
+    return this.prisma.category.delete({ where: { id } });
+  }
+
+  private toSlug(name: string) {
+    return name
+      .toLowerCase()
+      .replace(/[а-яёіїєґ]/g, (char) => cyrillicMap[char] || char)
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '');
+  }
+}
+
+const cyrillicMap: Record<string, string> = {
+  а: 'a',
+  б: 'b',
+  в: 'v',
+  г: 'h',
+  ґ: 'g',
+  д: 'd',
+  е: 'e',
+  є: 'ye',
+  ж: 'zh',
+  з: 'z',
+  и: 'y',
+  і: 'i',
+  ї: 'yi',
+  й: 'y',
+  к: 'k',
+  л: 'l',
+  м: 'm',
+  н: 'n',
+  о: 'o',
+  п: 'p',
+  р: 'r',
+  с: 's',
+  т: 't',
+  у: 'u',
+  ф: 'f',
+  х: 'kh',
+  ц: 'ts',
+  ч: 'ch',
+  ш: 'sh',
+  щ: 'shch',
+  ь: '',
+  ю: 'yu',
+  я: 'ya',
+};

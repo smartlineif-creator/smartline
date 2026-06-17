@@ -1,0 +1,6 @@
+ALTER TABLE "Product"
+ADD COLUMN "compareAtPrice" DECIMAL(10,2),
+ADD COLUMN "stock" INTEGER NOT NULL DEFAULT 0;
+
+ALTER TABLE "Variant"
+ADD COLUMN "compareAtPrice" DECIMAL(10,2);
