@@ -54,7 +54,7 @@ services:
     name: smartline-frontend
     runtime: node
     plan: free
-    buildCommand: npm install && npm run build:frontend
+    buildCommand: cd frontend && npm install && npm run build
     startCommand: cd frontend && npm start
     envVars:
       - key: NODE_ENV
