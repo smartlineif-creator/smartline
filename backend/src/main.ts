@@ -5,6 +5,7 @@ import {
 } from '@nestjs/platform-fastify';
 import { ValidationPipe } from '@nestjs/common';
 import fastifyCookie from '@fastify/cookie';
+import fastifyMultipart from '@fastify/multipart';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
@@ -14,6 +15,7 @@ async function bootstrap() {
   );
 
   await app.register(fastifyCookie);
+  await app.register(fastifyMultipart, { limits: { fileSize: 200 * 1024 * 1024 } });
 
   const configuredOrigins = (process.env.FRONTEND_URL || '')
     .split(',')
