@@ -258,18 +258,25 @@ export async function uploadImage(file: File): Promise<string> {
 }
 
 export async function uploadVideo(file: File): Promise<string> {
-  const formData = new FormData();
-  formData.append('file', file);
-
-  const res = await fetch(`${API_URL}/upload/video`, {
+  // Step 1: get presigned URL from backend (fast, no body transfer)
+  const presignRes = await fetch(`${API_URL}/upload/presign-video`, {
     method: 'POST',
     credentials: 'include',
-    body: formData,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ filename: file.name }),
   });
+  if (!presignRes.ok) throw new Error('Failed to get upload URL');
+  const { uploadUrl, publicUrl } = await presignRes.json();
 
-  if (!res.ok) throw new Error('Video upload failed');
-  const data = await res.json();
-  return data.url;
+  // Step 2: upload directly to R2 (no backend in the middle)
+  const uploadRes = await fetch(uploadUrl, {
+    method: 'PUT',
+    headers: { 'Content-Type': file.type },
+    body: file,
+  });
+  if (!uploadRes.ok) throw new Error('Video upload to storage failed');
+
+  return publicUrl;
 }
 
 // ─── Admin ───────────────────────────────────────────────────────────────────

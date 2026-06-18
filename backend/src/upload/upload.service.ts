@@ -1,6 +1,7 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import * as sharp from 'sharp';
 import { randomUUID } from 'crypto';
 
@@ -73,6 +74,31 @@ export class UploadService {
 
     const publicUrl = this.config.get<string>('R2_PUBLIC_URL');
     return `${publicUrl}/${key}`;
+  }
+
+  async getVideoPresignedUrl(filename: string): Promise<{ uploadUrl: string; publicUrl: string }> {
+    const ext = filename.split('.').pop()?.toLowerCase();
+    const videoTypes: Record<string, string> = {
+      mp4: 'video/mp4',
+      webm: 'video/webm',
+      mov: 'video/quicktime',
+    };
+    const contentType = videoTypes[ext || ''];
+    if (!contentType) throw new BadRequestException('Unsupported video format (mp4, webm, mov)');
+
+    const key = `products/videos/${randomUUID()}.${ext}`;
+    const bucket = this.config.get<string>('R2_BUCKET');
+
+    const command = new PutObjectCommand({
+      Bucket: bucket,
+      Key: key,
+      ContentType: contentType,
+    });
+
+    const uploadUrl = await getSignedUrl(this.s3, command, { expiresIn: 3600 });
+    const publicUrl = `${this.config.get<string>('R2_PUBLIC_URL')}/${key}`;
+
+    return { uploadUrl, publicUrl };
   }
 
   private getMimeType(filename: string): string | null {

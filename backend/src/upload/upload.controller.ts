@@ -4,6 +4,7 @@ import {
   UseGuards,
   BadRequestException,
   Req,
+  Body,
 } from '@nestjs/common';
 import { UploadService } from './upload.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -34,5 +35,11 @@ export class UploadController {
     const buffer = await data.toBuffer();
     const url = await this.uploadService.uploadVideo(buffer, data.filename);
     return { url };
+  }
+
+  @Post('presign-video')
+  async presignVideo(@Body() body: { filename: string }) {
+    if (!body?.filename) throw new BadRequestException('filename required');
+    return this.uploadService.getVideoPresignedUrl(body.filename);
   }
 }
