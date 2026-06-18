@@ -49,7 +49,8 @@ async function apiFetch<T>(
   tags?: string[],
 ): Promise<T> {
   const headers = new Headers(options.headers);
-  if (options.body && !headers.has('Content-Type')) {
+  // Don't set Content-Type for FormData — browser sets it with correct boundary
+  if (options.body && !(options.body instanceof FormData) && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json');
   }
 
@@ -255,15 +256,10 @@ export async function searchStreets(cityRef: string, query: string) {
 export async function uploadImage(file: File): Promise<string> {
   const formData = new FormData();
   formData.append('file', file);
-
-  const res = await fetch(`${API_URL}/upload/image`, {
+  const data = await apiFetch<{ url: string }>('/upload/image', {
     method: 'POST',
-    credentials: 'include',
     body: formData,
   });
-
-  if (!res.ok) throw new Error('Upload failed');
-  const data = await res.json();
   return data.url;
 }
 
