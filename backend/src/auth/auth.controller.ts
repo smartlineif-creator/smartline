@@ -108,15 +108,15 @@ export class AuthController {
     res.setCookie('accessToken', tokens.accessToken, {
       httpOnly: true,
       secure: isProd,
-      sameSite: 'lax',
-      maxAge: 60 * 15, // 15 min
+      sameSite: isProd ? 'none' : 'lax',
+      maxAge: 60 * 15,
       path: '/',
     });
     res.setCookie('refreshToken', tokens.refreshToken, {
       httpOnly: true,
       secure: isProd,
-      sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 30, // 30 days
+      sameSite: isProd ? 'none' : 'lax',
+      maxAge: 60 * 60 * 24 * 30,
       path: '/',
     });
   }
