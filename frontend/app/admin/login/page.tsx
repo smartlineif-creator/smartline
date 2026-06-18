@@ -18,7 +18,8 @@ export default function AdminLoginPage() {
     e.preventDefault();
     setLoading(true);
     try {
-      await login(email, password);
+      const data = await login(email, password);
+      document.cookie = `accessToken=${data.accessToken}; path=/; max-age=900; SameSite=Lax`;
       router.push('/admin');
     } catch (err: any) {
       toast.error(err.message || 'Невірний email або пароль');

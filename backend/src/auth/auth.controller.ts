@@ -43,7 +43,7 @@ export class AuthController {
   ) {
     const tokens = await this.authService.login(dto);
     this.setTokenCookies(res, tokens);
-    return { message: 'Logged in successfully' };
+    return { accessToken: tokens.accessToken };
   }
 
   @Post('refresh')

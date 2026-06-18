@@ -181,7 +181,7 @@ export async function clearCartApi() {
 // ─── Auth ────────────────────────────────────────────────────────────────────
 
 export async function login(email: string, password: string) {
-  return apiFetch<void>('/auth/login', {
+  return apiFetch<{ accessToken: string }>('/auth/login', {
     method: 'POST',
     body: JSON.stringify({ email, password }),
   });

@@ -28,6 +28,7 @@ export const useAuthStore = create<AuthStore>((set) => ({
 
   logout: async () => {
     await apiLogout().catch(() => {});
+    document.cookie = 'accessToken=; path=/; max-age=0';
     set({ user: null });
   },
 
