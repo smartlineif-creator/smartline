@@ -12,7 +12,17 @@ async function refreshSession() {
       method: 'POST',
       credentials: 'include',
     })
-      .then((res) => res.ok)
+      .then(async (res) => {
+        if (!res.ok) return false;
+        // Update the frontend-domain cookie so SSR requests stay authenticated
+        if (typeof window !== 'undefined') {
+          const data = await res.json().catch(() => null);
+          if (data?.accessToken) {
+            document.cookie = `accessToken=${data.accessToken}; path=/; max-age=900; SameSite=Lax`;
+          }
+        }
+        return true;
+      })
       .catch(() => false)
       .finally(() => {
         refreshPromise = null;

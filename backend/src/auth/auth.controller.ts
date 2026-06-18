@@ -62,7 +62,7 @@ export class AuthController {
       oldToken,
     );
     this.setTokenCookies(res, tokens);
-    return { message: 'Tokens refreshed' };
+    return { accessToken: tokens.accessToken };
   }
 
   @Post('logout')
