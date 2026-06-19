@@ -194,14 +194,35 @@ export class OrdersService {
   }
 
   async updateStatus(id: string, dto: UpdateOrderStatusDto) {
-    await this.findOne(id);
-    const updated = await this.prisma.order.update({
-      where: { id },
-      data: {
-        status: dto.status,
-        ...(dto.ttn ? { ttn: dto.ttn } : {}),
-        ...(dto.adminNote ? { adminNote: dto.adminNote } : {}),
-      },
+    const existing = await this.findOne(id);
+
+    const updated = await this.prisma.$transaction(async (tx) => {
+      // Restore stock when cancelling — only if not already cancelled
+      if (dto.status === 'CANCELLED' && existing.status !== 'CANCELLED') {
+        const items = await tx.orderItem.findMany({ where: { orderId: id } });
+        for (const item of items) {
+          if (item.variantId) {
+            await tx.variant.update({
+              where: { id: item.variantId },
+              data: { stock: { increment: item.quantity } },
+            });
+          } else if (item.productId) {
+            await tx.product.update({
+              where: { id: item.productId },
+              data: { stock: { increment: item.quantity } },
+            });
+          }
+        }
+      }
+
+      return tx.order.update({
+        where: { id },
+        data: {
+          status: dto.status,
+          ...(dto.ttn ? { ttn: dto.ttn } : {}),
+          ...(dto.adminNote ? { adminNote: dto.adminNote } : {}),
+        },
+      });
     });
 
     this.telegram.notifyOrderStatus(updated).catch(() => {});
