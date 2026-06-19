@@ -616,16 +616,17 @@ export default function Header() {
       {/* Mobile drawer overlay */}
       {mobileMenuOpen && (
         <div
-          className="fixed inset-0 z-50 md:hidden"
+          className="fixed inset-0 md:hidden"
+          style={{ zIndex: 300, background: 'rgba(0,0,0,0.7)' }}
           onClick={closeMenus}
-          style={{ background: 'rgba(0,0,0,0.7)' }}
         />
       )}
 
       {/* Mobile drawer */}
       <div
-        className="fixed right-0 top-0 z-50 h-full w-[85vw] max-w-xs overflow-y-auto transition-transform duration-300 md:hidden"
+        className="fixed right-0 top-0 h-full w-[85vw] max-w-xs overflow-y-auto transition-transform duration-300 md:hidden"
         style={{
+          zIndex: 301,
           background: 'var(--sl-bg-surface)',
           borderLeft: '1px solid var(--sl-border)',
           transform: mobileMenuOpen ? 'translateX(0)' : 'translateX(100%)',

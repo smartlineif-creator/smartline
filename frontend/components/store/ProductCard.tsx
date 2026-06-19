@@ -333,38 +333,44 @@ export default function ProductCard({ product, selectedVariant }: Props) {
         {/* Star rating */}
         <ProductRating reviews={product.reviews?.map((r) => ({ rating: r.rating }))} count={product._count?.reviews} />
 
-        <div className="mt-2 flex items-end justify-between gap-2">
-          <div className="min-w-0 flex flex-col">
-            <span
-              className="whitespace-nowrap text-base font-semibold tracking-tight"
-              style={{ color: 'var(--sl-text-primary)', fontFamily: 'var(--sl-font-mono)' }}
-            >
-              {hasMultiple && (
-                <span className="mr-1 text-xs font-normal" style={{ color: 'var(--sl-text-muted)' }}>від</span>
-              )}
-              {formatPrice(finalPrice)}
-            </span>
-            {crossedPrice && (
+        <div className="mt-2 flex flex-col gap-2">
+          {/* Price row */}
+          <div className="flex items-end justify-between gap-2">
+            <div className="min-w-0 flex flex-col">
               <span
-                className="whitespace-nowrap text-xs line-through"
+                className="whitespace-nowrap text-base font-semibold tracking-tight"
+                style={{ color: 'var(--sl-text-primary)', fontFamily: 'var(--sl-font-mono)' }}
+              >
+                {hasMultiple && (
+                  <span className="mr-1 text-xs font-normal" style={{ color: 'var(--sl-text-muted)' }}>від</span>
+                )}
+                {formatPrice(finalPrice)}
+              </span>
+              {crossedPrice && (
+                <span
+                  className="whitespace-nowrap text-xs line-through"
+                  style={{ color: 'var(--sl-text-muted)', fontFamily: 'var(--sl-font-mono)' }}
+                >
+                  {formatPrice(crossedPrice)}
+                </span>
+              )}
+            </div>
+            {/* Out-of-stock label — stays inline with price on all screens */}
+            {isOutOfStock && (
+              <span
+                className="shrink-0 pb-0.5 text-xs font-medium"
                 style={{ color: 'var(--sl-text-muted)', fontFamily: 'var(--sl-font-mono)' }}
               >
-                {formatPrice(crossedPrice)}
+                Немає в наявності
               </span>
             )}
           </div>
-          {isOutOfStock ? (
-            <span
-              className="shrink-0 pb-0.5 text-xs font-medium"
-              style={{ color: 'var(--sl-text-muted)', fontFamily: 'var(--sl-font-mono)' }}
-            >
-              Немає в наявності
-            </span>
-          ) : (
+          {/* Cart button — full-width below price */}
+          {!isOutOfStock && (
             <button
               type="button"
               onClick={handleAddToCart}
-              className="flex h-8 shrink-0 items-center justify-center gap-1 rounded-lg px-2.5 text-xs font-semibold transition-all"
+              className="flex h-8 w-full items-center justify-center gap-1 rounded-lg text-xs font-semibold transition-all"
               style={{
                 border: '1px solid var(--sl-accent)',
                 color: 'var(--sl-accent)',
