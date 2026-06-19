@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -9,15 +9,20 @@ import {
   Check,
   CheckCircle2,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   ChevronUp,
   CreditCard,
+  Maximize2,
   Minus,
   PackageCheck,
+  Play,
   Plus,
   ShieldCheck,
   ShoppingCart,
   Star,
   Truck,
+  X,
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Product, Variant, Attribute } from '@/types';
@@ -316,7 +321,9 @@ export default function ProductDetail({ product }: Props) {
   const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>(() => (
     hasConfigurableOptions ? getVariantSelections(firstVariant) : {}
   ));
-  const [selectedImage, setSelectedImage] = useState(0);
+  const [selectedMedia, setSelectedMedia] = useState<{ type: 'image'; index: number } | { type: 'video' }>({ type: 'image', index: 0 });
+  const [mobileCarouselIndex, setMobileCarouselIndex] = useState(0);
+  const mobileCarouselRef = useRef<HTMLDivElement>(null);
   const [showAllAttrs, setShowAllAttrs] = useState(false);
   const [reviewText, setReviewText] = useState('');
   const [reviewRating, setReviewRating] = useState(5);
@@ -331,6 +338,18 @@ export default function ProductDetail({ product }: Props) {
   const { finalPrice, crossedPrice, promo } = getProductDisplayPrices(product, resolvedVariant);
   const displayName = getProductDisplayName(product, resolvedVariant);
   const images = product.images || [];
+  const mediaItems = useMemo(() => [
+    ...images.map((image, index) => ({ type: 'image' as const, image, index })),
+    ...(product.videoUrl ? [{ type: 'video' as const, url: product.videoUrl }] : []),
+  ], [images, product.videoUrl]);
+
+  const handleMobileScroll = useCallback(() => {
+    const el = mobileCarouselRef.current;
+    if (!el) return;
+    const newIndex = Math.round(el.scrollLeft / (el.offsetWidth || 1));
+    setMobileCarouselIndex(newIndex);
+  }, []);
+
   const reviews = (product as Product & { reviews?: any[] }).reviews || [];
   const attributes = useMemo(
     () => dedupeAttributes((product.attributes || []).filter((attribute) => !shouldHideAttribute(attribute))),
@@ -370,6 +389,33 @@ export default function ProductDetail({ product }: Props) {
   const [addedToCart, setAddedToCart] = useState(false);
   const cartBtnRef = useRef<HTMLButtonElement>(null);
   const addedTimerRef = useRef<number | null>(null);
+
+  const [lightbox, setLightbox] = useState<{ type: 'image' | 'video'; index: number } | null>(null);
+
+  useEffect(() => {
+    if (!lightbox) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setLightbox(null);
+      if (lightbox.type === 'image' && images.length > 1) {
+        if (e.key === 'ArrowRight') {
+          const next = (lightbox.index + 1) % images.length;
+          setLightbox((prev) => prev ? { ...prev, index: next } : null);
+          setSelectedMedia({ type: 'image', index: next });
+        }
+        if (e.key === 'ArrowLeft') {
+          const prev = (lightbox.index - 1 + images.length) % images.length;
+          setLightbox((p) => p ? { ...p, index: prev } : null);
+          setSelectedMedia({ type: 'image', index: prev });
+        }
+      }
+    };
+    document.body.style.overflow = 'hidden';
+    window.addEventListener('keydown', handler);
+    return () => {
+      window.removeEventListener('keydown', handler);
+      document.body.style.overflow = '';
+    };
+  }, [lightbox, images.length]);
 
   const handleAddToCart = useCallback(() => {
     addItem({ productId: product.id, variantId: resolvedVariant?.id, slug: resolvedVariant?.slug ?? product.slug, quantity: qty });
@@ -462,78 +508,210 @@ export default function ProductDetail({ product }: Props) {
         <div className="grid gap-8 md:grid-cols-[minmax(0,1fr)_360px] lg:grid-cols-[minmax(0,1fr)_400px] xl:grid-cols-[minmax(0,1.08fr)_420px]">
           {/* Left column */}
           <div className="space-y-8">
-            {/* Gallery */}
-            <section className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_96px]">
-              <div className="lg:order-1">
-                <div
-                  className="relative aspect-[4/3] overflow-hidden rounded-2xl"
-                  style={{ background: 'var(--sl-bg-elevated)', border: '1px solid var(--sl-border)' }}
-                >
-                  <div className="absolute left-4 top-4 z-10 flex flex-wrap gap-2">
-                    <span
-                      className="rounded-full px-3 py-1 text-xs"
-                      style={{ background: 'var(--sl-bg-primary)', color: 'var(--sl-text-muted)', border: '1px solid var(--sl-border)', fontFamily: 'var(--sl-font-mono)' }}
-                    >
-                      Реальні фото
-                    </span>
-                    {product.category?.name && (
-                      <span
-                        className="rounded-full px-3 py-1 text-xs"
-                        style={{ background: 'var(--sl-bg-primary)', color: 'var(--sl-text-muted)', border: '1px solid var(--sl-border)', fontFamily: 'var(--sl-font-mono)' }}
-                      >
-                        {product.category.name}
-                      </span>
+            {/* Gallery — desktop: main viewer + thumbnail strip; mobile: swipe carousel */}
+            <section>
+              {/* ── Desktop ── */}
+              <div className="hidden md:grid gap-4 lg:grid-cols-[minmax(0,1fr)_88px]">
+                {/* Main viewer */}
+                <div className="lg:order-1">
+                  <div
+                    className="group/gallery relative aspect-[4/3] overflow-hidden rounded-2xl"
+                    style={{ background: 'var(--sl-bg-elevated)', border: '1px solid var(--sl-border)' }}
+                  >
+                    {selectedMedia.type === 'image' ? (
+                      <>
+                        {/* Clickable photo area */}
+                        <div
+                          className="absolute inset-0 cursor-zoom-in"
+                          onClick={() => setLightbox({ type: 'image', index: selectedMedia.index })}
+                          role="button"
+                          aria-label="Відкрити фото на весь екран"
+                        >
+                          <div className="absolute left-4 top-4 z-10 flex flex-wrap gap-2">
+                            {product.category?.name && (
+                              <span
+                                className="rounded-full px-3 py-1 text-xs"
+                                style={{ background: 'var(--sl-bg-primary)', color: 'var(--sl-text-muted)', border: '1px solid var(--sl-border)', fontFamily: 'var(--sl-font-mono)' }}
+                              >
+                                {product.category.name}
+                              </span>
+                            )}
+                          </div>
+                          <div className="absolute right-3 top-3 z-10 opacity-0 transition-opacity duration-200 group-hover/gallery:opacity-100">
+                            <div
+                              className="flex h-9 w-9 items-center justify-center rounded-xl"
+                              style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.12)' }}
+                            >
+                              <Maximize2 className="h-4 w-4 text-white" />
+                            </div>
+                          </div>
+                          <Image
+                            src={images[selectedMedia.index]?.url || '/placeholder.svg'}
+                            alt={images[selectedMedia.index]?.alt || displayName}
+                            fill
+                            priority
+                            className="object-contain p-4 sm:p-8 transition-transform duration-300 group-hover/gallery:scale-[1.02]"
+                            sizes="(max-width: 1280px) 100vw, 720px"
+                          />
+                          {mediaItems.length > 1 && (
+                            <div
+                              className="absolute bottom-3 right-3 z-10 rounded-full px-2.5 py-1 text-xs"
+                              style={{ background: 'rgba(0,0,0,0.55)', color: 'rgba(255,255,255,0.8)', fontFamily: 'var(--sl-font-mono)', backdropFilter: 'blur(8px)' }}
+                            >
+                              {selectedMedia.index + 1} / {mediaItems.length}
+                            </div>
+                          )}
+                        </div>
+                        {/* Watch video pill (bottom-left, only when video exists) */}
+                        {product.videoUrl && (
+                          <button
+                            type="button"
+                            onClick={() => setSelectedMedia({ type: 'video' })}
+                            className="absolute bottom-3 left-3 z-10 flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold"
+                            style={{ background: 'rgba(0,0,0,0.65)', color: '#fff', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.15)', fontFamily: 'var(--sl-font-mono)' }}
+                          >
+                            <Play className="h-3 w-3 fill-current" />
+                            Переглянути відео
+                          </button>
+                        )}
+                      </>
+                    ) : (
+                      /* Video player inline */
+                      <>
+                        <video
+                          src={product.videoUrl!}
+                          controls
+                          playsInline
+                          className="absolute inset-0 h-full w-full rounded-2xl object-contain"
+                          style={{ background: '#000' }}
+                          poster={images[0]?.url}
+                        />
+                        {/* Back to photos */}
+                        <button
+                          type="button"
+                          onClick={() => setSelectedMedia({ type: 'image', index: 0 })}
+                          className="absolute left-3 top-3 z-10 flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold"
+                          style={{ background: 'rgba(0,0,0,0.65)', color: '#fff', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.15)', fontFamily: 'var(--sl-font-mono)' }}
+                        >
+                          ← Фото
+                        </button>
+                        {/* Fullscreen */}
+                        <button
+                          type="button"
+                          onClick={() => setLightbox({ type: 'video', index: 0 })}
+                          className="absolute right-3 top-3 z-10 flex h-9 w-9 items-center justify-center rounded-xl"
+                          style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.12)' }}
+                          aria-label="На весь екран"
+                        >
+                          <Maximize2 className="h-4 w-4 text-white" />
+                        </button>
+                      </>
                     )}
                   </div>
-                  <Image
-                    src={images[selectedImage]?.url || '/placeholder.svg'}
-                    alt={images[selectedImage]?.alt || displayName}
-                    fill
-                    priority
-                    className="object-contain p-4 sm:p-8"
-                    sizes="(max-width: 1280px) 100vw, 720px"
-                  />
                 </div>
+
+                {/* Thumbnail strip */}
+                {mediaItems.length > 1 && (
+                  <div className="flex gap-2 overflow-x-auto lg:order-2 lg:flex-col lg:overflow-visible">
+                    {mediaItems.map((item, thumbIdx) => {
+                      const isSelected = item.type === 'image'
+                        ? selectedMedia.type === 'image' && selectedMedia.index === item.index
+                        : selectedMedia.type === 'video';
+                      return (
+                        <button
+                          key={thumbIdx}
+                          type="button"
+                          onClick={() =>
+                            item.type === 'image'
+                              ? setSelectedMedia({ type: 'image', index: item.index })
+                              : setSelectedMedia({ type: 'video' })
+                          }
+                          className="relative h-[88px] w-[88px] shrink-0 overflow-hidden rounded-xl transition-all"
+                          style={{
+                            background: 'var(--sl-bg-elevated)',
+                            border: `1px solid ${isSelected ? 'var(--sl-accent)' : 'var(--sl-border)'}`,
+                            boxShadow: isSelected ? '0 0 0 2px rgba(232,98,26,0.25)' : 'none',
+                          }}
+                          aria-label={item.type === 'image' ? `Фото ${item.index + 1}` : 'Відео'}
+                        >
+                          {item.type === 'image' ? (
+                            <Image
+                              src={item.image.url}
+                              alt={item.image.alt || `${displayName}, фото ${item.index + 1}`}
+                              fill
+                              className="object-cover"
+                              sizes="88px"
+                            />
+                          ) : (
+                            /* Video thumbnail: first frame via #t=1 fragment + play icon overlay */
+                            <div className="absolute inset-0 flex items-center justify-center" style={{ background: 'var(--sl-bg-primary)' }}>
+                              <video
+                                src={`${item.url}#t=1`}
+                                muted
+                                preload="metadata"
+                                className="absolute inset-0 h-full w-full object-cover"
+                              />
+                              <div
+                                className="relative z-10 flex h-8 w-8 items-center justify-center rounded-full"
+                                style={{ background: 'rgba(232,98,26,0.9)', backdropFilter: 'blur(4px)' }}
+                              >
+                                <Play className="h-3.5 w-3.5 fill-white text-white" style={{ transform: 'translateX(1px)' }} />
+                              </div>
+                            </div>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
-              {images.length > 1 && (
-                <div className="flex gap-2 overflow-x-auto lg:order-2 lg:flex-col lg:overflow-visible">
-                  {images.map((img, index) => (
-                    <button
-                      key={img.id}
-                      type="button"
-                      onClick={() => setSelectedImage(index)}
-                      className="relative h-20 w-20 shrink-0 overflow-hidden rounded-xl transition-all"
-                      style={{
-                        background: 'var(--sl-bg-elevated)',
-                        border: `1px solid ${index === selectedImage ? 'var(--sl-accent)' : 'var(--sl-border)'}`,
-                        boxShadow: index === selectedImage ? '0 0 0 2px var(--sl-accent-glow)' : 'none',
-                      }}
+
+              {/* ── Mobile swipe carousel ── */}
+              <div className="md:hidden relative overflow-hidden rounded-2xl" style={{ border: '1px solid var(--sl-border)' }}>
+                <div
+                  ref={mobileCarouselRef}
+                  className="flex"
+                  style={{ overflowX: 'auto', scrollSnapType: 'x mandatory', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' } as React.CSSProperties}
+                  onScroll={handleMobileScroll}
+                >
+                  {mediaItems.map((item, idx) => (
+                    <div
+                      key={idx}
+                      className="relative aspect-[4/3] w-full shrink-0"
+                      style={{ scrollSnapAlign: 'start', background: 'var(--sl-bg-elevated)' }}
                     >
-                      <Image
-                        src={img.url}
-                        alt={img.alt || `${displayName}, фото ${index + 1}`}
-                        fill
-                        className="object-cover"
-                        sizes="80px"
-                      />
-                    </button>
+                      {item.type === 'image' ? (
+                        <Image
+                          src={item.image.url}
+                          alt={item.image.alt || displayName}
+                          fill
+                          priority={idx === 0}
+                          className="object-contain p-4"
+                          sizes="100vw"
+                        />
+                      ) : (
+                        <video
+                          src={item.url}
+                          controls
+                          playsInline
+                          className="absolute inset-0 h-full w-full object-contain"
+                          style={{ background: '#000' }}
+                          poster={images[0]?.url}
+                        />
+                      )}
+                    </div>
                   ))}
                 </div>
-              )}
+                {mediaItems.length > 1 && (
+                  <div
+                    className="pointer-events-none absolute bottom-3 right-3 rounded-full px-2.5 py-1 text-xs"
+                    style={{ background: 'rgba(0,0,0,0.55)', color: 'rgba(255,255,255,0.8)', fontFamily: 'var(--sl-font-mono)', backdropFilter: 'blur(8px)' }}
+                  >
+                    {mobileCarouselIndex + 1} / {mediaItems.length}
+                  </div>
+                )}
+              </div>
             </section>
-
-            {/* Product video */}
-            {product.videoUrl && (
-              <section>
-                <video
-                  src={product.videoUrl}
-                  controls
-                  playsInline
-                  className="w-full rounded-2xl object-contain"
-                  style={{ background: 'var(--sl-bg-elevated)', border: '1px solid var(--sl-border)' }}
-                />
-              </section>
-            )}
 
             {/* Priority attributes cards */}
             {priorityAttributes.length > 0 && (
@@ -1191,6 +1369,119 @@ export default function ProductDetail({ product }: Props) {
         <ProductShelf title="Схожі товари" description="Альтернативи з цієї самої категорії для швидкого порівняння." products={similarProducts} />
       </div>
 
+      {/* ─── Lightbox ────────────────────────────────────────────────────────── */}
+      {lightbox && (
+        <div
+          className="fixed inset-0 z-[9999] flex items-center justify-center"
+          style={{ background: 'rgba(0,0,0,0.92)', backdropFilter: 'blur(12px)' }}
+          onClick={() => setLightbox(null)}
+        >
+          {/* Close */}
+          <button
+            type="button"
+            className="absolute right-4 top-4 z-10 flex h-10 w-10 items-center justify-center rounded-full transition-all"
+            style={{ background: 'rgba(255,255,255,0.1)', color: '#fff', border: '1px solid rgba(255,255,255,0.15)' }}
+            onClick={(e) => { e.stopPropagation(); setLightbox(null); }}
+            aria-label="Закрити"
+          >
+            <X className="h-5 w-5" />
+          </button>
+
+          {lightbox.type === 'image' && (
+            <>
+              {/* Image */}
+              <div
+                className="relative mx-4 flex max-h-[85vh] max-w-[90vw] items-center justify-center"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="relative max-h-[85vh] max-w-[90vw]">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={images[lightbox.index]?.url}
+                    alt={images[lightbox.index]?.alt || displayName}
+                    className="max-h-[85vh] max-w-[90vw] rounded-2xl object-contain"
+                    style={{ boxShadow: '0 24px 80px rgba(0,0,0,0.6)' }}
+                  />
+                </div>
+              </div>
+
+              {/* Prev / Next arrows */}
+              {images.length > 1 && (
+                <>
+                  <button
+                    type="button"
+                    className="absolute left-4 flex h-12 w-12 items-center justify-center rounded-full transition-all"
+                    style={{ background: 'rgba(255,255,255,0.1)', color: '#fff', border: '1px solid rgba(255,255,255,0.15)' }}
+                    onClick={(e) => { e.stopPropagation(); const p = (lightbox.index - 1 + images.length) % images.length; setLightbox((prev) => prev ? { ...prev, index: p } : null); setSelectedMedia({ type: 'image', index: p }); }}
+                    aria-label="Попереднє фото"
+                  >
+                    <ChevronLeft className="h-6 w-6" />
+                  </button>
+                  <button
+                    type="button"
+                    className="absolute right-4 flex h-12 w-12 items-center justify-center rounded-full transition-all"
+                    style={{ background: 'rgba(255,255,255,0.1)', color: '#fff', border: '1px solid rgba(255,255,255,0.15)' }}
+                    onClick={(e) => { e.stopPropagation(); const n = (lightbox.index + 1) % images.length; setLightbox((prev) => prev ? { ...prev, index: n } : null); setSelectedMedia({ type: 'image', index: n }); }}
+                    aria-label="Наступне фото"
+                  >
+                    <ChevronRight className="h-6 w-6" />
+                  </button>
+                </>
+              )}
+
+              {/* Thumbnails strip */}
+              {images.length > 1 && (
+                <div
+                  className="absolute bottom-5 left-1/2 flex -translate-x-1/2 gap-2 rounded-2xl p-2"
+                  style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(12px)' }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {images.map((imgItem, i) => (
+                    <button
+                      key={imgItem.id}
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); setLightbox((prev) => prev ? { ...prev, index: i } : null); setSelectedMedia({ type: 'image', index: i }); }}
+                      className="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl transition-all"
+                      style={{
+                        border: `2px solid ${i === lightbox.index ? 'var(--sl-accent)' : 'rgba(255,255,255,0.2)'}`,
+                        opacity: i === lightbox.index ? 1 : 0.6,
+                      }}
+                      aria-label={`Фото ${i + 1}`}
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={imgItem.url} alt="" className="h-full w-full object-cover" />
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* Counter */}
+              <div
+                className="absolute left-4 top-4 rounded-full px-3 py-1 text-sm"
+                style={{ background: 'rgba(0,0,0,0.5)', color: 'rgba(255,255,255,0.7)', fontFamily: 'var(--sl-font-mono)' }}
+              >
+                {lightbox.index + 1} / {images.length}
+              </div>
+            </>
+          )}
+
+          {lightbox.type === 'video' && product.videoUrl && (
+            <div
+              className="mx-4 w-full max-w-4xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <video
+                src={product.videoUrl}
+                controls
+                autoPlay
+                playsInline
+                className="w-full rounded-2xl"
+                style={{ maxHeight: '85vh', background: '#000', boxShadow: '0 24px 80px rgba(0,0,0,0.6)' }}
+              />
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

@@ -20,6 +20,13 @@ export default function RootLayout({
   return (
     <html lang="uk" className="h-full" suppressHydrationWarning>
       <head>
+        {/* Runs before first paint — reads theme from localStorage and applies class to <html>
+            to prevent a flash of the wrong theme on page load. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem('smartline-theme');if(t==='light'){document.documentElement.classList.add('light');document.documentElement.classList.remove('dark');}else{document.documentElement.classList.add('dark');document.documentElement.classList.remove('light');}}catch(e){}})();`,
+          }}
+        />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link
