@@ -249,25 +249,21 @@ export default function ProductCard({ product, selectedVariant }: Props) {
           </span>
         )}
 
-        {/* Hover overlay: specs + quick add-to-cart */}
+        {/* Hover overlay: compact specs strip */}
         {highlights.length > 0 && (
-          <div className="pointer-events-none absolute inset-x-3 bottom-3 z-10 hidden translate-y-2 opacity-0 transition-all duration-200 md:block group-hover/card:translate-y-0 group-hover/card:opacity-100">
+          <div className="pointer-events-none absolute inset-x-3 bottom-3 z-10 hidden translate-y-2 opacity-0 transition-all duration-200 ease-out md:block group-hover/card:translate-y-0 group-hover/card:opacity-100">
             <div
               className="overflow-hidden rounded-xl"
               style={{
                 background: 'var(--sl-bg-surface-glass)',
                 border: '1px solid var(--sl-border)',
                 backdropFilter: 'blur(12px)',
+                WebkitBackdropFilter: 'blur(12px)',
+                boxShadow: '0 4px 20px rgba(0,0,0,0.18)',
               }}
             >
-              <div
-                className="px-3 py-2 text-[10px] font-semibold uppercase tracking-widest"
-                style={{ color: 'var(--sl-text-muted)', borderBottom: '1px solid var(--sl-border)', fontFamily: 'var(--sl-font-mono)' }}
-              >
-                {selectedVariant?.selections?.length ? 'Конфігурація' : 'Характеристики'}
-              </div>
               {/* 2-column grid, up to 4 specs */}
-              <div className="px-3 py-2.5" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px 10px' }}>
+              <div className="px-3 py-2.5" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '5px 10px' }}>
                 {highlights.slice(0, 4).map((item) => (
                   <div key={`${item.label}-${item.value}`} className="flex min-w-0 flex-col gap-0.5">
                     <span
@@ -285,26 +281,6 @@ export default function ProductCard({ product, selectedVariant }: Props) {
                   </div>
                 ))}
               </div>
-              {/* Quick add-to-cart */}
-              {!isOutOfStock && (
-                <div className="pointer-events-auto px-3 pb-3">
-                  <button
-                    type="button"
-                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleAddToCart(); }}
-                    className="flex w-full items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-semibold transition-all"
-                    style={{
-                      background: 'var(--sl-accent)',
-                      color: '#fff',
-                      fontFamily: 'var(--sl-font-mono)',
-                    }}
-                    onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.background = 'var(--sl-accent-hover)')}
-                    onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.background = 'var(--sl-accent)')}
-                  >
-                    <ShoppingCart className="h-3.5 w-3.5" />
-                    В кошик
-                  </button>
-                </div>
-              )}
             </div>
           </div>
         )}
@@ -333,7 +309,7 @@ export default function ProductCard({ product, selectedVariant }: Props) {
         {/* Star rating */}
         <ProductRating reviews={product.reviews?.map((r) => ({ rating: r.rating }))} count={product._count?.reviews} />
 
-        <div className="mt-2 flex flex-col gap-2">
+        <div className="mt-auto flex flex-col gap-2 pt-2">
           {/* Price row */}
           <div className="flex items-end justify-between gap-2">
             <div className="min-w-0 flex flex-col">
@@ -365,29 +341,17 @@ export default function ProductCard({ product, selectedVariant }: Props) {
               </span>
             )}
           </div>
-          {/* Cart button — full-width below price */}
+          {/* Cart button — full-width below price; fills on card hover */}
           {!isOutOfStock && (
             <button
               type="button"
               onClick={handleAddToCart}
-              className="flex h-8 w-full items-center justify-center gap-1 rounded-lg text-xs font-semibold transition-all"
-              style={{
-                border: '1px solid var(--sl-accent)',
-                color: 'var(--sl-accent)',
-                background: 'transparent',
-                fontFamily: 'var(--sl-font-mono)',
-              }}
-              onMouseEnter={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.background = 'var(--sl-accent)';
-                (e.currentTarget as HTMLButtonElement).style.color = '#fff';
-              }}
-              onMouseLeave={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.background = 'transparent';
-                (e.currentTarget as HTMLButtonElement).style.color = 'var(--sl-accent)';
-              }}
+              className="flex h-8 w-full items-center justify-center gap-1 rounded-lg border text-xs font-semibold transition-all duration-200 ease-out border-[var(--sl-accent)] text-[var(--sl-accent)] bg-transparent group-hover/card:bg-[var(--sl-accent)] group-hover/card:text-white"
+              style={{ fontFamily: 'var(--sl-font-mono)' }}
             >
               <ShoppingCart className="h-3.5 w-3.5" />
-              Купити
+              <span className="group-hover/card:hidden">Купити</span>
+              <span className="hidden group-hover/card:inline">В кошик</span>
             </button>
           )}
         </div>
