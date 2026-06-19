@@ -1,34 +1,42 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import {
   ArrowRight,
-  BadgePercent,
-  Headphones,
+  Heart,
   LogOut,
+  MapPin,
   Package,
-  ShieldCheck,
   User,
+  UserCog,
 } from 'lucide-react';
 import { useAuthStore } from '@/store/auth';
+import { getOrders } from '@/lib/api';
+import { formatPrice, ORDER_STATUS_LABELS } from '@/lib/utils';
+import { Order } from '@/types';
 
-function LoadingState({ label = 'Завантаження...' }: { label?: string }) {
-  return (
-    <div
-      className="flex min-h-screen items-center justify-center text-sm"
-      style={{ background: 'var(--sl-bg-primary)', color: 'var(--sl-text-muted)', fontFamily: 'var(--sl-font-mono)' }}
-    >
-      {label}
-    </div>
-  );
-}
+const STATUS_DOT: Record<string, string> = {
+  NEW:       'var(--sl-status-info)',
+  CONFIRMED: 'var(--sl-status-warning)',
+  SHIPPED:   '#fb923c',
+  DELIVERED: 'var(--sl-status-success)',
+  CANCELLED: 'var(--sl-status-error)',
+};
+
+const NAV_ITEMS = [
+  { href: '/account/orders', icon: Package,  label: 'Мої замовлення',    desc: 'Статус і деталі замовлень' },
+  { href: '/account/settings', icon: UserCog, label: 'Особисті дані',   desc: 'Ім\'я, телефон, пароль' },
+  { href: '/account/addresses', icon: MapPin, label: 'Адреси доставки', desc: 'Збережені адреси НП' },
+  { href: '/wishlist',         icon: Heart,   label: 'Обране',           desc: 'Відкладені товари' },
+];
 
 export default function AccountPage() {
   const { user, loading, fetchUser, logout } = useAuthStore();
   const router = useRouter();
+  const [lastOrder, setLastOrder] = useState<Order | null | undefined>(undefined);
 
   useEffect(() => { fetchUser(); }, [fetchUser]);
 
@@ -36,173 +44,194 @@ export default function AccountPage() {
     if (!loading && !user) router.replace('/login');
   }, [loading, router, user]);
 
+  useEffect(() => {
+    if (!user) return;
+    getOrders({ limit: '1', page: '1' })
+      .then((res) => setLastOrder(res.data[0] ?? null))
+      .catch(() => setLastOrder(null));
+  }, [user]);
+
   const handleLogout = async () => {
     await logout();
     toast.success('Ви вийшли з системи');
     router.push('/');
   };
 
-  if (loading) return <LoadingState />;
-  if (!user) return <LoadingState label="Переадресація..." />;
+  if (loading || !user) {
+    return (
+      <div className="flex min-h-screen items-center justify-center text-sm"
+        style={{ background: 'var(--sl-bg-primary)', color: 'var(--sl-text-muted)', fontFamily: 'var(--sl-font-mono)' }}>
+        {loading ? 'Завантаження...' : 'Переадресація...'}
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen" style={{ background: 'var(--sl-bg-primary)' }}>
-      <div className="mx-auto max-w-6xl px-4 py-8 sm:py-10">
-        <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <p
-              className="mb-3 inline-flex rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-widest"
-              style={{
-                background: 'var(--sl-accent-muted)',
-                color: 'var(--sl-accent)',
-                border: '1px solid var(--sl-border-hover)',
-                fontFamily: 'var(--sl-font-mono)',
-              }}
-            >
-              Акаунт SmartLine
-            </p>
-            <h1
-              className="text-3xl leading-tight sm:text-4xl"
-              style={{ fontFamily: 'var(--sl-font-display)', color: 'var(--sl-text-primary)', letterSpacing: '0.04em' }}
-            >
-              Особистий кабінет
-            </h1>
-            <p className="mt-2 max-w-xl text-sm sm:text-base" style={{ color: 'var(--sl-text-secondary)' }}>
-              Тут зібрані ваші замовлення, контактні дані та швидкі дії після покупки.
-            </p>
-          </div>
+      <div className="mx-auto max-w-4xl px-4 py-8 sm:py-10">
+
+        {/* Header */}
+        <div className="mb-7 flex items-center justify-between">
+          <h1
+            className="text-2xl font-bold sm:text-3xl"
+            style={{ fontFamily: 'var(--sl-font-display)', color: 'var(--sl-text-primary)', letterSpacing: '0.04em' }}
+          >
+            ОСОБИСТИЙ КАБІНЕТ
+          </h1>
           <button
             onClick={handleLogout}
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-xl px-4 text-sm font-semibold transition-all hover:opacity-80"
-            style={{
-              border: '1px solid var(--sl-border)',
-              color: 'var(--sl-text-secondary)',
-              background: 'var(--sl-bg-surface)',
-              fontFamily: 'var(--sl-font-mono)',
-            }}
+            className="flex items-center gap-1.5 text-sm transition-opacity hover:opacity-60"
+            style={{ color: 'var(--sl-text-muted)', fontFamily: 'var(--sl-font-mono)' }}
           >
-            <LogOut className="h-4 w-4" />
+            <LogOut className="h-3.5 w-3.5" />
             Вийти
           </button>
         </div>
 
-        <div className="grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
+        {/* Top grid: Profile + Last order */}
+        <div className="grid gap-4 sm:grid-cols-2">
+
+          {/* Profile card */}
           <section
-            className="rounded-2xl p-5 sm:p-6"
+            className="rounded-2xl p-5"
             style={{ background: 'var(--sl-bg-surface)', border: '1px solid var(--sl-border)' }}
           >
-            <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-center gap-4">
-                <div
-                  className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl"
-                  style={{ background: 'var(--sl-accent-muted)', color: 'var(--sl-accent)', border: '1px solid var(--sl-border-hover)' }}
-                >
-                  <User className="h-8 w-8" />
-                </div>
-                <div className="min-w-0">
-                  <h2 className="truncate text-xl font-semibold" style={{ color: 'var(--sl-text-primary)', fontFamily: 'var(--sl-font-body)' }}>
-                    {user.name || 'Клієнт SmartLine'}
-                  </h2>
-                  <p className="mt-1 truncate text-sm" style={{ color: 'var(--sl-text-muted)', fontFamily: 'var(--sl-font-mono)' }}>
-                    {user.email}
-                  </p>
-                  {user.phone && (
-                    <p className="mt-1 text-sm" style={{ color: 'var(--sl-text-muted)', fontFamily: 'var(--sl-font-mono)' }}>
-                      {user.phone}
-                    </p>
-                  )}
-                </div>
-              </div>
-
+            <div className="flex items-center gap-3">
               <div
-                className="rounded-xl px-4 py-3"
-                style={{ background: 'var(--sl-bg-elevated)', border: '1px solid var(--sl-border)' }}
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
+                style={{ background: 'var(--sl-accent-muted)', color: 'var(--sl-accent)', border: '1px solid var(--sl-border-hover)' }}
               >
-                <p className="text-xs uppercase tracking-widest" style={{ color: 'var(--sl-text-muted)', fontFamily: 'var(--sl-font-mono)' }}>
-                  Персональна знижка
+                <User className="h-5 w-5" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate font-semibold" style={{ color: 'var(--sl-text-primary)', fontFamily: 'var(--sl-font-body)' }}>
+                  {user.name || 'Клієнт SmartLine'}
                 </p>
-                <p className="mt-1 text-2xl font-semibold" style={{ color: 'var(--sl-text-primary)', fontFamily: 'var(--sl-font-mono)' }}>
-                  {user.discount > 0 ? `${user.discount}%` : '0%'}
+                <p className="truncate text-sm" style={{ color: 'var(--sl-text-muted)', fontFamily: 'var(--sl-font-mono)' }}>
+                  {user.email}
                 </p>
               </div>
+              {user.discount > 0 && (
+                <span
+                  className="shrink-0 rounded-lg px-2 py-1 text-xs font-bold"
+                  style={{ background: 'var(--sl-accent-muted)', color: 'var(--sl-accent)', border: '1px solid var(--sl-border-hover)', fontFamily: 'var(--sl-font-mono)' }}
+                >
+                  -{user.discount}%
+                </span>
+              )}
+            </div>
+
+            {user.phone && (
+              <p className="mt-3 text-sm" style={{ color: 'var(--sl-text-secondary)', fontFamily: 'var(--sl-font-mono)' }}>
+                {user.phone}
+              </p>
+            )}
+
+            <div className="mt-4 flex gap-3" style={{ borderTop: '1px solid var(--sl-border)', paddingTop: '1rem' }}>
+              <Link
+                href="/account/settings"
+                className="text-sm font-medium transition-opacity hover:opacity-70"
+                style={{ color: 'var(--sl-accent)', fontFamily: 'var(--sl-font-mono)' }}
+              >
+                Редагувати профіль
+              </Link>
+              <span style={{ color: 'var(--sl-border-hover)' }}>·</span>
+              <Link
+                href="/forgot-password"
+                className="text-sm transition-opacity hover:opacity-70"
+                style={{ color: 'var(--sl-text-muted)', fontFamily: 'var(--sl-font-mono)' }}
+              >
+                Змінити пароль
+              </Link>
             </div>
           </section>
 
+          {/* Last order */}
           <section
-            className="rounded-2xl p-5 sm:p-6"
+            className="rounded-2xl p-5"
             style={{ background: 'var(--sl-bg-surface)', border: '1px solid var(--sl-border)' }}
           >
-            <h2 className="text-lg font-semibold" style={{ color: 'var(--sl-text-primary)', fontFamily: 'var(--sl-font-body)' }}>
-              Після покупки
-            </h2>
-            <div className="mt-4 grid gap-3">
-              {[
-                { icon: ShieldCheck, title: 'Гарантія і прозорість', text: 'Статус замовлення та дані товару завжди під рукою.' },
-                { icon: Headphones, title: 'Підтримка', text: 'Підкажемо з оплатою, доставкою або вибором комплекту.' },
-                { icon: BadgePercent, title: 'Персональні умови', text: 'Знижки й пропозиції видно у вашому профілі.' },
-              ].map((item) => (
-                <div key={item.title} className="flex gap-3">
-                  <div
-                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
-                    style={{ background: 'var(--sl-bg-elevated)', color: 'var(--sl-accent)' }}
-                  >
-                    <item.icon className="h-4 w-4" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold" style={{ color: 'var(--sl-text-primary)' }}>{item.title}</p>
-                    <p className="mt-0.5 text-sm leading-5" style={{ color: 'var(--sl-text-muted)' }}>{item.text}</p>
-                  </div>
+            <p className="mb-3 text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--sl-text-muted)', fontFamily: 'var(--sl-font-mono)' }}>
+              Останнє замовлення
+            </p>
+
+            {lastOrder === undefined && (
+              <p className="text-sm" style={{ color: 'var(--sl-text-muted)', fontFamily: 'var(--sl-font-mono)' }}>
+                Завантаження...
+              </p>
+            )}
+
+            {lastOrder === null && (
+              <div>
+                <p className="text-sm" style={{ color: 'var(--sl-text-secondary)', fontFamily: 'var(--sl-font-body)' }}>
+                  Замовлень ще немає.
+                </p>
+                <Link
+                  href="/catalog"
+                  className="mt-2 inline-flex items-center gap-1 text-sm font-medium transition-opacity hover:opacity-70"
+                  style={{ color: 'var(--sl-accent)', fontFamily: 'var(--sl-font-mono)' }}
+                >
+                  Перейти до каталогу <ArrowRight className="h-3.5 w-3.5" />
+                </Link>
+              </div>
+            )}
+
+            {lastOrder && (
+              <div className="flex flex-col gap-3">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-sm font-semibold" style={{ color: 'var(--sl-text-primary)', fontFamily: 'var(--sl-font-mono)' }}>
+                    №{lastOrder.orderNumber}
+                  </span>
+                  <span className="flex items-center gap-1.5 text-xs font-medium" style={{ color: STATUS_DOT[lastOrder.status] ?? 'var(--sl-text-muted)', fontFamily: 'var(--sl-font-mono)' }}>
+                    <span className="h-1.5 w-1.5 rounded-full" style={{ background: STATUS_DOT[lastOrder.status] ?? 'var(--sl-text-muted)', display: 'inline-block' }} />
+                    {ORDER_STATUS_LABELS[lastOrder.status] ?? lastOrder.status}
+                  </span>
                 </div>
-              ))}
-            </div>
+                <p className="text-xl font-semibold" style={{ color: 'var(--sl-text-primary)', fontFamily: 'var(--sl-font-mono)' }}>
+                  {formatPrice(Number(lastOrder.totalAmount))}
+                </p>
+                <Link
+                  href={`/account/orders/${lastOrder.id}`}
+                  className="inline-flex items-center gap-1.5 text-sm font-medium transition-opacity hover:opacity-70"
+                  style={{ color: 'var(--sl-accent)', fontFamily: 'var(--sl-font-mono)' }}
+                >
+                  Переглянути <ArrowRight className="h-3.5 w-3.5" />
+                </Link>
+              </div>
+            )}
           </section>
         </div>
 
-        <div className="mt-4 grid gap-4 md:grid-cols-2">
-          <Link
-            href="/account/orders"
-            className="group rounded-2xl p-5 transition-all"
-            style={{ background: 'var(--sl-bg-surface)', border: '1px solid var(--sl-border)' }}
-          >
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <div
-                  className="flex h-12 w-12 items-center justify-center rounded-2xl"
-                  style={{ background: 'var(--sl-accent-muted)', color: 'var(--sl-accent)' }}
-                >
-                  <Package className="h-6 w-6" />
-                </div>
-                <div>
-                  <h3 className="font-semibold" style={{ color: 'var(--sl-text-primary)' }}>Мої замовлення</h3>
-                  <p className="mt-1 text-sm" style={{ color: 'var(--sl-text-muted)' }}>Переглянути статус, суму та склад замовлення.</p>
-                </div>
+        {/* Nav grid */}
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          {NAV_ITEMS.map(({ href, icon: Icon, label, desc }) => (
+            <Link
+              key={href}
+              href={href}
+              className="group flex items-center gap-4 rounded-2xl p-4 transition-all"
+              style={{ background: 'var(--sl-bg-surface)', border: '1px solid var(--sl-border)' }}
+              onMouseEnter={(e) => (e.currentTarget.style.borderColor = 'var(--sl-border-hover)')}
+              onMouseLeave={(e) => (e.currentTarget.style.borderColor = 'var(--sl-border)')}
+            >
+              <div
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
+                style={{ background: 'var(--sl-bg-elevated)', color: 'var(--sl-accent)' }}
+              >
+                <Icon className="h-5 w-5" />
               </div>
-              <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" style={{ color: 'var(--sl-accent)' }} />
-            </div>
-          </Link>
-
-          <Link
-            href="/catalog"
-            className="group rounded-2xl p-5 transition-all"
-            style={{ background: 'var(--sl-bg-surface)', border: '1px solid var(--sl-border)' }}
-          >
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <div
-                  className="flex h-12 w-12 items-center justify-center rounded-2xl"
-                  style={{ background: 'var(--sl-bg-elevated)', color: 'var(--sl-accent)' }}
-                >
-                  <ArrowRight className="h-6 w-6" />
-                </div>
-                <div>
-                  <h3 className="font-semibold" style={{ color: 'var(--sl-text-primary)' }}>Повернутись до каталогу</h3>
-                  <p className="mt-1 text-sm" style={{ color: 'var(--sl-text-muted)' }}>Швидко знайти ще один товар або аксесуар.</p>
-                </div>
+              <div className="min-w-0 flex-1">
+                <p className="font-medium" style={{ color: 'var(--sl-text-primary)', fontFamily: 'var(--sl-font-body)' }}>
+                  {label}
+                </p>
+                <p className="text-xs" style={{ color: 'var(--sl-text-muted)', fontFamily: 'var(--sl-font-mono)' }}>
+                  {desc}
+                </p>
               </div>
-              <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" style={{ color: 'var(--sl-accent)' }} />
-            </div>
-          </Link>
+              <ArrowRight className="h-4 w-4 shrink-0 transition-transform group-hover:translate-x-1" style={{ color: 'var(--sl-text-muted)' }} />
+            </Link>
+          ))}
         </div>
+
       </div>
     </div>
   );
