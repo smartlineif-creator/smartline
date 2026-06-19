@@ -333,6 +333,12 @@ export async function adminGetProduct(id: string) {
   return apiFetch<Product>(`/products/admin/${id}`);
 }
 
+export async function adminGetAttributeValues(name: string, categoryId?: string): Promise<string[]> {
+  const params = new URLSearchParams({ name });
+  if (categoryId) params.set('categoryId', categoryId);
+  return apiFetch<string[]>(`/products/attribute-values?${params}`);
+}
+
 export async function adminGetProductOptions(params: { q?: string; limit?: number } = {}) {
   const query = new URLSearchParams(
     Object.entries(params)

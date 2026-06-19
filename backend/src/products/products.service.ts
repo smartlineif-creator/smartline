@@ -583,6 +583,21 @@ export class ProductsService {
     };
   }
 
+  async getAttributeValues(name: string, categoryId?: string): Promise<string[]> {
+    const productWhere: Prisma.ProductWhereInput = categoryId ? { categoryId } : {};
+    const rows = await this.prisma.attribute.groupBy({
+      by: ['value'],
+      where: {
+        name: { equals: name, mode: 'insensitive' },
+        product: { is: productWhere },
+      },
+      _count: { value: true },
+      orderBy: { _count: { value: 'desc' } },
+      take: 20,
+    });
+    return rows.map((r) => r.value);
+  }
+
   async create(dto: CreateProductDto) {
     const slug = dto.slug || this.toSlug(dto.name);
     const {

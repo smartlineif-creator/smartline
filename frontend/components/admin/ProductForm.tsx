@@ -6,6 +6,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import {
   adminCreateProduct,
+  adminGetAttributeValues,
   adminGetProduct,
   adminGetProductOptions,
   adminUpdateProduct,
@@ -291,11 +292,14 @@ export default function ProductForm({ mode, productId }: Props) {
   const [optionGroups, setOptionGroups] = useState<OptionGroupEntry[]>([]);
   const [variants, setVariants] = useState<VariantEntry[]>([]);
   const [attributes, setAttributes] = useState<AttributeEntry[]>([{ name: '', value: '', unit: '' }]);
+  const [attrValueSuggestions, setAttrValueSuggestions] = useState<Record<number, string[]>>({});
+  const attrDebounceRef = useRef<number | null>(null);
   const [images, setImages] = useState<string[]>([]);
   const [description, setDescription] = useState('');
 
   const categoryOptions = useMemo(() => flattenCategories(categories), [categories]);
   const selectedCategory = categoryOptions.find((option) => option.category.id === categoryId)?.category;
+  const categoryTemplateNames = selectedCategory?.attributeTemplates?.map((t) => t.name) ?? [];
   const preparedOptionGroups = useMemo(() => getPreparedOptionGroups(optionGroups), [optionGroups]);
   const categoryMap = useMemo(
     () => new Map(categoryOptions.map(({ category }) => [category.id, category])),
@@ -482,6 +486,20 @@ export default function ProductForm({ mode, productId }: Props) {
   const removeAttribute = (index: number) => setAttributes((items) => items.filter((_, i) => i !== index));
   const updateAttribute = (index: number, field: keyof AttributeEntry, value: string) =>
     setAttributes((items) => items.map((item, i) => (i === index ? { ...item, [field]: value } : item)));
+
+  const handleAttrNameChange = (index: number, value: string) => {
+    updateAttribute(index, 'name', value);
+    if (attrDebounceRef.current) window.clearTimeout(attrDebounceRef.current);
+    if (!value.trim()) return;
+    attrDebounceRef.current = window.setTimeout(async () => {
+      try {
+        const suggestions = await adminGetAttributeValues(value.trim(), categoryId || undefined);
+        setAttrValueSuggestions((prev) => ({ ...prev, [index]: suggestions }));
+      } catch {
+        // silent — suggestions are non-critical
+      }
+    }, 300);
+  };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
@@ -1047,15 +1065,33 @@ export default function ProductForm({ mode, productId }: Props) {
           <h2 className="text-lg font-semibold">Характеристики</h2>
           <p className="mt-1 text-sm text-muted-foreground">Фіксовані параметри товару, які не змінюються при виборі конфігурації.</p>
         </div>
+        <datalist id="attr-name-suggestions">
+          {categoryTemplateNames.map((n) => <option key={n} value={n} />)}
+        </datalist>
         <div className="space-y-3">
           {attributes.map((attribute, index) => (
-            <div key={index} className="grid gap-2 md:grid-cols-[1fr_1fr_120px_40px]">
-              <Input placeholder="Характеристика" value={attribute.name} onChange={(e) => updateAttribute(index, 'name', e.target.value)} />
-              <Input placeholder="Значення" value={attribute.value} onChange={(e) => updateAttribute(index, 'value', e.target.value)} />
-              <Input placeholder="Одиниця" value={attribute.unit} onChange={(e) => updateAttribute(index, 'unit', e.target.value)} />
-              <Button type="button" variant="ghost" size="icon" className="text-red-500" onClick={() => removeAttribute(index)} aria-label="Видалити характеристику">
-                <Trash2 className="h-4 w-4" />
-              </Button>
+            <div key={index}>
+              <div className="grid gap-2 md:grid-cols-[1fr_1fr_120px_40px]">
+                <Input
+                  placeholder="Характеристика"
+                  value={attribute.name}
+                  list="attr-name-suggestions"
+                  onChange={(e) => handleAttrNameChange(index, e.target.value)}
+                />
+                <Input
+                  placeholder="Значення"
+                  value={attribute.value}
+                  list={`attr-value-suggestions-${index}`}
+                  onChange={(e) => updateAttribute(index, 'value', e.target.value)}
+                />
+                <Input placeholder="Одиниця" value={attribute.unit} onChange={(e) => updateAttribute(index, 'unit', e.target.value)} />
+                <Button type="button" variant="ghost" size="icon" className="text-red-500" onClick={() => removeAttribute(index)} aria-label="Видалити характеристику">
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+              <datalist id={`attr-value-suggestions-${index}`}>
+                {(attrValueSuggestions[index] ?? []).map((v) => <option key={v} value={v} />)}
+              </datalist>
             </div>
           ))}
           <Button type="button" variant="outline" size="sm" onClick={addAttribute}>

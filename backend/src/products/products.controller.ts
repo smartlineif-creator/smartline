@@ -69,6 +69,16 @@ export class ProductsController {
     return this.productsService.findByIdAdmin(id);
   }
 
+  @Get('attribute-values')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
+  getAttributeValues(
+    @Query('name') name: string,
+    @Query('categoryId') categoryId?: string,
+  ) {
+    return this.productsService.getAttributeValues(name, categoryId);
+  }
+
   @Get(':slug')
   findBySlug(@Param('slug') slug: string) {
     return this.productsService.findBySlug(slug);
