@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsArray, ValidateNested } from 'class-validator';
+import { IsString, IsOptional, IsArray, IsInt, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class AttributeTemplateDto {
@@ -8,6 +8,10 @@ export class AttributeTemplateDto {
   @IsString()
   @IsOptional()
   unit?: string;
+
+  @IsInt()
+  @IsOptional()
+  sortOrder?: number;
 }
 
 export class CreateCategoryDto {
