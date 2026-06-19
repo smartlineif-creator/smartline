@@ -194,14 +194,27 @@ export default function ProductCard({ product, selectedVariant }: Props) {
             <span className="text-xs opacity-40" style={{ fontFamily: 'var(--sl-font-mono)' }}>Немає фото</span>
           </div>
         ) : (
-          <Image
-            src={mainImage}
-            alt={product.name}
-            fill
-            className="object-contain p-3 transition-transform duration-500 group-hover/card:scale-105"
-            sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
-            onError={() => setImgError(true)}
-          />
+          <>
+            {/* Primary image — fades out on hover when second image exists */}
+            <Image
+              src={mainImage}
+              alt={product.name}
+              fill
+              className={`object-contain p-3 transition-all duration-500${(product.images?.length ?? 0) > 1 ? ' group-hover/card:opacity-0' : ' group-hover/card:scale-105'}`}
+              sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
+              onError={() => setImgError(true)}
+            />
+            {/* Second image — fades in on hover */}
+            {(product.images?.length ?? 0) > 1 && (
+              <Image
+                src={product.images![1].url}
+                alt={product.name}
+                fill
+                className="object-contain p-3 opacity-0 transition-opacity duration-500 group-hover/card:opacity-100"
+                sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
+              />
+            )}
+          </>
         )}
 
         {/* Wishlist button — top right */}
@@ -236,7 +249,7 @@ export default function ProductCard({ product, selectedVariant }: Props) {
           </span>
         )}
 
-        {/* Quick specs overlay on hover */}
+        {/* Hover overlay: specs + quick add-to-cart */}
         {highlights.length > 0 && (
           <div className="pointer-events-none absolute inset-x-3 bottom-3 z-10 hidden translate-y-2 opacity-0 transition-all duration-200 md:block group-hover/card:translate-y-0 group-hover/card:opacity-100">
             <div
@@ -248,13 +261,14 @@ export default function ProductCard({ product, selectedVariant }: Props) {
               }}
             >
               <div
-                className="px-4 py-2 text-[10px] font-semibold uppercase tracking-widest"
+                className="px-3 py-2 text-[10px] font-semibold uppercase tracking-widest"
                 style={{ color: 'var(--sl-text-muted)', borderBottom: '1px solid var(--sl-border)', fontFamily: 'var(--sl-font-mono)' }}
               >
                 {selectedVariant?.selections?.length ? 'Конфігурація' : 'Характеристики'}
               </div>
-              <div className="px-3 py-2.5" style={{ display: 'grid', gap: '5px', overflow: 'hidden' }}>
-                {highlights.slice(0, 3).map((item) => (
+              {/* 2-column grid, up to 4 specs */}
+              <div className="px-3 py-2.5" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px 10px' }}>
+                {highlights.slice(0, 4).map((item) => (
                   <div key={`${item.label}-${item.value}`} className="flex min-w-0 flex-col gap-0.5">
                     <span
                       className="truncate text-[9px] uppercase tracking-wide"
@@ -271,6 +285,26 @@ export default function ProductCard({ product, selectedVariant }: Props) {
                   </div>
                 ))}
               </div>
+              {/* Quick add-to-cart */}
+              {!isOutOfStock && (
+                <div className="pointer-events-auto px-3 pb-3">
+                  <button
+                    type="button"
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleAddToCart(); }}
+                    className="flex w-full items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-semibold transition-all"
+                    style={{
+                      background: 'var(--sl-accent)',
+                      color: '#fff',
+                      fontFamily: 'var(--sl-font-mono)',
+                    }}
+                    onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.background = 'var(--sl-accent-hover)')}
+                    onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.background = 'var(--sl-accent)')}
+                  >
+                    <ShoppingCart className="h-3.5 w-3.5" />
+                    В кошик
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         )}
