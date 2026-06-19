@@ -8,7 +8,7 @@ import { Category } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Check, ChevronDown } from 'lucide-react';
+import { Check, ChevronDown, Plus, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
@@ -31,6 +31,9 @@ export default function CategoryForm({ mode, category }: Props) {
   const [categories, setCategories] = useState<Category[]>([]);
   const [name, setName] = useState(category?.name || '');
   const [parentId, setParentId] = useState(category?.parentId || '');
+  const [attrTemplates, setAttrTemplates] = useState<{ name: string; unit: string }[]>(
+    (category?.attributeTemplates || []).map((t) => ({ name: t.name, unit: t.unit || '' })),
+  );
   const [selectorOpen, setSelectorOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const selectorRef = useRef<HTMLDivElement | null>(null);
@@ -81,6 +84,9 @@ export default function CategoryForm({ mode, category }: Props) {
         name: name.trim(),
         icon: '',
         parentId: parentId || undefined,
+        attributeTemplates: attrTemplates
+          .filter((t) => t.name.trim())
+          .map((t, i) => ({ name: t.name.trim(), unit: t.unit.trim() || undefined, sortOrder: i })),
       };
 
       if (mode === 'edit' && category) {
@@ -154,6 +160,54 @@ export default function CategoryForm({ mode, category }: Props) {
               )}
             </div>
           </div>
+        </div>
+
+        <div className="mt-5">
+            <Label>Фільтровані характеристики</Label>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Назви характеристик, за якими покупці зможуть фільтрувати товари в цій категорії.
+            </p>
+            <div className="mt-2 space-y-2">
+              {attrTemplates.map((tmpl, i) => (
+                <div key={i} className="flex gap-2">
+                  <Input
+                    value={tmpl.name}
+                    onChange={(e) => {
+                      const updated = [...attrTemplates];
+                      updated[i] = { ...updated[i], name: e.target.value };
+                      setAttrTemplates(updated);
+                    }}
+                    placeholder="Назва (напр. Процесор)"
+                    className="h-9 flex-1"
+                  />
+                  <Input
+                    value={tmpl.unit}
+                    onChange={(e) => {
+                      const updated = [...attrTemplates];
+                      updated[i] = { ...updated[i], unit: e.target.value };
+                      setAttrTemplates(updated);
+                    }}
+                    placeholder="Одиниця (ГБ...)"
+                    className="h-9 w-32"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setAttrTemplates(attrTemplates.filter((_, j) => j !== i))}
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-red-200 text-red-500 hover:bg-red-50"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={() => setAttrTemplates([...attrTemplates, { name: '', unit: '' }])}
+                className="flex h-9 items-center gap-2 rounded-lg border border-dashed border-gray-300 px-3 text-sm text-gray-500 hover:border-blue-300 hover:text-blue-600"
+              >
+                <Plus className="h-4 w-4" />
+                Додати характеристику
+              </button>
+            </div>
         </div>
 
         <div className="mt-8 flex justify-end gap-2">

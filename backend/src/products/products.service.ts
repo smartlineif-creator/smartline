@@ -202,12 +202,24 @@ export class ProductsService {
     const optionEntries = Object.entries(parsedOptions).filter(
       ([, vals]) => vals.length > 0,
     );
-    if (optionEntries.length > 0) {
+
+    // Determine the primary browsed category and fetch inherited attribute templates
+    const primaryCategoryId = categoryId || (categorySlug ? resolvedCategoryIds[0] : undefined);
+    const inheritedTemplates = primaryCategoryId
+      ? await this.getInheritedTemplates(primaryCategoryId)
+      : [];
+    const attrTemplateNames = new Set(inheritedTemplates.map((t) => t.name));
+
+    // Split filters: variant-based vs attribute-based
+    const variantOptionEntries = optionEntries.filter(([name]) => !attrTemplateNames.has(name));
+    const attributeOptionEntries = optionEntries.filter(([name]) => attrTemplateNames.has(name));
+
+    if (variantOptionEntries.length > 0) {
       where.variants = {
         some: {
           isActive: true,
           price: { gt: 0 },
-          AND: optionEntries.map(([groupName, values]) => ({
+          AND: variantOptionEntries.map(([groupName, values]) => ({
             selections: {
               some: {
                 optionValue: {
@@ -219,6 +231,12 @@ export class ProductsService {
           })),
         },
       };
+    }
+
+    if (attributeOptionEntries.length > 0) {
+      where.AND = attributeOptionEntries.map(([name, values]) => ({
+        attributes: { some: { name, value: { in: values } } },
+      })) as Prisma.ProductWhereInput[];
     }
 
     const orderBy: Prisma.ProductOrderByWithRelationInput =
@@ -266,7 +284,7 @@ export class ProductsService {
         take: limit,
       }),
       this.prisma.product.count({ where }),
-      this.buildAvailableFilters(resolvedCategoryIds, parsedOptions, minPrice, maxPrice),
+      this.buildAvailableFilters(resolvedCategoryIds, parsedOptions, minPrice, maxPrice, inheritedTemplates),
     ]);
 
     return {
@@ -284,6 +302,7 @@ export class ProductsService {
     activeOptions: Record<string, string[]> = {},
     minPrice?: number,
     maxPrice?: number,
+    inheritedTemplates: { name: string; sortOrder: number }[] = [],
   ) {
     // One query: fetch all active variants (with selections) for qualifying products.
     // Then compute facets in-memory using the "exclude-self" faceted pattern:
@@ -362,12 +381,47 @@ export class ProductsService {
       }
     }
 
-    return Array.from(filterMap.entries())
+    const variantFilters = Array.from(filterMap.entries())
       .sort((a, b) => a[1].sortOrder - b[1].sortOrder)
       .map(([groupName, { values }]) => ({
         groupName,
         values: Array.from(values),
       }));
+
+    if (inheritedTemplates.length === 0) return variantFilters;
+
+    // Attribute-based facets: distinct values per template name across matching products
+    const productIds = (
+      await this.prisma.product.findMany({
+        where: baseProductWhere,
+        select: { id: true },
+      })
+    ).map((p) => p.id);
+
+    if (productIds.length > 0) {
+      const templateNames = inheritedTemplates.map((t) => t.name);
+      const attrRows = await this.prisma.attribute.groupBy({
+        by: ['name', 'value'],
+        where: { name: { in: templateNames }, productId: { in: productIds } },
+        orderBy: [{ name: 'asc' }, { value: 'asc' }],
+      });
+
+      const attrMap = new Map<string, string[]>();
+      for (const row of attrRows) {
+        if (!attrMap.has(row.name)) attrMap.set(row.name, []);
+        attrMap.get(row.name)!.push(row.value);
+      }
+
+      const sorted = [...inheritedTemplates].sort((a, b) => a.sortOrder - b.sortOrder);
+      for (const tmpl of sorted) {
+        const values = attrMap.get(tmpl.name);
+        if (values && values.length > 0) {
+          variantFilters.push({ groupName: tmpl.name, values });
+        }
+      }
+    }
+
+    return variantFilters;
   }
 
   async findAdminProducts(query: ProductQueryDto) {
@@ -966,6 +1020,28 @@ export class ProductsService {
         data: { productId, categoryId: data.withThisBuyCategoryId, type: PRODUCT_CATEGORY_LINK_WITH_THIS_BUY_CAT },
       });
     }
+  }
+
+  private async getInheritedTemplates(categoryId: string) {
+    const templates: { name: string; sortOrder: number }[] = [];
+    let currentId: string | null = categoryId;
+    while (currentId) {
+      const cat: { parentId: string | null; attributeTemplates: { name: string; sortOrder: number }[] } | null =
+        await this.prisma.category.findUnique({
+          where: { id: currentId },
+          select: { parentId: true, attributeTemplates: { select: { name: true, sortOrder: true } } },
+        });
+      if (!cat) break;
+      templates.push(...cat.attributeTemplates);
+      currentId = cat.parentId;
+    }
+    // Deduplicate by name (child overrides parent), preserve insertion order
+    const seen = new Set<string>();
+    return templates.filter((t) => {
+      if (seen.has(t.name)) return false;
+      seen.add(t.name);
+      return true;
+    });
   }
 
   private optionKey(groupName: string, value: string) {
