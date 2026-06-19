@@ -11,7 +11,10 @@ export const metadata: Metadata = {
   },
   description: "Купуйте смартфони, ноутбуки та аксесуари з доставкою по Україні",
   icons: {
-    icon: '/favicon.svg',
+    icon: [
+      { url: '/logo.png', type: 'image/png' },
+    ],
+    apple: '/logo.png',
   },
 };
 
