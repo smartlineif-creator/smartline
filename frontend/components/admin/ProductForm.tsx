@@ -295,13 +295,16 @@ export default function ProductForm({ mode, productId }: Props) {
   const [attributes, setAttributes] = useState<AttributeEntry[]>([{ name: '', value: '', unit: '' }]);
   const [attrValueSuggestions, setAttrValueSuggestions] = useState<Record<number, string[]>>({});
   const attrDebounceRef = useRef<number | null>(null);
+  const [attrDropdownOpenIdx, setAttrDropdownOpenIdx] = useState<number | null>(null);
   const [optionGroupNameSuggestions, setOptionGroupNameSuggestions] = useState<string[]>([]);
   const [images, setImages] = useState<string[]>([]);
   const [description, setDescription] = useState('');
 
   const categoryOptions = useMemo(() => flattenCategories(categories), [categories]);
   const selectedCategory = categoryOptions.find((option) => option.category.id === categoryId)?.category;
-  const categoryTemplateNames = selectedCategory?.attributeTemplates?.map((t) => t.name) ?? [];
+  const categoryTemplates = selectedCategory?.attributeTemplates ?? [];
+  const getTemplate = (name: string) =>
+    categoryTemplates.find((t) => t.name.toLowerCase() === name.toLowerCase());
   const preparedOptionGroups = useMemo(() => getPreparedOptionGroups(optionGroups), [optionGroups]);
   const categoryMap = useMemo(
     () => new Map(categoryOptions.map(({ category }) => [category.id, category])),
@@ -507,6 +510,18 @@ export default function ProductForm({ mode, productId }: Props) {
         // silent — suggestions are non-critical
       }
     }, 300);
+  };
+
+  const handleSelectTemplate = (index: number, tmpl: { name: string; unit?: string | null }) => {
+    setAttributes((items) =>
+      items.map((item, i) => (i === index ? { ...item, name: tmpl.name, unit: tmpl.unit || '' } : item)),
+    );
+    setAttrDropdownOpenIdx(null);
+    if (tmpl.name && categoryId) {
+      adminGetAttributeValues(tmpl.name, categoryId)
+        .then((vals) => setAttrValueSuggestions((prev) => ({ ...prev, [index]: vals })))
+        .catch(() => {});
+    }
   };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1077,35 +1092,124 @@ export default function ProductForm({ mode, productId }: Props) {
           <h2 className="text-lg font-semibold">Характеристики</h2>
           <p className="mt-1 text-sm text-muted-foreground">Фіксовані параметри товару, які не змінюються при виборі конфігурації.</p>
         </div>
-        <datalist id="attr-name-suggestions">
-          {categoryTemplateNames.map((n) => <option key={n} value={n} />)}
-        </datalist>
         <div className="space-y-3">
-          {attributes.map((attribute, index) => (
-            <div key={index}>
-              <div className="grid gap-2 md:grid-cols-[1fr_1fr_120px_40px]">
-                <Input
-                  placeholder="Характеристика"
-                  value={attribute.name}
-                  list="attr-name-suggestions"
-                  onChange={(e) => handleAttrNameChange(index, e.target.value)}
-                />
+          {attributes.map((attribute, index) => {
+            const tmpl = getTemplate(attribute.name);
+            const isTemplate = !!tmpl;
+            const isOpen = attrDropdownOpenIdx === index;
+
+            return (
+              <div
+                key={index}
+                className="grid gap-2 md:grid-cols-[1fr_1fr_120px_40px]"
+                onBlur={(e) => {
+                  if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+                    setAttrDropdownOpenIdx(null);
+                  }
+                }}
+              >
+                {/* Name field */}
+                <div className="relative">
+                  {isTemplate ? (
+                    <button
+                      type="button"
+                      onClick={() => setAttrDropdownOpenIdx(isOpen ? null : index)}
+                      className="flex h-9 w-full items-center justify-between rounded-lg border border-blue-300 bg-blue-50 px-3 text-sm font-medium text-blue-800 hover:bg-blue-100"
+                    >
+                      <span className="truncate">{attribute.name}</span>
+                      <ChevronDown className={cn('ml-2 h-4 w-4 shrink-0 transition-transform', isOpen && 'rotate-180')} />
+                    </button>
+                  ) : (
+                    <div className="flex gap-1">
+                      <Input
+                        placeholder="Характеристика"
+                        value={attribute.name}
+                        onChange={(e) => handleAttrNameChange(index, e.target.value)}
+                        className="h-9 flex-1"
+                      />
+                      {categoryTemplates.length > 0 && (
+                        <button
+                          type="button"
+                          tabIndex={0}
+                          onClick={() => setAttrDropdownOpenIdx(isOpen ? null : index)}
+                          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-gray-200 text-gray-400 hover:border-blue-300 hover:text-blue-600"
+                        >
+                          <ChevronDown className={cn('h-4 w-4 transition-transform', isOpen && 'rotate-180')} />
+                        </button>
+                      )}
+                    </div>
+                  )}
+
+                  {isOpen && categoryTemplates.length > 0 && (
+                    <div className="absolute z-30 mt-1 w-full rounded-lg border bg-white shadow-xl">
+                      {categoryTemplates.map((t) => (
+                        <button
+                          key={t.name}
+                          type="button"
+                          tabIndex={0}
+                          onClick={() => handleSelectTemplate(index, t)}
+                          className={cn(
+                            'flex w-full items-center justify-between px-3 py-2 text-sm hover:bg-blue-50',
+                            attribute.name.toLowerCase() === t.name.toLowerCase() && 'bg-blue-50 text-blue-700',
+                          )}
+                        >
+                          <span>{t.name}</span>
+                          {t.unit && <span className="text-xs text-gray-400">{t.unit}</span>}
+                        </button>
+                      ))}
+                      <div className="border-t">
+                        <button
+                          type="button"
+                          tabIndex={0}
+                          onClick={() => {
+                            setAttributes((items) =>
+                              items.map((item, i) => (i === index ? { ...item, name: '', unit: '' } : item)),
+                            );
+                            setAttrDropdownOpenIdx(null);
+                          }}
+                          className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-500 hover:bg-gray-50"
+                        >
+                          <Plus className="h-3 w-3" />
+                          Інша характеристика...
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Value */}
                 <Input
                   placeholder="Значення"
                   value={attribute.value}
                   list={`attr-value-suggestions-${index}`}
                   onChange={(e) => updateAttribute(index, 'value', e.target.value)}
+                  className="h-9"
                 />
-                <Input placeholder="Одиниця" value={attribute.unit} onChange={(e) => updateAttribute(index, 'unit', e.target.value)} />
+
+                {/* Unit — locked for templates with unit, editable otherwise */}
+                {isTemplate && tmpl.unit ? (
+                  <div className="flex h-9 select-none items-center rounded-lg border border-gray-200 bg-gray-50 px-3 text-sm text-gray-400">
+                    {tmpl.unit}
+                  </div>
+                ) : (
+                  <Input
+                    placeholder="Одиниця"
+                    value={attribute.unit}
+                    onChange={(e) => updateAttribute(index, 'unit', e.target.value)}
+                    className="h-9"
+                  />
+                )}
+
                 <Button type="button" variant="ghost" size="icon" className="text-red-500" onClick={() => removeAttribute(index)} aria-label="Видалити характеристику">
                   <Trash2 className="h-4 w-4" />
                 </Button>
+
+                <datalist id={`attr-value-suggestions-${index}`}>
+                  {(attrValueSuggestions[index] ?? []).map((v) => <option key={v} value={v} />)}
+                </datalist>
               </div>
-              <datalist id={`attr-value-suggestions-${index}`}>
-                {(attrValueSuggestions[index] ?? []).map((v) => <option key={v} value={v} />)}
-              </datalist>
-            </div>
-          ))}
+            );
+          })}
           <Button type="button" variant="outline" size="sm" onClick={addAttribute}>
             <Plus className="h-4 w-4" />
             Додати характеристику
