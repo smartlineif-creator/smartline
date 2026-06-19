@@ -333,6 +333,11 @@ export async function adminGetProduct(id: string) {
   return apiFetch<Product>(`/products/admin/${id}`);
 }
 
+export async function adminGetOptionGroupNames(categoryId?: string): Promise<string[]> {
+  const params = categoryId ? `?categoryId=${categoryId}` : '';
+  return apiFetch<string[]>(`/products/option-group-names${params}`);
+}
+
 export async function adminGetAttributeValues(name: string, categoryId?: string): Promise<string[]> {
   const params = new URLSearchParams({ name });
   if (categoryId) params.set('categoryId', categoryId);

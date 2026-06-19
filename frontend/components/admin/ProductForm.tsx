@@ -7,6 +7,7 @@ import Link from 'next/link';
 import {
   adminCreateProduct,
   adminGetAttributeValues,
+  adminGetOptionGroupNames,
   adminGetProduct,
   adminGetProductOptions,
   adminUpdateProduct,
@@ -294,6 +295,7 @@ export default function ProductForm({ mode, productId }: Props) {
   const [attributes, setAttributes] = useState<AttributeEntry[]>([{ name: '', value: '', unit: '' }]);
   const [attrValueSuggestions, setAttrValueSuggestions] = useState<Record<number, string[]>>({});
   const attrDebounceRef = useRef<number | null>(null);
+  const [optionGroupNameSuggestions, setOptionGroupNameSuggestions] = useState<string[]>([]);
   const [images, setImages] = useState<string[]>([]);
   const [description, setDescription] = useState('');
 
@@ -324,6 +326,12 @@ export default function ProductForm({ mode, productId }: Props) {
     getCategories().then(setCategories).catch(() => {});
     adminGetProductOptions({ limit: 250 }).then((items) => setProductOptions(items)).catch(() => {});
   }, []);
+
+  useEffect(() => {
+    adminGetOptionGroupNames(categoryId || undefined)
+      .then(setOptionGroupNameSuggestions)
+      .catch(() => {});
+  }, [categoryId]);
 
   useEffect(() => {
     if (!categoryOpen) return;
@@ -830,7 +838,11 @@ export default function ProductForm({ mode, productId }: Props) {
                             onChange={(e) => updateOptionGroup(group.id, 'name', e.target.value)}
                             className="mt-2 h-11"
                             placeholder={groupIndex === 0 ? "Наприклад, Оперативна пам'ять" : 'Назва групи'}
+                            list="option-group-name-suggestions"
                           />
+                          <datalist id="option-group-name-suggestions">
+                            {optionGroupNameSuggestions.map((n) => <option key={n} value={n} />)}
+                          </datalist>
                         </div>
                         <Button
                           type="button"

@@ -69,6 +69,13 @@ export class ProductsController {
     return this.productsService.findByIdAdmin(id);
   }
 
+  @Get('option-group-names')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
+  getOptionGroupNames(@Query('categoryId') categoryId?: string) {
+    return this.productsService.getOptionGroupNames(categoryId);
+  }
+
   @Get('attribute-values')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)

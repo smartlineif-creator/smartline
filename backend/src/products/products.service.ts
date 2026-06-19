@@ -583,6 +583,17 @@ export class ProductsService {
     };
   }
 
+  async getOptionGroupNames(categoryId?: string): Promise<string[]> {
+    const rows = await this.prisma.productOptionGroup.groupBy({
+      by: ['name'],
+      where: categoryId ? { product: { is: { categoryId } } } : undefined,
+      _count: { name: true },
+      orderBy: { _count: { name: 'desc' } },
+      take: 30,
+    });
+    return rows.map((r) => r.name);
+  }
+
   async getAttributeValues(name: string, categoryId?: string): Promise<string[]> {
     const productWhere: Prisma.ProductWhereInput = categoryId ? { categoryId } : {};
     const rows = await this.prisma.attribute.groupBy({
