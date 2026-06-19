@@ -220,6 +220,17 @@ export async function forgotPassword(email: string) {
   });
 }
 
+export async function updateProfile(data: { name?: string; phone?: string }) {
+  return apiFetch<User>('/auth/me', { method: 'PATCH', body: JSON.stringify(data) });
+}
+
+export async function changePassword(currentPassword: string, newPassword: string) {
+  return apiFetch<void>('/auth/change-password', {
+    method: 'POST',
+    body: JSON.stringify({ currentPassword, newPassword }),
+  });
+}
+
 // ─── Reviews ─────────────────────────────────────────────────────────────────
 
 export async function getReviews(productId: string) {

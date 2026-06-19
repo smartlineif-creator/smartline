@@ -13,6 +13,8 @@ import {
   RegisterDto,
   ForgotPasswordDto,
   ResetPasswordDto,
+  UpdateProfileDto,
+  ChangePasswordDto,
 } from './dto/auth.dto';
 import { MailService } from '../mail/mail.service';
 import * as bcrypt from 'bcrypt';
@@ -119,6 +121,24 @@ export class AuthService {
     await this.prisma.passwordResetToken.delete({
       where: { token: dto.token },
     });
+  }
+
+  async updateProfile(userId: string, dto: UpdateProfileDto) {
+    const updated = await this.prisma.user.update({
+      where: { id: userId },
+      data: { ...(dto.name !== undefined && { name: dto.name }), ...(dto.phone !== undefined && { phone: dto.phone }) },
+    });
+    const { password, ...safe } = updated;
+    return safe;
+  }
+
+  async changePassword(userId: string, dto: ChangePasswordDto) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new NotFoundException('User not found');
+    const valid = await bcrypt.compare(dto.currentPassword, user.password);
+    if (!valid) throw new BadRequestException('Невірний поточний пароль');
+    const hashed = await bcrypt.hash(dto.newPassword, 10);
+    await this.prisma.user.update({ where: { id: userId }, data: { password: hashed } });
   }
 
   private async issueTokens(userId: string, email: string, role: string) {
