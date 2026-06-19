@@ -10,6 +10,9 @@ export const metadata: Metadata = {
     default: "SmartLine — інтернет-магазин електроніки",
   },
   description: "Купуйте смартфони, ноутбуки та аксесуари з доставкою по Україні",
+  icons: {
+    icon: '/favicon.svg',
+  },
 };
 
 export default function RootLayout({

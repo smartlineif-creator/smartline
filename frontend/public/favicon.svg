@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <rect width="32" height="32" rx="7" fill="#080C18"/>
+  <!-- S lettermark in brand blue -->
+  <text
+    x="16" y="23"
+    font-family="ui-sans-serif, system-ui, -apple-system, sans-serif"
+    font-weight="800"
+    font-size="22"
+    text-anchor="middle"
+    fill="#0082FF"
+  >S</text>
+  <!-- subtle blue dot accent bottom-right -->
+  <circle cx="24" cy="25" r="2.5" fill="#0082FF" opacity="0.6"/>
+</svg>
