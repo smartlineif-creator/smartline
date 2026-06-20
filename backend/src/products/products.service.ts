@@ -351,7 +351,7 @@ export class ProductsService {
       ([, vals]) => vals.length > 0,
     );
 
-    const filterMap = new Map<string, { sortOrder: number; values: Set<string> }>();
+    const filterMap = new Map<string, { sortOrder: number; counts: Map<string, number> }>();
 
     for (const [groupName, sortOrder] of groupMeta) {
       // For this group: match variants against all OTHER active groups
@@ -367,30 +367,38 @@ export class ProductsService {
         ),
       );
 
-      const values = new Set<string>();
+      // Count distinct products per value
+      const valueCounts = new Map<string, Set<string>>();
       for (const variant of matching) {
         for (const sel of variant.selections) {
           if (sel.optionValue.group.name === groupName) {
-            values.add(sel.optionValue.value);
+            const v = sel.optionValue.value;
+            if (!valueCounts.has(v)) valueCounts.set(v, new Set());
+            valueCounts.get(v)!.add(variant.productId);
           }
         }
       }
 
-      if (values.size > 0) {
-        filterMap.set(groupName, { sortOrder, values });
+      if (valueCounts.size > 0) {
+        const counts = new Map<string, number>();
+        for (const [v, productSet] of valueCounts) counts.set(v, productSet.size);
+        filterMap.set(groupName, { sortOrder, counts });
       }
     }
 
-    const variantFilters = Array.from(filterMap.entries())
-      .sort((a, b) => a[1].sortOrder - b[1].sortOrder)
-      .map(([groupName, { values }]) => ({
-        groupName,
-        values: Array.from(values),
-      }));
+    const variantFilters: { groupName: string; values: { value: string; count: number }[] }[] =
+      Array.from(filterMap.entries())
+        .sort((a, b) => a[1].sortOrder - b[1].sortOrder)
+        .map(([groupName, { counts }]) => ({
+          groupName,
+          values: Array.from(counts.entries()).map(([value, count]) => ({ value, count })),
+        }));
 
     if (inheritedTemplates.length === 0) return variantFilters;
 
-    // Attribute-based facets: distinct values per template name across matching products
+    // Attribute-based facets — skip groups already covered by variant filters
+    const variantGroupNames = new Set(variantFilters.map((f) => f.groupName.toLowerCase()));
+
     const productIds = (
       await this.prisma.product.findMany({
         where: baseProductWhere,
@@ -399,24 +407,33 @@ export class ProductsService {
     ).map((p) => p.id);
 
     if (productIds.length > 0) {
-      const templateNames = inheritedTemplates.map((t) => t.name);
-      const attrRows = await this.prisma.attribute.groupBy({
-        by: ['name', 'value'],
-        where: { name: { in: templateNames }, productId: { in: productIds } },
-        orderBy: [{ name: 'asc' }, { value: 'asc' }],
-      });
+      const templateNames = inheritedTemplates
+        .filter((t) => !variantGroupNames.has(t.name.toLowerCase()))
+        .map((t) => t.name);
 
-      const attrMap = new Map<string, string[]>();
-      for (const row of attrRows) {
-        if (!attrMap.has(row.name)) attrMap.set(row.name, []);
-        attrMap.get(row.name)!.push(row.value);
-      }
+      if (templateNames.length > 0) {
+        const attrRows = await this.prisma.attribute.groupBy({
+          by: ['name', 'value'],
+          where: { name: { in: templateNames }, productId: { in: productIds } },
+          _count: { productId: true },
+          orderBy: [{ name: 'asc' }, { value: 'asc' }],
+        });
 
-      const sorted = [...inheritedTemplates].sort((a, b) => a.sortOrder - b.sortOrder);
-      for (const tmpl of sorted) {
-        const values = attrMap.get(tmpl.name);
-        if (values && values.length > 0) {
-          variantFilters.push({ groupName: tmpl.name, values });
+        const attrMap = new Map<string, { value: string; count: number }[]>();
+        for (const row of attrRows) {
+          if (!attrMap.has(row.name)) attrMap.set(row.name, []);
+          attrMap.get(row.name)!.push({ value: row.value, count: row._count.productId });
+        }
+
+        const sorted = [...inheritedTemplates]
+          .filter((t) => !variantGroupNames.has(t.name.toLowerCase()))
+          .sort((a, b) => a.sortOrder - b.sortOrder);
+
+        for (const tmpl of sorted) {
+          const values = attrMap.get(tmpl.name);
+          if (values && values.length > 0) {
+            variantFilters.push({ groupName: tmpl.name, values });
+          }
         }
       }
     }

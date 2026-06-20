@@ -305,6 +305,11 @@ export default function ProductForm({ mode, productId }: Props) {
   const categoryTemplates = selectedCategory?.attributeTemplates ?? [];
   const getTemplate = (name: string) =>
     categoryTemplates.find((t) => t.name.toLowerCase() === name.toLowerCase());
+  const optionGroupNames = useMemo(
+    () => new Set(optionGroups.map((g) => g.name.toLowerCase())),
+    [optionGroups],
+  );
+  const isVariantGroup = (name: string) => !!name.trim() && optionGroupNames.has(name.toLowerCase());
   const preparedOptionGroups = useMemo(() => getPreparedOptionGroups(optionGroups), [optionGroups]);
   const categoryMap = useMemo(
     () => new Map(categoryOptions.map(({ category }) => [category.id, category])),
@@ -1097,11 +1102,18 @@ export default function ProductForm({ mode, productId }: Props) {
             const tmpl = getTemplate(attribute.name);
             const isTemplate = !!tmpl;
             const isOpen = attrDropdownOpenIdx === index;
+            const collides = isVariantGroup(attribute.name);
 
             return (
+              <div key={index} className="space-y-1">
+              {collides && (
+                <p className="flex items-center gap-1.5 text-xs text-amber-600">
+                  <span>⚠</span>
+                  «{attribute.name}» вже використовується як конфігурація варіантів — не додавайте її як характеристику.
+                </p>
+              )}
               <div
-                key={index}
-                className="grid gap-2 md:grid-cols-[1fr_1fr_120px_40px]"
+                className={cn('grid gap-2 md:grid-cols-[1fr_1fr_120px_40px]', collides && 'opacity-60')}
                 onBlur={(e) => {
                   if (!e.currentTarget.contains(e.relatedTarget as Node)) {
                     setAttrDropdownOpenIdx(null);
@@ -1207,6 +1219,7 @@ export default function ProductForm({ mode, productId }: Props) {
                 <datalist id={`attr-value-suggestions-${index}`}>
                   {(attrValueSuggestions[index] ?? []).map((v) => <option key={v} value={v} />)}
                 </datalist>
+              </div>
               </div>
             );
           })}

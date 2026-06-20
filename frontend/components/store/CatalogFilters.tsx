@@ -420,7 +420,7 @@ export default function CatalogFilters({
             {/* Values */}
             {!isCollapsed && (
               <div className="p-2 flex flex-col gap-0.5">
-                {filter.values.map((val) => {
+                {filter.values.map(({ value: val, count }) => {
                   const isActive = activeValues.includes(val);
                   return (
                     <button
@@ -467,7 +467,13 @@ export default function CatalogFilters({
                           </svg>
                         )}
                       </span>
-                      <span className="truncate">{val}</span>
+                      <span className="flex-1 truncate">{val}</span>
+                      <span
+                        className="shrink-0 text-[10px]"
+                        style={{ color: isActive ? 'var(--sl-accent)' : 'var(--sl-text-muted)', opacity: 0.7 }}
+                      >
+                        {count}
+                      </span>
                     </button>
                   );
                 })}

@@ -100,9 +100,14 @@ export interface VariantSeo {
   canonicalUrl: string;
 }
 
+export interface CatalogFilterValue {
+  value: string;
+  count: number;
+}
+
 export interface CatalogFilter {
   groupName: string;
-  values: string[];
+  values: CatalogFilterValue[];
 }
 
 export interface Product {
