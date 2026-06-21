@@ -198,6 +198,7 @@ export interface Banner {
   link?: string;
   position: string;
   sortOrder: number;
+  isActive: boolean;
 }
 
 export interface Review {

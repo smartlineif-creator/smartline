@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import AdminPageHint from '@/components/admin/AdminPageHint';
-import { Plus, Pencil, Trash2, AlertTriangle, Upload, X } from 'lucide-react';
+import { Plus, Pencil, Trash2, AlertTriangle, Upload, X, Eye, EyeOff } from 'lucide-react';
 import { useRef } from 'react';
 import Image from 'next/image';
 import { toast } from 'sonner';
@@ -55,6 +55,13 @@ export default function AdminBannersPage() {
     finally { setSaving(false); }
   };
 
+  const handleToggleActive = async (b: Banner) => {
+    try {
+      await adminUpdateBanner(b.id, { isActive: !b.isActive });
+      load();
+    } catch { toast.error('Помилка'); }
+  };
+
   const handleDelete = async () => {
     if (!deleteTarget) return;
     try { await adminDeleteBanner(deleteTarget.id); toast.success('Видалено'); setDeleteTarget(null); load(); } catch { toast.error('Помилка'); }
@@ -83,15 +90,21 @@ export default function AdminBannersPage() {
           </div>
         )}
         {banners.map((b) => (
-          <div key={b.id} className="bg-white border rounded-xl p-4 flex gap-4 items-center">
+          <div key={b.id} className={`bg-white border rounded-xl p-4 flex gap-4 items-center transition-opacity ${!b.isActive ? 'opacity-50' : ''}`}>
             <div className="relative w-32 h-16 rounded-lg overflow-hidden bg-gray-100 shrink-0">
               <Image src={b.imageUrl} alt={b.title} fill className="object-cover" />
             </div>
             <div className="flex-1">
-              <p className="font-medium">{b.title}</p>
+              <div className="flex items-center gap-2">
+                <p className="font-medium">{b.title}</p>
+                {!b.isActive && <span className="text-xs text-muted-foreground bg-gray-100 px-2 py-0.5 rounded-full">Приховано</span>}
+              </div>
               {b.link && <p className="text-sm text-muted-foreground">{b.link}</p>}
             </div>
             <div className="flex gap-1">
+              <Button size="sm" variant="ghost" onClick={() => handleToggleActive(b)} title={b.isActive ? 'Приховати' : 'Показати'}>
+                {b.isActive ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4 text-muted-foreground" />}
+              </Button>
               <Button size="sm" variant="ghost" onClick={() => openEdit(b)}><Pencil className="h-4 w-4" /></Button>
               <Button size="sm" variant="ghost" className="text-red-500" onClick={() => setDeleteTarget(b)}><Trash2 className="h-4 w-4" /></Button>
             </div>
@@ -123,7 +136,7 @@ export default function AdminBannersPage() {
 
       {showForm && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-sm space-y-4">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-lg space-y-4">
             <h3 className="font-bold text-lg">{editing ? 'Редагувати банер' : 'Новий банер'}</h3>
             <div>
               <Label>Заголовок *</Label>
