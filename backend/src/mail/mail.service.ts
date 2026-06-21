@@ -95,6 +95,19 @@ export class MailService {
     await this.send(email, 'Скидання пароля — SmartLine', html);
   }
 
+  async sendContactMessage(data: { name: string; phone: string; message: string; adminEmail: string }) {
+    const html = `
+      <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
+        <h1 style="color:#2563eb">SmartLine — нове повідомлення</h1>
+        <p><strong>Ім'я:</strong> ${data.name}</p>
+        <p><strong>Телефон:</strong> ${data.phone}</p>
+        <p><strong>Повідомлення:</strong></p>
+        <p style="background:#f3f4f6;padding:12px;border-radius:8px">${data.message}</p>
+      </div>
+    `;
+    await this.send(data.adminEmail, `Нове звернення від ${data.name}`, html);
+  }
+
   async sendOrderStatusUpdate(order: any) {
     if (!order.customerEmail) return;
 

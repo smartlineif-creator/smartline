@@ -19,6 +19,7 @@ import { TelegramModule } from './telegram/telegram.module';
 import { PaymentModule } from './payment/payment.module';
 import { MailModule } from './mail/mail.module';
 import { HomepageModule } from './homepage/homepage.module';
+import { ContactModule } from './contact/contact.module';
 
 @Module({
   imports: [
@@ -40,6 +41,7 @@ import { HomepageModule } from './homepage/homepage.module';
     PaymentModule,
     MailModule,
     HomepageModule,
+    ContactModule,
   ],
   controllers: [AppController],
   providers: [AppService],
