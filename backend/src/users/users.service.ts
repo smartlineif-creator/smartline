@@ -20,6 +20,10 @@ export class UpdateUserDto {
   @IsString()
   @IsOptional()
   adminNote?: string;
+
+  @IsString()
+  @IsOptional()
+  role?: string;
 }
 
 @Injectable()

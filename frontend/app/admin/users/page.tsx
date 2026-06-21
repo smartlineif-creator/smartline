@@ -15,6 +15,7 @@ export default function AdminUsersPage() {
   const [editing, setEditing] = useState<User | null>(null);
   const [discount, setDiscount] = useState('0');
   const [note, setNote] = useState('');
+  const [role, setRole] = useState('USER');
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
@@ -22,7 +23,7 @@ export default function AdminUsersPage() {
   const load = () => adminGetUsers().then((r) => setUsers(r.data)).catch(() => {}).finally(() => setLoading(false));
   useEffect(() => { load(); }, []);
 
-  const openEdit = (u: User) => { setEditing(u); setDiscount(String(u.discount)); setNote((u as any).adminNote || ''); };
+  const openEdit = (u: User) => { setEditing(u); setDiscount(String(u.discount)); setNote((u as any).adminNote || ''); setRole(u.role || 'USER'); };
 
   const handleSave = async () => {
     if (!editing) return;
@@ -30,7 +31,7 @@ export default function AdminUsersPage() {
     if (isNaN(d) || d < 0 || d > 100) { toast.error('Знижка має бути від 0 до 100'); return; }
     setSaving(true);
     try {
-      await adminUpdateUser(editing.id, { discount: d, adminNote: note });
+      await adminUpdateUser(editing.id, { discount: d, adminNote: note, role });
       toast.success('Оновлено');
       setEditing(null);
       load();
@@ -128,6 +129,17 @@ export default function AdminUsersPage() {
             <div>
               <h3 className="font-semibold text-gray-950">Редагувати клієнта</h3>
               <p className="mt-0.5 text-sm text-muted-foreground">{editing.email}</p>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Роль</Label>
+              <select
+                value={role}
+                onChange={(e) => setRole(e.target.value)}
+                className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              >
+                <option value="USER">USER</option>
+                <option value="ADMIN">ADMIN</option>
+              </select>
             </div>
             <div className="space-y-1.5">
               <Label>Знижка % <span className="text-muted-foreground">(0–100)</span></Label>
