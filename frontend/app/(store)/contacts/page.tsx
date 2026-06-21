@@ -33,10 +33,33 @@ export default function ContactsPage() {
   };
 
   const contactItems = [
-    { icon: Phone, label: 'Телефон', content: <a href="tel:+380441234567" style={{ color: 'var(--sl-accent)' }}>+38 (044) 123-45-67</a> },
-    { icon: Mail, label: 'Email', content: <a href="mailto:info@smartline.com.ua" style={{ color: 'var(--sl-accent)' }}>info@smartline.com.ua</a> },
-    { icon: Clock, label: 'Графік роботи', content: <><p className="text-sm" style={{ color: 'var(--sl-text-muted)' }}>Пн–Пт: 9:00–18:00</p><p className="text-sm" style={{ color: 'var(--sl-text-muted)' }}>Сб: 10:00–16:00</p></> },
-    { icon: MapPin, label: 'Адреса', content: <p className="text-sm" style={{ color: 'var(--sl-text-muted)' }}>м. Київ, вул. Хрещатик, 1</p> },
+    {
+      icon: Phone,
+      label: 'Телефон',
+      content: (
+        <div className="flex flex-col gap-0.5">
+          <a href="tel:+380957162055" style={{ color: 'var(--sl-accent)' }}>+380 (95) 716-20-55</a>
+          <a href="tel:+380689410560" style={{ color: 'var(--sl-accent)' }}>+380 (68) 941-05-60</a>
+        </div>
+      ),
+    },
+    { icon: Mail, label: 'Email', content: <a href="mailto:smartline.if@gmail.com" style={{ color: 'var(--sl-accent)' }}>smartline.if@gmail.com</a> },
+    {
+      icon: Clock,
+      label: 'Графік роботи',
+      content: (
+        <>
+          <p className="text-sm" style={{ color: 'var(--sl-text-muted)' }}>Пн–Пт: 11:00–18:00</p>
+          <p className="text-sm" style={{ color: 'var(--sl-text-muted)' }}>Сб: 11:00–17:00</p>
+          <p className="text-sm" style={{ color: 'var(--sl-text-muted)' }}>Нд: вихідний</p>
+        </>
+      ),
+    },
+    {
+      icon: MapPin,
+      label: 'Адреса',
+      content: <p className="text-sm" style={{ color: 'var(--sl-text-muted)' }}>м. Івано-Франківськ, вул. Галицька 112Д,<br />маг №17 (ТЦ Щедрик)</p>,
+    },
   ];
 
   const inputStyle = {
@@ -84,18 +107,18 @@ export default function ContactsPage() {
               ))}
             </div>
 
-            {/* Map placeholder */}
-            <div
-              className="flex h-56 w-full items-center justify-center rounded-2xl text-sm"
-              style={{
-                background: 'var(--sl-bg-elevated)',
-                border: '1px solid var(--sl-border)',
-                color: 'var(--sl-text-muted)',
-                fontFamily: 'var(--sl-font-mono)',
-              }}
-            >
-              <MapPin className="mr-2 h-6 w-6" style={{ color: 'var(--sl-accent)' }} />
-              Карта (Google Maps)
+            {/* Google Maps embed */}
+            <div className="overflow-hidden rounded-2xl" style={{ border: '1px solid var(--sl-border)' }}>
+              <iframe
+                src="https://maps.google.com/maps?q=%D0%A2%D0%A6+%D0%A9%D0%B5%D0%B4%D1%80%D0%B8%D0%BA+%D0%86%D0%B2%D0%B0%D0%BD%D0%BE-%D0%A4%D1%80%D0%B0%D0%BD%D0%BA%D1%96%D0%B2%D1%81%D1%8C%D0%BA&output=embed&hl=uk"
+                width="100%"
+                height="220"
+                style={{ border: 0 }}
+                allowFullScreen
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+                title="SmartLine на карті"
+              />
             </div>
           </div>
 
