@@ -884,6 +884,7 @@ export class ProductsService {
     return optionGroups
       .map((group, groupIndex) => ({
         name: group.name.trim(),
+        unit: group.unit?.trim() || null,
         sortOrder: group.sortOrder ?? groupIndex,
         values: (group.values || [])
           .map((value, valueIndex) => ({
@@ -925,6 +926,7 @@ export class ProductsService {
         data: {
           productId,
           name: group.name,
+          unit: group.unit,
           sortOrder: group.sortOrder,
         },
       });

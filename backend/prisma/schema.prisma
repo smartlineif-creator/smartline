@@ -81,7 +81,8 @@ model Category {
   children           Category[]          @relation("CategoryTree")
   icon               String?
   seoText            String?
-  attributeTemplates AttributeTemplate[]
+  attributeTemplates    AttributeTemplate[]
+  optionGroupTemplates  OptionGroupTemplate[]
   products           Product[]
   productLinks       ProductCategoryLink[]
   promotions         Promotion[]
@@ -90,6 +91,15 @@ model Category {
 }
 
 model AttributeTemplate {
+  id         String   @id @default(cuid())
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  name       String
+  unit       String?
+  sortOrder  Int      @default(0)
+}
+
+model OptionGroupTemplate {
   id         String   @id @default(cuid())
   categoryId String
   category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
@@ -136,6 +146,7 @@ model ProductOptionGroup {
   productId String
   product   Product             @relation(fields: [productId], references: [id], onDelete: Cascade)
   name      String
+  unit      String?
   sortOrder Int                 @default(0)
   values    ProductOptionValue[]
 

@@ -14,6 +14,19 @@ export class AttributeTemplateDto {
   sortOrder?: number;
 }
 
+export class OptionGroupTemplateDto {
+  @IsString()
+  name: string;
+
+  @IsString()
+  @IsOptional()
+  unit?: string;
+
+  @IsInt()
+  @IsOptional()
+  sortOrder?: number;
+}
+
 export class CreateCategoryDto {
   @IsString()
   name: string;
@@ -39,6 +52,12 @@ export class CreateCategoryDto {
   @ValidateNested({ each: true })
   @Type(() => AttributeTemplateDto)
   attributeTemplates?: AttributeTemplateDto[];
+
+  @IsArray()
+  @IsOptional()
+  @ValidateNested({ each: true })
+  @Type(() => OptionGroupTemplateDto)
+  optionGroupTemplates?: OptionGroupTemplateDto[];
 }
 
 export class UpdateCategoryDto extends CreateCategoryDto {}

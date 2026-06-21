@@ -6,6 +6,11 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateCategoryDto, UpdateCategoryDto } from './dto/category.dto';
 
+const CATEGORY_INCLUDE = {
+  attributeTemplates: true,
+  optionGroupTemplates: true,
+} as const;
+
 @Injectable()
 export class CategoriesService {
   constructor(private prisma: PrismaService) {}
@@ -17,7 +22,7 @@ export class CategoriesService {
         children: {
           include: {
             children: true,
-            attributeTemplates: true,
+            ...CATEGORY_INCLUDE,
             _count: {
               select: {
                 children: true,
@@ -26,7 +31,7 @@ export class CategoriesService {
             },
           },
         },
-        attributeTemplates: true,
+        ...CATEGORY_INCLUDE,
         _count: {
           select: {
             children: true,
@@ -42,7 +47,7 @@ export class CategoriesService {
   async findOne(id: string) {
     const category = await this.prisma.category.findUnique({
       where: { id },
-      include: { children: true, attributeTemplates: true },
+      include: { children: true, ...CATEGORY_INCLUDE },
     });
     if (!category) throw new NotFoundException('Category not found');
     return category;
@@ -52,8 +57,8 @@ export class CategoriesService {
     const category = await this.prisma.category.findUnique({
       where: { slug },
       include: {
-        children: { include: { attributeTemplates: true } },
-        attributeTemplates: true,
+        children: { include: { ...CATEGORY_INCLUDE } },
+        ...CATEGORY_INCLUDE,
       },
     });
     if (!category) throw new NotFoundException('Category not found');
@@ -62,7 +67,7 @@ export class CategoriesService {
 
   async create(dto: CreateCategoryDto) {
     const slug = dto.slug || this.toSlug(dto.name);
-    const { attributeTemplates, ...rest } = dto;
+    const { attributeTemplates, optionGroupTemplates, ...rest } = dto;
     return this.prisma.category.create({
       data: {
         ...rest,
@@ -70,13 +75,16 @@ export class CategoriesService {
         attributeTemplates: attributeTemplates
           ? { create: attributeTemplates }
           : undefined,
+        optionGroupTemplates: optionGroupTemplates
+          ? { create: optionGroupTemplates }
+          : undefined,
       },
-      include: { attributeTemplates: true },
+      include: { ...CATEGORY_INCLUDE },
     });
   }
 
   async update(id: string, dto: UpdateCategoryDto) {
-    const { attributeTemplates, ...rest } = dto;
+    const { attributeTemplates, optionGroupTemplates, ...rest } = dto;
     return this.prisma.category.update({
       where: { id },
       data: {
@@ -90,8 +98,16 @@ export class CategoriesService {
               },
             }
           : {}),
+        ...(optionGroupTemplates !== undefined
+          ? {
+              optionGroupTemplates: {
+                deleteMany: {},
+                create: optionGroupTemplates,
+              },
+            }
+          : {}),
       },
-      include: { attributeTemplates: true },
+      include: { ...CATEGORY_INCLUDE },
     });
   }
 

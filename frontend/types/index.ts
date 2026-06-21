@@ -17,6 +17,7 @@ export interface Category {
   seoText?: string;
   children?: Category[];
   attributeTemplates?: AttributeTemplate[];
+  optionGroupTemplates?: OptionGroupTemplate[];
   promotions?: { id: string; discountPercent: number; isActive: boolean; startDate: string; endDate: string }[];
   _count?: {
     children: number;
@@ -25,6 +26,12 @@ export interface Category {
 }
 
 export interface AttributeTemplate {
+  id: string;
+  name: string;
+  unit?: string;
+}
+
+export interface OptionGroupTemplate {
   id: string;
   name: string;
   unit?: string;
@@ -67,6 +74,7 @@ export interface ProductOptionValue {
 export interface ProductOptionGroup {
   id: string;
   name: string;
+  unit?: string | null;
   sortOrder: number;
   values: ProductOptionValue[];
 }

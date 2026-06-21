@@ -69,6 +69,10 @@ export class ProductOptionGroupDto {
   @IsString()
   name: string;
 
+  @IsString()
+  @IsOptional()
+  unit?: string;
+
   @IsNumber()
   @IsOptional()
   sortOrder?: number;

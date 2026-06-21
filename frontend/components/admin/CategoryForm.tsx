@@ -34,6 +34,9 @@ export default function CategoryForm({ mode, category }: Props) {
   const [attrTemplates, setAttrTemplates] = useState<{ name: string; unit: string }[]>(
     (category?.attributeTemplates || []).map((t) => ({ name: t.name, unit: t.unit || '' })),
   );
+  const [groupTemplates, setGroupTemplates] = useState<{ name: string; unit: string }[]>(
+    (category?.optionGroupTemplates || []).map((t) => ({ name: t.name, unit: t.unit || '' })),
+  );
   const [selectorOpen, setSelectorOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const selectorRef = useRef<HTMLDivElement | null>(null);
@@ -85,6 +88,9 @@ export default function CategoryForm({ mode, category }: Props) {
         icon: '',
         parentId: parentId || undefined,
         attributeTemplates: attrTemplates
+          .filter((t) => t.name.trim())
+          .map((t, i) => ({ name: t.name.trim(), unit: t.unit.trim() || undefined, sortOrder: i })),
+        optionGroupTemplates: groupTemplates
           .filter((t) => t.name.trim())
           .map((t, i) => ({ name: t.name.trim(), unit: t.unit.trim() || undefined, sortOrder: i })),
       };
@@ -208,6 +214,54 @@ export default function CategoryForm({ mode, category }: Props) {
                 Додати характеристику
               </button>
             </div>
+        </div>
+
+        <div className="mt-5">
+          <Label>Шаблони варіантних груп</Label>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Назви груп конфігурацій (RAM, SSD, Колір) для вибору при додаванні товару.
+          </p>
+          <div className="mt-2 space-y-2">
+            {groupTemplates.map((tmpl, i) => (
+              <div key={i} className="flex gap-2">
+                <Input
+                  value={tmpl.name}
+                  onChange={(e) => {
+                    const updated = [...groupTemplates];
+                    updated[i] = { ...updated[i], name: e.target.value };
+                    setGroupTemplates(updated);
+                  }}
+                  placeholder="Назва (напр. Оперативна пам'ять)"
+                  className="h-9 flex-1"
+                />
+                <Input
+                  value={tmpl.unit}
+                  onChange={(e) => {
+                    const updated = [...groupTemplates];
+                    updated[i] = { ...updated[i], unit: e.target.value };
+                    setGroupTemplates(updated);
+                  }}
+                  placeholder="Одиниця (ГБ...)"
+                  className="h-9 w-32"
+                />
+                <button
+                  type="button"
+                  onClick={() => setGroupTemplates(groupTemplates.filter((_, j) => j !== i))}
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-red-200 text-red-500 hover:bg-red-50"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={() => setGroupTemplates([...groupTemplates, { name: '', unit: '' }])}
+              className="flex h-9 items-center gap-2 rounded-lg border border-dashed border-gray-300 px-3 text-sm text-gray-500 hover:border-blue-300 hover:text-blue-600"
+            >
+              <Plus className="h-4 w-4" />
+              Додати групу
+            </button>
+          </div>
         </div>
 
         <div className="mt-8 flex justify-end gap-2">

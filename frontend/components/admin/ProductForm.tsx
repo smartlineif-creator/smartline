@@ -307,8 +307,11 @@ export default function ProductForm({ mode, productId }: Props) {
   const categoryOptions = useMemo(() => flattenCategories(categories), [categories]);
   const selectedCategory = categoryOptions.find((option) => option.category.id === categoryId)?.category;
   const categoryTemplates = selectedCategory?.attributeTemplates ?? [];
+  const optionGroupTemplates = selectedCategory?.optionGroupTemplates ?? [];
   const getTemplate = (name: string) =>
     categoryTemplates.find((t) => t.name.toLowerCase() === name.toLowerCase());
+  const getGroupTemplate = (name: string) =>
+    optionGroupTemplates.find((t) => t.name.toLowerCase() === name.toLowerCase());
   const optionGroupNames = useMemo(
     () => new Set(optionGroups.map((g) => g.name.toLowerCase())),
     [optionGroups],
@@ -861,7 +864,7 @@ export default function ProductForm({ mode, productId }: Props) {
               ) : (
                 <div className="space-y-4">
                   {optionGroups.map((group, groupIndex) => {
-                    const grpTmpl = getTemplate(group.name);
+                    const grpTmpl = getGroupTemplate(group.name);
                     const isGrpTemplate = !!grpTmpl;
                     const isGrpOpen = groupDropdownOpenIdx === groupIndex;
 
@@ -893,7 +896,7 @@ export default function ProductForm({ mode, productId }: Props) {
                                 onChange={(e) => updateOptionGroup(group.id, 'name', e.target.value)}
                                 className="h-9 flex-1"
                               />
-                              {categoryTemplates.length > 0 && (
+                              {optionGroupTemplates.length > 0 && (
                                 <button
                                   type="button"
                                   tabIndex={0}
@@ -906,9 +909,9 @@ export default function ProductForm({ mode, productId }: Props) {
                             </div>
                           )}
 
-                          {isGrpOpen && categoryTemplates.length > 0 && (
+                          {isGrpOpen && optionGroupTemplates.length > 0 && (
                             <div className="absolute z-30 mt-1 w-full rounded-lg border bg-white shadow-xl">
-                              {categoryTemplates.map((t) => (
+                              {optionGroupTemplates.map((t) => (
                                 <button
                                   key={t.name}
                                   type="button"
