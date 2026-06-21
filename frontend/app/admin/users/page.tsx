@@ -135,7 +135,7 @@ export default function AdminUsersPage() {
               <select
                 value={role}
                 onChange={(e) => setRole(e.target.value)}
-                className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                className="w-full rounded-md border border-input bg-white px-3 py-2 text-sm"
               >
                 <option value="USER">USER</option>
                 <option value="ADMIN">ADMIN</option>
