@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { adminGetOrderStats, adminGetProductCount, adminGetAllOrders } from '@/lib/api';
 import { formatPrice, ORDER_STATUS_COLORS, ORDER_STATUS_LABELS } from '@/lib/utils';
 import AdminPageHint from '@/components/admin/AdminPageHint';
@@ -57,17 +58,27 @@ export default async function AdminDashboardPage() {
               {recentOrders.data.length === 0 ? (
                 <tr><td colSpan={5} className="py-10 text-center text-sm text-muted-foreground">Замовлень ще немає</td></tr>
               ) : recentOrders.data.map((order) => (
-                <tr key={order.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 font-mono">#{order.orderNumber}</td>
-                  <td className="px-4 py-3">{order.customerName}</td>
-                  <td className="px-4 py-3 font-medium">{formatPrice(order.totalAmount)}</td>
+                <tr key={order.id} className="hover:bg-gray-50 cursor-pointer">
+                  <td className="px-4 py-3 font-mono">
+                    <Link href={`/admin/orders/${order.id}`} className="block">#{order.orderNumber}</Link>
+                  </td>
                   <td className="px-4 py-3">
-                    <span className={`text-xs px-2 py-1 rounded-full font-medium ${ORDER_STATUS_COLORS[order.status]}`}>
-                      {ORDER_STATUS_LABELS[order.status]}
-                    </span>
+                    <Link href={`/admin/orders/${order.id}`} className="block">{order.customerName}</Link>
+                  </td>
+                  <td className="px-4 py-3 font-medium">
+                    <Link href={`/admin/orders/${order.id}`} className="block">{formatPrice(order.totalAmount)}</Link>
+                  </td>
+                  <td className="px-4 py-3">
+                    <Link href={`/admin/orders/${order.id}`} className="block">
+                      <span className={`text-xs px-2 py-1 rounded-full font-medium ${ORDER_STATUS_COLORS[order.status]}`}>
+                        {ORDER_STATUS_LABELS[order.status]}
+                      </span>
+                    </Link>
                   </td>
                   <td className="px-4 py-3 text-muted-foreground">
-                    {new Date(order.createdAt).toLocaleDateString('uk-UA')}
+                    <Link href={`/admin/orders/${order.id}`} className="block">
+                      {new Date(order.createdAt).toLocaleDateString('uk-UA')}
+                    </Link>
                   </td>
                 </tr>
               ))}
