@@ -135,7 +135,7 @@ export default function ContactsPage() {
             </h2>
             <form onSubmit={handleSubmit} className="space-y-4">
               {[
-                { label: "Ваше ім'я *", value: name, onChange: setName, placeholder: 'Іван Іваненко', type: 'text' },
+                { label: "Ваше ім'я *", value: name, onChange: setName, placeholder: "Ім'я та прізвище", type: 'text' },
                 { label: 'Телефон *', value: phone, onChange: setPhone, placeholder: '+380XXXXXXXXX', type: 'tel' },
               ].map((field) => (
                 <div key={field.label}>
