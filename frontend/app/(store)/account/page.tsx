@@ -8,7 +8,6 @@ import {
   ArrowRight,
   Heart,
   LogOut,
-  MapPin,
   Package,
   User,
   UserCog,
@@ -29,7 +28,6 @@ const STATUS_DOT: Record<string, string> = {
 const NAV_ITEMS = [
   { href: '/account/orders', icon: Package,  label: 'Мої замовлення',    desc: 'Статус і деталі замовлень' },
   { href: '/account/settings', icon: UserCog, label: 'Особисті дані',   desc: 'Ім\'я, телефон, пароль' },
-  { href: '/account/addresses', icon: MapPin, label: 'Адреси доставки', desc: 'Збережені адреси НП' },
   { href: '/wishlist',         icon: Heart,   label: 'Обране',           desc: 'Відкладені товари' },
 ];
 
