@@ -139,7 +139,7 @@ export class DeliveryDto {
 }
 
 export class PaymentInfoDto {
-  @IsIn(['online', 'installments', 'cod'])
+  @IsIn(['online', 'bank_transfer', 'cod'])
   method: string;
 }
 
