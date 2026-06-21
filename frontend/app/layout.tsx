@@ -12,9 +12,9 @@ export const metadata: Metadata = {
   description: "SmartLine — магазин перевіреної техніки в Івано-Франківську. Ноутбуки Dell, Lenovo, HP, ASUS з гарантією. Доставка Новою Поштою по всій Україні.",
   icons: {
     icon: [
-      { url: '/logo.png', type: 'image/png' },
+      { url: '/favicon.png', type: 'image/png', sizes: '64x64' },
     ],
-    apple: '/logo.png',
+    apple: '/favicon.png',
   },
 };
 

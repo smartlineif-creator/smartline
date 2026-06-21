@@ -166,14 +166,8 @@ export default function Header() {
         <div className="mx-auto max-w-7xl px-3 sm:px-4">
           <div className="flex h-16 items-center gap-2 sm:gap-3">
             {/* Logo */}
-            <Link
-              href="/"
-              className="shrink-0 text-xl font-bold tracking-tight sm:text-2xl"
-              style={{ fontFamily: 'var(--sl-font-display)', letterSpacing: '0.05em' }}
-              onClick={closeMenus}
-            >
-              <span style={{ color: 'var(--sl-text-primary)' }}>SMART</span>
-              <span style={{ color: 'var(--sl-accent)' }}>LINE</span>
+            <Link href="/" className="shrink-0" onClick={closeMenus}>
+              <Image src="/logo.png" alt="SmartLine" width={48} height={48} className="rounded-lg" priority />
             </Link>
 
             {/* Catalog button — desktop */}
@@ -638,13 +632,7 @@ export default function Header() {
           className="flex items-center justify-between px-5 py-4"
           style={{ borderBottom: '1px solid var(--sl-border)' }}
         >
-          <span
-            className="text-xl font-bold"
-            style={{ fontFamily: 'var(--sl-font-display)', letterSpacing: '0.05em' }}
-          >
-            <span style={{ color: 'var(--sl-text-primary)' }}>SMART</span>
-            <span style={{ color: 'var(--sl-accent)' }}>LINE</span>
-          </span>
+          <Image src="/logo.png" alt="SmartLine" width={40} height={40} className="rounded-lg" />
           <button
             type="button"
             onClick={closeMenus}
