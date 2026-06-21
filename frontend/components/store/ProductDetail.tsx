@@ -482,6 +482,17 @@ export default function ProductDetail({ product }: Props) {
     });
   };
 
+  const isValueInStock = (groupName: string, value: string) => {
+    const nextSelectedOptions = { ...selectedOptions, [groupName]: value };
+    return variants.some((variant) => {
+      if ((variant.stock ?? 0) <= 0) return false;
+      const variantSelections = getVariantSelections(variant);
+      return Object.entries(nextSelectedOptions).every(
+        ([key, val]) => !variantSelections[key] || variantSelections[key] === val,
+      );
+    });
+  };
+
   return (
     <div style={{ background: 'var(--sl-bg-primary)' }}>
       <div className="mx-auto max-w-7xl px-4 pb-40 pt-6 sm:px-6 md:pb-16 lg:px-8">
@@ -875,28 +886,34 @@ export default function ProductDetail({ product }: Props) {
                         {group.values.map((value) => {
                           const selected = selectedOptions[group.name] === value.value;
                           const available = isValueAvailable(group.name, value.value);
-                          // Ховаємо недоступні комбінації повністю
+                          const inStock = isValueInStock(group.name, value.value);
+                          // Ховаємо комбінації яких не існує взагалі
                           if (!available && !selected) return null;
+                          const outOfStock = available && !inStock && !selected;
                           return (
                             <button
                               key={value.id}
                               type="button"
-                              onClick={() => handleOptionSelect(group.name, value.value)}
-                              className="rounded-xl px-3 py-2 text-sm font-medium transition-all"
+                              onClick={() => !outOfStock && handleOptionSelect(group.name, value.value)}
+                              disabled={outOfStock}
+                              title={outOfStock ? 'Немає в наявності' : undefined}
+                              className="rounded-xl px-3 py-2 text-sm font-medium transition-all relative"
                               style={
                                 selected
                                   ? { background: 'var(--sl-accent)', color: '#fff', border: '1px solid var(--sl-accent)', fontFamily: 'var(--sl-font-mono)' }
+                                  : outOfStock
+                                  ? { background: 'var(--sl-bg-elevated)', border: '1px solid var(--sl-border)', color: 'var(--sl-text-muted)', fontFamily: 'var(--sl-font-mono)', opacity: 0.5, cursor: 'not-allowed', textDecoration: 'line-through' }
                                   : { background: 'var(--sl-bg-elevated)', border: '1px solid var(--sl-border)', color: 'var(--sl-text-secondary)', fontFamily: 'var(--sl-font-mono)' }
                               }
                               onMouseEnter={(e) => {
-                                if (!selected) {
+                                if (!selected && !outOfStock) {
                                   (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--sl-accent)';
                                   (e.currentTarget as HTMLButtonElement).style.color = 'var(--sl-accent)';
                                   (e.currentTarget as HTMLButtonElement).style.background = 'var(--sl-accent-muted)';
                                 }
                               }}
                               onMouseLeave={(e) => {
-                                if (!selected) {
+                                if (!selected && !outOfStock) {
                                   (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--sl-border)';
                                   (e.currentTarget as HTMLButtonElement).style.color = 'var(--sl-text-secondary)';
                                   (e.currentTarget as HTMLButtonElement).style.background = 'var(--sl-bg-elevated)';
