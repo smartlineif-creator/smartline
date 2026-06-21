@@ -39,15 +39,16 @@ export class AuthService {
   }
 
   async register(dto: RegisterDto) {
+    const email = dto.email.toLowerCase();
     const exists = await this.prisma.user.findUnique({
-      where: { email: dto.email },
+      where: { email },
     });
     if (exists) throw new ConflictException('Email already in use');
 
     const hashed = await bcrypt.hash(dto.password, 10);
     const user = await this.prisma.user.create({
       data: {
-        email: dto.email,
+        email,
         password: hashed,
         name: dto.name,
         phone: dto.phone,
@@ -62,7 +63,7 @@ export class AuthService {
 
   async login(dto: LoginDto) {
     const user = await this.prisma.user.findUnique({
-      where: { email: dto.email },
+      where: { email: dto.email.toLowerCase() },
     });
     if (!user) throw new UnauthorizedException('Невірний email або пароль');
 
