@@ -167,7 +167,7 @@ export default function Header() {
           <div className="flex h-16 items-center gap-2 sm:gap-3">
             {/* Logo */}
             <Link href="/" className="shrink-0" onClick={closeMenus}>
-              <Image src="/logo.png" alt="SmartLine" width={48} height={48} className="rounded-lg" priority />
+              <Image src="/logo.png" alt="SmartLine" width={48} height={48} priority />
             </Link>
 
             {/* Catalog button — desktop */}
