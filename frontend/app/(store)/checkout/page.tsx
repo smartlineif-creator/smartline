@@ -416,7 +416,7 @@ export default function CheckoutPage() {
 
                 <div className="grid gap-4 sm:grid-cols-2">
                   <Field label="Ім'я та прізвище" required>
-                    <input className={inputClass} value={name} onChange={(e) => setName(e.target.value)} placeholder="Іван Іванов" />
+                    <input className={inputClass} value={name} onChange={(e) => setName(e.target.value)} placeholder="Ім'я та прізвище" />
                   </Field>
                   <Field label="Телефон" required>
                     <input className={inputClass} value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+380501234567" type="tel" />
