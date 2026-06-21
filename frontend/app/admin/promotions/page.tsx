@@ -6,6 +6,7 @@ import { Promotion, Category, Product } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import AdminPageHint from '@/components/admin/AdminPageHint';
 import { Plus, Pencil, Trash2, Search, X, Tag, Package, AlertTriangle, ChevronDown } from 'lucide-react';
 import { toast } from 'sonner';
 import Image from 'next/image';
@@ -212,6 +213,15 @@ export default function AdminPromotionsPage() {
 
   return (
     <div>
+      <AdminPageHint
+        storageKey="promotions"
+        tips={[
+          { text: 'Акція активна, якщо вмикач увімкнений і поточна дата між "Початок" і "Кінець".' },
+          { text: 'Прив\'яжіть акцію до категорії (всі товари розділу) або до конкретних товарів — але не обидва варіанти.' },
+          { text: 'Знижка відображається в картці товару як закреслена стара ціна. Нова ціна = стара × (1 − знижка/100).' },
+          { text: 'Якщо на товар діють кілька акцій — застосовується та, що більша.' },
+        ]}
+      />
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Акції</h1>

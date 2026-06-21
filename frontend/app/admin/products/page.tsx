@@ -13,6 +13,7 @@ import { useRouter } from 'next/navigation';
 import { formatPrice, getProductPrice, getMainImage } from '@/lib/utils';
 import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
+import AdminPageHint from '@/components/admin/AdminPageHint';
 
 interface CategoryOption {
   category: Category;
@@ -204,6 +205,16 @@ export default function AdminProductsPage() {
 
   return (
     <div>
+      <AdminPageHint
+        storageKey="products"
+        tips={[
+          { text: 'Натисніть "Додати", щоб створити новий товар. Заповніть назву, ціну, категорію та хоча б одне зображення.' },
+          { text: 'Іконка "Копія" поряд з товаром — швидке дублювання. Зручно для схожих моделей.' },
+          { text: 'Червоний значок ⚠ означає, що товар неактивний або є проблема із залишком.' },
+          { text: 'Фільтр за категорією + пошук — щоб швидко знайти потрібний товар у великому каталозі.' },
+          { text: 'Конфігурації (варіанти) задаються всередині товару на вкладці "Конфігурації". Шаблони груп — у налаштуваннях категорії.' },
+        ]}
+      />
       <div className="mb-6 flex items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Товари</h1>

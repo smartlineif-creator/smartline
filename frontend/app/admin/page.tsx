@@ -1,5 +1,6 @@
 import { adminGetOrderStats, adminGetProductCount, adminGetAllOrders } from '@/lib/api';
 import { formatPrice, ORDER_STATUS_COLORS, ORDER_STATUS_LABELS } from '@/lib/utils';
+import AdminPageHint from '@/components/admin/AdminPageHint';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,6 +20,15 @@ export default async function AdminDashboardPage() {
 
   return (
     <div>
+      <AdminPageHint
+        storageKey="dashboard"
+        tips={[
+          { text: 'Тут зведені ключові метрики: замовлення сьогодні, нові замовлення, виручка і загальна кількість товарів.' },
+          { text: 'Таблиця внизу показує останні 10 замовлень. Клікніть на рядок, щоб відкрити деталі.' },
+          { text: 'Для детальнішої роботи переходьте у відповідні розділи через меню зліва.' },
+          { text: 'Довідка по всіх розділах — у пункті меню "Довідка" внизу зліва.' },
+        ]}
+      />
       <h1 className="text-2xl font-bold mb-6">Дашборд</h1>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">

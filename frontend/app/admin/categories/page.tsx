@@ -7,6 +7,7 @@ import { Category } from '@/types';
 import { Button } from '@/components/ui/button';
 import { AlertTriangle, ChevronDown, ChevronRight, ChevronsDownUp, ChevronsUpDown, FolderTree, Pencil, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
+import AdminPageHint from '@/components/admin/AdminPageHint';
 
 export default function AdminCategoriesPage() {
   const [categories, setCategories] = useState<Category[]>([]);
@@ -62,6 +63,15 @@ export default function AdminCategoriesPage() {
 
   return (
     <div>
+      <AdminPageHint
+        storageKey="categories"
+        tips={[
+          { text: 'Категорії утворюють дерево: дочірні відображаються з відступом під батьківськими.' },
+          { text: 'У налаштуваннях категорії задайте "Фільтровані характеристики" — назви атрибутів для фільтрів у каталозі (Процесор, ОС, Стан).' },
+          { text: 'Також задайте "Шаблони варіантних груп" — назви конфігурацій зі своїми одиницями (Оперативна пам\'ять · ГБ, SSD · ГБ). Вони з\'являться у дропдауні при редагуванні товарів цієї категорії.' },
+          { text: 'Видалення категорії неможливе, якщо в ній є товари або підкатегорії.' },
+        ]}
+      />
       <div className="mb-6 flex items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Категорії</h1>

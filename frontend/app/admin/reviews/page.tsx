@@ -6,6 +6,7 @@ import { Review } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Check, Trash2, Star, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
+import AdminPageHint from '@/components/admin/AdminPageHint';
 
 export default function AdminReviewsPage() {
   const [reviews, setReviews] = useState<Review[]>([]);
@@ -38,6 +39,14 @@ export default function AdminReviewsPage() {
 
   return (
     <div>
+      <AdminPageHint
+        storageKey="reviews"
+        tips={[
+          { text: 'Нові відгуки покупців не видно в магазині до затвердження. Перевірте вкладку "Очікують".' },
+          { text: 'Натисніть "Затвердити", щоб відгук з\'явився на сторінці товару і враховувався в рейтингу.' },
+          { text: 'Рейтинг товару (зірки) розраховується лише з затверджених відгуків.' },
+        ]}
+      />
       <h1 className="text-2xl font-bold mb-6">Відгуки</h1>
 
       <div className="flex gap-2 mb-4">

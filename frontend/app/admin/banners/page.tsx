@@ -6,6 +6,7 @@ import { Banner } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import AdminPageHint from '@/components/admin/AdminPageHint';
 import { Plus, Pencil, Trash2, AlertTriangle, Upload, X } from 'lucide-react';
 import { useRef } from 'react';
 import Image from 'next/image';
@@ -61,6 +62,15 @@ export default function AdminBannersPage() {
 
   return (
     <div>
+      <AdminPageHint
+        storageKey="banners"
+        tips={[
+          { text: 'Банери відображаються на головній сторінці магазину. Сортування визначає порядок показу.' },
+          { text: 'Для hero-банера рекомендований розмір зображення — не менше 1400×500 px.' },
+          { text: 'Поле "Посилання" — URL, на який переходить покупець при кліку. Можна залишити порожнім.' },
+          { text: 'Зображення завантажується на Cloudflare R2 і оптимізується до WebP автоматично.' },
+        ]}
+      />
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">Банери</h1>
         <Button onClick={openCreate}><Plus className="h-4 w-4 mr-2" />Додати</Button>

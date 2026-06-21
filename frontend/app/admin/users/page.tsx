@@ -6,6 +6,7 @@ import { User } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import AdminPageHint from '@/components/admin/AdminPageHint';
 import { Pencil, Search } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -47,6 +48,14 @@ export default function AdminUsersPage() {
 
   return (
     <div>
+      <AdminPageHint
+        storageKey="users"
+        tips={[
+          { text: 'Список усіх зареєстрованих покупців з датою реєстрації та кількістю замовлень.' },
+          { text: 'Поле "Знижка" — персональний відсоток знижки. Ввійдіть в редагування, щоб змінити.' },
+          { text: 'Роль ADMIN дає повний доступ до адмін-панелі. Надавайте обережно.' },
+        ]}
+      />
       <div className="mb-6 flex items-center justify-between gap-4">
         <h1 className="text-2xl font-semibold tracking-tight">Клієнти</h1>
         <div className="relative w-64">

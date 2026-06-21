@@ -15,6 +15,7 @@ import {
 import { adminGetAllOrders } from '@/lib/api';
 import { Order, OrderStatus } from '@/types';
 import { formatPrice, ORDER_STATUS_LABELS } from '@/lib/utils';
+import AdminPageHint from '@/components/admin/AdminPageHint';
 
 const STATUSES: Array<'ALL' | OrderStatus> = ['ALL', 'NEW', 'CONFIRMED', 'SHIPPED', 'DELIVERED', 'CANCELLED'];
 
@@ -74,6 +75,15 @@ export default function AdminOrdersPage() {
 
   return (
     <div className="space-y-6">
+      <AdminPageHint
+        storageKey="orders"
+        tips={[
+          { text: 'Фільтруйте замовлення за статусом кнопками вгорі: Нове → Підтверджено → Відправлено → Доставлено.' },
+          { text: 'Клікніть на замовлення, щоб відкрити деталі, змінити статус та ввести ТТН для відстеження.' },
+          { text: 'Скасування замовлення автоматично повертає залишок товарів на склад.' },
+          { text: 'Пошук — за номером замовлення (#123), іменем або email покупця.' },
+        ]}
+      />
       <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-gray-950">Замовлення</h1>

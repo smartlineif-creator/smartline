@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard, Package, Tag, ShoppingCart, Users,
-  Star, Image, Percent, LogOut, LayoutTemplate,
+  Star, Image, Percent, LogOut, LayoutTemplate, HelpCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/auth';
@@ -21,6 +21,7 @@ const NAV = [
   { href: '/admin/banners', label: 'Банери', icon: Image },
   { href: '/admin/reviews', label: 'Відгуки', icon: Star },
   { href: '/admin/homepage', label: 'Головна сторінка', icon: LayoutTemplate },
+  { href: '/admin/help', label: 'Довідка', icon: HelpCircle },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {

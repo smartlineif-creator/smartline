@@ -42,6 +42,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import AdminPageHint from '@/components/admin/AdminPageHint';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -849,6 +850,15 @@ export default function AdminHomepagePage() {
 
   return (
     <div className="space-y-6">
+      <AdminPageHint
+        storageKey="homepage"
+        tips={[
+          { text: 'Перетягніть секції за допомогою іконки ≡, щоб змінити їх порядок на головній сторінці.' },
+          { text: 'Вимикач праворуч від назви секції приховує її з магазину без видалення.' },
+          { text: 'Кнопка "Додати секцію" — вибір типу (хіти, новинки, банери, категорії тощо).' },
+          { text: 'Зміни вступають в силу одразу після збереження.' },
+        ]}
+      />
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
