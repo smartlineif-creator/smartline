@@ -27,7 +27,7 @@ import { User as UserType } from '@/types';
 type DeliveryProvider = 'nova_poshta' | 'pickup';
 type NovaPoshtaMode = 'warehouse' | 'address';
 type DeliveryType = 'nova_poshta_branch' | 'nova_poshta_address' | 'pickup';
-type PaymentMethod = 'online' | 'installments' | 'cod';
+type PaymentMethod = 'online' | 'bank_transfer' | 'cod';
 
 type NovaPoshtaCity = {
   Present?: string;
@@ -58,7 +58,7 @@ const steps = ['Контакти', 'Доставка', 'Оплата', 'Підт
 
 const paymentLabels: Record<PaymentMethod, string> = {
   online: 'Онлайн оплата',
-  installments: 'Оплата частинами',
+  bank_transfer: 'На розрахунковий рахунок',
   cod: 'Накладений платіж',
 };
 
@@ -730,22 +730,15 @@ export default function CheckoutPage() {
                     active={paymentMethod === 'cod'}
                     icon={<Truck className="h-5 w-5" />}
                     title="Накладений платіж"
-                    text="Оплата при отриманні. До суми додається 50 грн."
+                    text="Оплата при отриманні. Без передоплати."
                     onClick={() => setPaymentMethod('cod')}
                   />
                   <OptionButton
-                    active={paymentMethod === 'online'}
-                    icon={<CreditCard className="h-5 w-5" />}
-                    title="Онлайн оплата"
-                    text="Після оформлення перейдете на безпечну оплату."
-                    onClick={() => setPaymentMethod('online')}
-                  />
-                  <OptionButton
-                    active={paymentMethod === 'installments'}
+                    active={paymentMethod === 'bank_transfer'}
                     icon={<Wallet className="h-5 w-5" />}
-                    title="Оплата частинами"
-                    text="Менеджер уточнить доступні умови після замовлення."
-                    onClick={() => setPaymentMethod('installments')}
+                    title="На розрахунковий рахунок"
+                    text="Реквізити надішлемо після підтвердження замовлення."
+                    onClick={() => setPaymentMethod('bank_transfer')}
                   />
                 </div>
                 <NavButtons onBack={() => setStep(2)} onNext={() => setStep(4)} />
@@ -805,9 +798,9 @@ export default function CheckoutPage() {
                 <span style={{ color: 'var(--sl-text-muted)' }}>Оплата</span>
                 <span className="font-semibold" style={{ color: 'var(--sl-text-primary)' }}>{paymentLabels[paymentMethod]}</span>
               </div>
-              {paymentMethod === 'cod' && (
+              {paymentMethod === 'bank_transfer' && (
                 <div className="rounded-xl border px-3 py-2 text-sm" style={{ borderColor: 'color-mix(in srgb, var(--sl-accent) 30%, transparent)', background: 'color-mix(in srgb, var(--sl-accent) 8%, var(--sl-bg-surface))', color: 'var(--sl-text-secondary)' }}>
-                  До суми замовлення буде додано 50 грн за накладений платіж.
+                  Реквізити для оплати надішлемо в SMS або Telegram після підтвердження замовлення.
                 </div>
               )}
             </div>

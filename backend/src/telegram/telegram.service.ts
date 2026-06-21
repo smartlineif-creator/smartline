@@ -35,9 +35,9 @@ export class TelegramService {
 
   async notifyNewOrder(order: any) {
     const PAYMENT_LABELS: Record<string, string> = {
-      cod: 'Накладний платіж',
+      cod: 'Накладний платіж (без передоплати)',
       online: 'Онлайн картою',
-      installments: 'Оплата частинами',
+      bank_transfer: 'На розрахунковий рахунок',
     };
 
     const itemLines = (order.items ?? [])
