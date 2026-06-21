@@ -290,6 +290,7 @@ export default function ProductForm({ mode, productId }: Props) {
   const [categoryId, setCategoryId] = useState('');
   const [isActive, setIsActive] = useState(true);
   const [isFeatured, setIsFeatured] = useState(false);
+  const [badge, setBadge] = useState<string>('');
   const [hasVariants, setHasVariants] = useState(false);
   const [basePrice, setBasePrice] = useState('');
   const [baseCompareAtPrice, setBaseCompareAtPrice] = useState('');
@@ -378,6 +379,7 @@ export default function ProductForm({ mode, productId }: Props) {
     setCategoryId(product.categoryId || '');
     setIsActive(product.isActive);
     setIsFeatured(product.isFeatured);
+    setBadge(product.badge || '');
     setDescription(product.description || '');
     setImages(product.images?.map((image) => image.url) || []);
     setVideoUrl(product.videoUrl || null);
@@ -665,7 +667,8 @@ export default function ProductForm({ mode, productId }: Props) {
         sku: sku.trim() || undefined,
         categoryId,
         isActive,
-        isFeatured,
+        isFeatured: badge === 'ХІТ',
+        badge: badge || null,
         description,
         basePrice: hasVariants ? null : Number(basePrice),
         compareAtPrice: hasVariants || !baseCompareAtPrice.trim() ? null : Number(baseCompareAtPrice),
@@ -792,6 +795,51 @@ export default function ProductForm({ mode, productId }: Props) {
               </div>
             )}
           </div>
+        </div>
+      </section>
+
+      <section className="rounded-lg border bg-white p-6 shadow-sm">
+        <div className="mb-4">
+          <h2 className="text-lg font-semibold">Бейдж</h2>
+          <p className="mt-1 text-sm text-muted-foreground">Відображається на картці товару. Акційний % замінює бейдж автоматично.</p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {['', 'ХІТ', 'НОВИНКА', 'Б/В', 'ЕКСКЛЮЗИВ'].map((option) => {
+            const COLORS: Record<string, { bg: string; text: string; border: string }> = {
+              'ХІТ':      { bg: 'bg-orange-50',  text: 'text-orange-600', border: 'border-orange-300' },
+              'НОВИНКА':  { bg: 'bg-blue-50',    text: 'text-blue-600',   border: 'border-blue-300'  },
+              'Б/В':      { bg: 'bg-gray-100',   text: 'text-gray-600',   border: 'border-gray-300'  },
+              'ЕКСКЛЮЗИВ':{ bg: 'bg-purple-50',  text: 'text-purple-600', border: 'border-purple-300'},
+            };
+            const c = COLORS[option];
+            const isSelected = badge === option;
+            return (
+              <button
+                key={option}
+                type="button"
+                onClick={() => setBadge(option)}
+                className={cn(
+                  'rounded-full border px-4 py-1.5 text-sm font-medium transition-all',
+                  option === ''
+                    ? isSelected
+                      ? 'border-gray-400 bg-gray-100 text-gray-700'
+                      : 'border-gray-200 text-gray-400 hover:border-gray-300'
+                    : isSelected
+                      ? cn(c.bg, c.text, c.border, 'ring-2 ring-offset-1', c.border.replace('border-', 'ring-'))
+                      : cn('border-gray-200 text-gray-400 hover:border-gray-300 hover:', c.text),
+                )}
+              >
+                {option === '' ? 'Без бейджу' : option}
+              </button>
+            );
+          })}
+          <input
+            type="text"
+            value={!['', 'ХІТ', 'НОВИНКА', 'Б/В', 'ЕКСКЛЮЗИВ'].includes(badge) ? badge : ''}
+            onChange={(e) => setBadge(e.target.value.toUpperCase())}
+            placeholder="Свій текст..."
+            className="h-9 rounded-full border border-dashed border-gray-300 bg-white px-4 text-sm text-gray-600 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+          />
         </div>
       </section>
 

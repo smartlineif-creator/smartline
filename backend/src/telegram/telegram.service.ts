@@ -34,12 +34,48 @@ export class TelegramService {
   }
 
   async notifyNewOrder(order: any) {
-    const text =
-      `🛒 <b>Нове замовлення #${order.orderNumber}</b>\n` +
-      `👤 ${order.customerName} | ${order.customerPhone}\n` +
-      `💰 ${order.totalAmount} грн\n` +
-      `📦 Товарів: ${order.items?.length || 0}`;
-    await this.sendMessage(text);
+    const PAYMENT_LABELS: Record<string, string> = {
+      cod: 'Накладний платіж',
+      online: 'Онлайн картою',
+      installments: 'Оплата частинами',
+    };
+
+    const itemLines = (order.items ?? [])
+      .map((item: any) => {
+        const variant = item.variantName ? ` (${item.variantName})` : '';
+        return `  • ${item.name}${variant} × ${item.quantity} — ${item.price * item.quantity} грн`;
+      })
+      .join('\n');
+
+    const delivery = order.delivery ?? {};
+    const cityLine = delivery.cityName || delivery.city || '';
+    const branchLine = delivery.warehouseName || delivery.warehouse || delivery.address || '';
+    const deliveryLine = [cityLine, branchLine].filter(Boolean).join(', ');
+
+    const paymentMethod = order.payment?.method || order.payment?.paymentMethod || '';
+    const paymentLine = PAYMENT_LABELS[paymentMethod] || paymentMethod;
+
+    const adminUrl = process.env.FRONTEND_URL
+      ? `${process.env.FRONTEND_URL}/admin/orders/${order.id}`
+      : '';
+
+    const lines = [
+      `🛒 <b>Нове замовлення #${order.orderNumber}</b>`,
+      ``,
+      `👤 <b>${order.customerName}</b>`,
+      `📞 <a href="tel:${order.customerPhone}">${order.customerPhone}</a>`,
+      order.customerEmail ? `📧 ${order.customerEmail}` : null,
+      ``,
+      `📦 <b>Товари:</b>`,
+      itemLines,
+      ``,
+      `💰 Сума: <b>${order.totalAmount} грн</b>`,
+      `💳 Оплата: ${paymentLine}`,
+      deliveryLine ? `🚚 Доставка: ${deliveryLine}` : null,
+      adminUrl ? `\n🔗 <a href="${adminUrl}">Відкрити в адмінці</a>` : null,
+    ].filter((l) => l !== null).join('\n');
+
+    await this.sendMessage(lines);
   }
 
   async notifyOrderStatus(order: any, clientChatId?: string) {

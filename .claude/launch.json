@@ -6,8 +6,7 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev"],
       "cwd": "frontend",
-      "port": 3000,
-      "autoPort": false
+      "port": 3003
     },
     {
       "name": "Backend (NestJS)",

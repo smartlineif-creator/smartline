@@ -151,6 +151,10 @@ export class CreateProductDto {
   @IsOptional()
   isFeatured?: boolean;
 
+  @IsString()
+  @IsOptional()
+  badge?: string | null;
+
   @IsBoolean()
   @IsOptional()
   isActive?: boolean;

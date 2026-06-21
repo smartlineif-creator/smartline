@@ -20,11 +20,11 @@ export default function Footer() {
               <span style={{ color: 'var(--sl-accent)' }}>LINE</span>
             </div>
             <p className="mb-5 text-sm leading-6" style={{ color: 'var(--sl-text-muted)' }}>
-              Інтернет-магазин електроніки з доставкою по всій Україні. Гарантія якості на кожен товар.
+              Магазин перевіреної техніки в Івано-Франківську. Ноутбуки Dell, Lenovo, HP, ASUS з гарантією та доставкою по Україні.
             </p>
             {/* Trust badges */}
             <div className="flex flex-wrap gap-2">
-              {['🔒 Безпечна оплата', '🚚 Доставка 1–2 дні', '✅ Гарантія 2 роки'].map((badge) => (
+              {['🔒 Безпечна оплата', '🚚 Нова Пошта', '✅ Перевірена техніка'].map((badge) => (
                 <span
                   key={badge}
                   className="rounded-full px-3 py-1 text-xs"
@@ -135,16 +135,15 @@ export default function Footer() {
             © {new Date().getFullYear()} SmartLine. Всі права захищені.
           </p>
           <div className="flex items-center gap-4">
-            {['Публічна оферта', 'Конфіденційність'].map((item) => (
-              <Link
-                key={item}
-                href="#"
-                className="sl-hover-accent text-xs"
-                style={{ color: 'var(--sl-text-muted)', fontFamily: 'var(--sl-font-mono)' }}
-              >
-                {item}
-              </Link>
-            ))}
+            <Link href="/terms" className="sl-hover-accent text-xs" style={{ color: 'var(--sl-text-muted)', fontFamily: 'var(--sl-font-mono)' }}>
+              Публічна оферта
+            </Link>
+            <Link href="/privacy" className="sl-hover-accent text-xs" style={{ color: 'var(--sl-text-muted)', fontFamily: 'var(--sl-font-mono)' }}>
+              Конфіденційність
+            </Link>
+            <a href="https://www.instagram.com/smartline_if" target="_blank" rel="noopener noreferrer" className="sl-hover-accent text-xs" style={{ color: 'var(--sl-text-muted)', fontFamily: 'var(--sl-font-mono)' }}>
+              Instagram
+            </a>
           </div>
         </div>
       </div>

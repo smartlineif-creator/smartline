@@ -9,7 +9,7 @@ export const metadata: Metadata = {
     template: "%s — SmartLine",
     default: "SmartLine — інтернет-магазин електроніки",
   },
-  description: "Купуйте смартфони, ноутбуки та аксесуари з доставкою по Україні",
+  description: "SmartLine — магазин перевіреної техніки в Івано-Франківську. Ноутбуки Dell, Lenovo, HP, ASUS з гарантією. Доставка Новою Поштою по всій Україні.",
   icons: {
     icon: [
       { url: '/logo.png', type: 'image/png' },

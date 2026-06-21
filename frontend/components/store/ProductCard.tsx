@@ -235,17 +235,17 @@ export default function ProductCard({ product, selectedVariant }: Props) {
             -{promo.discountPercent}%
           </span>
         )}
-        {product.isFeatured && !promo && (
+        {!promo && product.badge && (
           <span
             className="absolute left-3 top-3 rounded-full px-3 py-1 text-xs font-bold"
             style={{
-              background: 'var(--sl-accent-muted)',
-              color: 'var(--sl-accent)',
-              border: '1px solid var(--sl-accent)',
+              background: product.badge === 'ХІТ' ? 'var(--sl-accent-muted)' : product.badge === 'НОВИНКА' ? 'rgba(59,130,246,0.12)' : product.badge === 'Б/В' ? 'rgba(100,116,139,0.12)' : product.badge === 'ЕКСКЛЮЗИВ' ? 'rgba(147,51,234,0.12)' : 'var(--sl-bg-elevated)',
+              color: product.badge === 'ХІТ' ? 'var(--sl-accent)' : product.badge === 'НОВИНКА' ? '#3b82f6' : product.badge === 'Б/В' ? '#64748b' : product.badge === 'ЕКСКЛЮЗИВ' ? '#9333ea' : 'var(--sl-text-secondary)',
+              border: `1px solid ${product.badge === 'ХІТ' ? 'var(--sl-accent)' : product.badge === 'НОВИНКА' ? '#93c5fd' : product.badge === 'Б/В' ? '#cbd5e1' : product.badge === 'ЕКСКЛЮЗИВ' ? '#d8b4fe' : 'var(--sl-border)'}`,
               fontFamily: 'var(--sl-font-mono)',
             }}
           >
-            ХІТ
+            {product.badge}
           </span>
         )}
 

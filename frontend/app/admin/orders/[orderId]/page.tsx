@@ -36,26 +36,71 @@ function getStatusTone(status: OrderStatus) {
   return 'bg-red-50 text-red-700 ring-red-200';
 }
 
-function normalizeRecord(value: unknown): Array<[string, string]> {
+function normalizeDelivery(value: unknown): Array<[string, string]> {
   if (!value || typeof value !== 'object') return [];
-  return Object.entries(value as Record<string, unknown>)
-    .filter(([, item]) => item !== null && item !== undefined && item !== '')
-    .map(([key, item]) => [key, typeof item === 'object' ? JSON.stringify(item) : String(item)]);
+  const d = value as Record<string, unknown>;
+  const str = (v: unknown) => (v != null && v !== '' ? String(v) : null);
+
+  const PROVIDER_LABELS: Record<string, string> = {
+    nova_poshta: 'Нова Пошта',
+    nova_poshta_branch: 'Відділення Нової Пошти',
+    nova_poshta_courier: "Кур'єр Нової Пошти",
+    self_pickup: 'Самовивіз',
+  };
+  const METHOD_LABELS: Record<string, string> = {
+    nova_poshta_branch: 'Відділення або поштомат',
+    nova_poshta_courier: "Кур'єр до дверей",
+    self_pickup: 'Самовивіз',
+  };
+
+  const rows: Array<[string, string]> = [];
+  const method = str(d.method) || str(d.type);
+  if (method) rows.push(['Спосіб', METHOD_LABELS[method] || method]);
+
+  const city = str(d.cityName) || str(d.city);
+  if (city) rows.push(['Місто', city]);
+
+  const branch = str(d.warehouseName) || str(d.warehouse) || str(d.address);
+  if (branch) rows.push(['Відділення / адреса', branch]);
+
+  const recipient = str(d.recipientName);
+  if (recipient) rows.push(['Одержувач', recipient]);
+
+  const phone = str(d.recipientPhone);
+  if (phone) rows.push(['Телефон', phone]);
+
+  const comment = str(d.comment);
+  if (comment) rows.push(['Коментар', comment]);
+
+  return rows;
 }
 
-function labelFromKey(key: string) {
-  const labels: Record<string, string> = {
-    method: 'Спосіб',
-    city: 'Місто',
-    cityName: 'Місто',
-    warehouse: 'Відділення',
-    warehouseName: 'Відділення',
-    address: 'Адреса',
-    paymentMethod: 'Оплата',
-    provider: 'Сервіс',
-    comment: 'Коментар',
+function normalizePayment(value: unknown): Array<[string, string]> {
+  if (!value || typeof value !== 'object') return [];
+  const d = value as Record<string, unknown>;
+  const str = (v: unknown) => (v != null && v !== '' ? String(v) : null);
+
+  const METHOD_LABELS: Record<string, string> = {
+    cod: 'Накладний платіж',
+    online: 'Онлайн картою',
+    installments: 'Оплата частинами',
+    cash: 'Готівка',
   };
-  return labels[key] || key;
+
+  const rows: Array<[string, string]> = [];
+  const method = str(d.paymentMethod) || str(d.method);
+  if (method) rows.push(['Спосіб', METHOD_LABELS[method] || method]);
+
+  const status = str(d.status);
+  if (status) rows.push(['Статус', status]);
+
+  const amount = str(d.amount);
+  if (amount) rows.push(['Сума', `${amount} грн`]);
+
+  const comment = str(d.comment);
+  if (comment) rows.push(['Коментар', comment]);
+
+  return rows;
 }
 
 export default function AdminOrderDetailPage() {
@@ -87,8 +132,8 @@ export default function AdminOrderDetailPage() {
     queueMicrotask(loadOrder);
   }, [orderId]);
 
-  const deliveryRows = useMemo(() => normalizeRecord(order?.delivery), [order?.delivery]);
-  const paymentRows = useMemo(() => normalizeRecord(order?.payment), [order?.payment]);
+  const deliveryRows = useMemo(() => normalizeDelivery(order?.delivery), [order?.delivery]);
+  const paymentRows = useMemo(() => normalizePayment(order?.payment), [order?.payment]);
   const itemsCount = order?.items?.reduce((sum, item) => sum + item.quantity, 0) || 0;
 
   const handleSave = async () => {
@@ -197,9 +242,9 @@ export default function AdminOrderDetailPage() {
                 <h2 className="font-semibold text-gray-950">Доставка</h2>
               </div>
               <div className="space-y-3">
-                {deliveryRows.length ? deliveryRows.map(([key, value]) => (
-                  <div key={key} className="flex justify-between gap-4 border-b border-gray-100 pb-2 last:border-0">
-                    <span className="text-sm text-gray-500">{labelFromKey(key)}</span>
+                {deliveryRows.length ? deliveryRows.map(([label, value]) => (
+                  <div key={label} className="flex justify-between gap-4 border-b border-gray-100 pb-2 last:border-0">
+                    <span className="text-sm text-gray-500">{label}</span>
                     <span className="max-w-[220px] text-right text-sm font-medium text-gray-900">{value}</span>
                   </div>
                 )) : <p className="text-sm text-gray-500">Дані доставки не вказані</p>}
@@ -212,9 +257,9 @@ export default function AdminOrderDetailPage() {
                 <h2 className="font-semibold text-gray-950">Оплата</h2>
               </div>
               <div className="space-y-3">
-                {paymentRows.length ? paymentRows.map(([key, value]) => (
-                  <div key={key} className="flex justify-between gap-4 border-b border-gray-100 pb-2 last:border-0">
-                    <span className="text-sm text-gray-500">{labelFromKey(key)}</span>
+                {paymentRows.length ? paymentRows.map(([label, value]) => (
+                  <div key={label} className="flex justify-between gap-4 border-b border-gray-100 pb-2 last:border-0">
+                    <span className="text-sm text-gray-500">{label}</span>
                     <span className="max-w-[220px] text-right text-sm font-medium text-gray-900">{value}</span>
                   </div>
                 )) : <p className="text-sm text-gray-500">Дані оплати не вказані</p>}

@@ -129,6 +129,7 @@ export interface Product {
   stock?: number;
   videoUrl?: string | null;
   isFeatured: boolean;
+  badge?: string | null;
   isActive: boolean;
   categoryId: string;
   category?: Category;

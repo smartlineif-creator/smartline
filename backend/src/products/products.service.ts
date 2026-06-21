@@ -210,9 +210,15 @@ export class ProductsService {
       : [];
     const attrTemplateNames = new Set(inheritedTemplates.map((t) => t.name));
 
-    // Split filters: variant-based vs attribute-based
-    const variantOptionEntries = optionEntries.filter(([name]) => !attrTemplateNames.has(name));
-    const attributeOptionEntries = optionEntries.filter(([name]) => attrTemplateNames.has(name));
+    // Split filters: badge, variant-based, attribute-based
+    const BADGE_GROUP = 'Бейдж';
+    const badgeValues = parsedOptions[BADGE_GROUP] ?? [];
+    const variantOptionEntries = optionEntries.filter(([name]) => name !== BADGE_GROUP && !attrTemplateNames.has(name));
+    const attributeOptionEntries = optionEntries.filter(([name]) => name !== BADGE_GROUP && attrTemplateNames.has(name));
+
+    if (badgeValues.length > 0) {
+      where.badge = { in: badgeValues };
+    }
 
     if (variantOptionEntries.length > 0) {
       where.variants = {
@@ -436,6 +442,24 @@ export class ProductsService {
           }
         }
       }
+    }
+
+    // Badge facet — prepend so it appears first in filters
+    const badgeRows = await this.prisma.product.groupBy({
+      by: ['badge'],
+      where: { ...baseProductWhere, badge: { not: null } },
+      _count: { badge: true },
+    });
+
+    if (badgeRows.length > 0) {
+      const badgeFilter = {
+        groupName: 'Бейдж',
+        values: badgeRows
+          .filter((r) => r.badge)
+          .map((r) => ({ value: r.badge as string, count: r._count.badge }))
+          .sort((a, b) => b.count - a.count),
+      };
+      variantFilters.unshift(badgeFilter);
     }
 
     return variantFilters;

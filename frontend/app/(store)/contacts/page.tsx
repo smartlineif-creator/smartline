@@ -18,7 +18,7 @@ export default function ContactsPage() {
     }
     setSending(true);
     try {
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/contact`, {
+      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/contact`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, phone, message }),

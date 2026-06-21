@@ -121,6 +121,7 @@ model Product {
   stock                 Int                    @default(0)
   videoUrl              String?
   isFeatured            Boolean                @default(false)
+  badge                 String?
   isActive              Boolean                @default(true)
   categoryId            String
   category              Category               @relation(fields: [categoryId], references: [id])
