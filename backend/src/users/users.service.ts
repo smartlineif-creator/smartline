@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { IsOptional, IsString, IsInt, Min, Max } from 'class-validator';
+import { IsOptional, IsString, IsInt, Min, Max, IsEnum } from 'class-validator';
+import { Role } from '@prisma/client';
 
 export class UpdateUserDto {
   @IsString()
@@ -21,9 +22,9 @@ export class UpdateUserDto {
   @IsOptional()
   adminNote?: string;
 
-  @IsString()
+  @IsEnum(Role)
   @IsOptional()
-  role?: string;
+  role?: Role;
 }
 
 @Injectable()
