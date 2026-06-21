@@ -49,6 +49,7 @@ interface OptionValueEntry {
 interface OptionGroupEntry {
   id: string;
   name: string;
+  unit: string;
   values: OptionValueEntry[];
 }
 
@@ -100,6 +101,7 @@ function createOptionGroup(): OptionGroupEntry {
   return {
     id: createEntryId(),
     name: '',
+    unit: '',
     values: [{ id: createEntryId(), value: '' }],
   };
 }
@@ -113,6 +115,7 @@ function normalizeLegacyVariants(variants: Variant[]): { groups: OptionGroupEntr
   const groups = [{
     id: fallbackGroupId,
     name: 'Варіант',
+    unit: '',
     values: variants.map((variant) => ({ id: createEntryId(), value: variant.name })),
   }];
 
@@ -146,6 +149,7 @@ function buildConfiguredState(
     return {
       id: localId,
       name: group.name,
+      unit: '',
       values: group.values.map((value) => ({
         id: createEntryId(),
         value: value.value,
@@ -451,10 +455,18 @@ export default function ProductForm({ mode, productId }: Props) {
     });
   };
 
+  const [groupDropdownOpenIdx, setGroupDropdownOpenIdx] = useState<number | null>(null);
+
   const addOptionGroup = () => updateOptionConfiguration((items) => [...items, createOptionGroup()]);
   const removeOptionGroup = (groupId: string) => updateOptionConfiguration((items) => items.filter((group) => group.id !== groupId));
-  const updateOptionGroup = (groupId: string, field: 'name', value: string) => {
+  const updateOptionGroup = (groupId: string, field: 'name' | 'unit', value: string) => {
     updateOptionConfiguration((items) => items.map((group) => (group.id === groupId ? { ...group, [field]: value } : group)));
+  };
+  const handleSelectGroupTemplate = (index: number, tmpl: { name: string; unit?: string | null }) => {
+    updateOptionConfiguration((items) =>
+      items.map((item, i) => i === index ? { ...item, name: tmpl.name, unit: tmpl.unit || '' } : item)
+    );
+    setGroupDropdownOpenIdx(null);
   };
   const addOptionValue = (groupId: string) => {
     updateOptionConfiguration((items) => items.map((group) => (
@@ -848,27 +860,103 @@ export default function ProductForm({ mode, productId }: Props) {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {optionGroups.map((group, groupIndex) => (
+                  {optionGroups.map((group, groupIndex) => {
+                    const grpTmpl = getTemplate(group.name);
+                    const isGrpTemplate = !!grpTmpl;
+                    const isGrpOpen = groupDropdownOpenIdx === groupIndex;
+
+                    return (
                     <div key={group.id} className="rounded-lg border border-gray-100 bg-gray-50 p-4">
-                      <div className="mb-3 flex items-start justify-between gap-3">
-                        <div className="flex-1">
-                          <Label>Назва групи</Label>
-                          <Input
-                            value={group.name}
-                            onChange={(e) => updateOptionGroup(group.id, 'name', e.target.value)}
-                            className="mt-2 h-11"
-                            placeholder={groupIndex === 0 ? "Наприклад, Оперативна пам'ять" : 'Назва групи'}
-                            list="option-group-name-suggestions"
-                          />
-                          <datalist id="option-group-name-suggestions">
-                            {optionGroupNameSuggestions.map((n) => <option key={n} value={n} />)}
-                          </datalist>
+                      {/* Group header row: name + unit + delete */}
+                      <div
+                        className="mb-3 grid gap-2 md:grid-cols-[1fr_120px_40px]"
+                        onBlur={(e) => {
+                          if (!e.currentTarget.contains(e.relatedTarget as Node)) setGroupDropdownOpenIdx(null);
+                        }}
+                      >
+                        {/* Name with template dropdown */}
+                        <div className="relative">
+                          {isGrpTemplate ? (
+                            <button
+                              type="button"
+                              onClick={() => setGroupDropdownOpenIdx(isGrpOpen ? null : groupIndex)}
+                              className="flex h-9 w-full items-center justify-between rounded-lg border border-blue-300 bg-blue-50 px-3 text-sm font-medium text-blue-800 hover:bg-blue-100"
+                            >
+                              <span className="truncate">{group.name}</span>
+                              <ChevronDown className={cn('ml-2 h-4 w-4 shrink-0 transition-transform', isGrpOpen && 'rotate-180')} />
+                            </button>
+                          ) : (
+                            <div className="flex gap-1">
+                              <Input
+                                placeholder={groupIndex === 0 ? "Наприклад, Оперативна пам'ять" : 'Назва групи'}
+                                value={group.name}
+                                onChange={(e) => updateOptionGroup(group.id, 'name', e.target.value)}
+                                className="h-9 flex-1"
+                              />
+                              {categoryTemplates.length > 0 && (
+                                <button
+                                  type="button"
+                                  tabIndex={0}
+                                  onClick={() => setGroupDropdownOpenIdx(isGrpOpen ? null : groupIndex)}
+                                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-gray-200 text-gray-400 hover:border-blue-300 hover:text-blue-600"
+                                >
+                                  <ChevronDown className={cn('h-4 w-4 transition-transform', isGrpOpen && 'rotate-180')} />
+                                </button>
+                              )}
+                            </div>
+                          )}
+
+                          {isGrpOpen && categoryTemplates.length > 0 && (
+                            <div className="absolute z-30 mt-1 w-full rounded-lg border bg-white shadow-xl">
+                              {categoryTemplates.map((t) => (
+                                <button
+                                  key={t.name}
+                                  type="button"
+                                  tabIndex={0}
+                                  onClick={() => handleSelectGroupTemplate(groupIndex, t)}
+                                  className="flex w-full items-center justify-between px-3 py-2 text-sm hover:bg-blue-50"
+                                >
+                                  <span>{t.name}</span>
+                                  {t.unit && <span className="text-xs text-gray-400">{t.unit}</span>}
+                                </button>
+                              ))}
+                              <div className="border-t">
+                                <button
+                                  type="button"
+                                  tabIndex={0}
+                                  onClick={() => {
+                                    updateOptionGroup(group.id, 'name', '');
+                                    updateOptionGroup(group.id, 'unit', '');
+                                    setGroupDropdownOpenIdx(null);
+                                  }}
+                                  className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-500 hover:bg-gray-50"
+                                >
+                                  <Plus className="h-3 w-3" /> Інша група...
+                                </button>
+                              </div>
+                            </div>
+                          )}
                         </div>
+
+                        {/* Unit — locked if from template, editable otherwise */}
+                        {isGrpTemplate && grpTmpl.unit ? (
+                          <div className="flex h-9 select-none items-center rounded-lg border border-gray-200 bg-gray-100 px-3 text-sm text-gray-400">
+                            {grpTmpl.unit}
+                          </div>
+                        ) : (
+                          <Input
+                            placeholder="Одиниця"
+                            value={group.unit}
+                            onChange={(e) => updateOptionGroup(group.id, 'unit', e.target.value)}
+                            className="h-9"
+                          />
+                        )}
+
                         <Button
                           type="button"
                           variant="ghost"
                           size="icon"
-                          className="mt-7 text-red-500"
+                          className="text-red-500"
                           onClick={() => removeOptionGroup(group.id)}
                           aria-label="Видалити групу"
                         >
@@ -876,21 +964,27 @@ export default function ProductForm({ mode, productId }: Props) {
                         </Button>
                       </div>
 
+                      {/* Values */}
                       <div className="space-y-2">
-                        <Label>Значення</Label>
+                        <Label className="text-xs text-muted-foreground">Значення</Label>
                         {group.values.map((value) => (
-                          <div key={value.id} className="flex gap-2">
+                          <div key={value.id} className="flex items-center gap-2">
                             <Input
                               value={value.value}
                               onChange={(e) => updateOptionValue(group.id, value.id, e.target.value)}
-                              placeholder="Наприклад, 16 ГБ"
-                              className="h-11"
+                              placeholder={group.unit ? `Наприклад, 16` : 'Наприклад, 16 ГБ'}
+                              className="h-9 flex-1"
                             />
+                            {(group.unit || (isGrpTemplate && grpTmpl?.unit)) && (
+                              <span className="shrink-0 text-sm text-gray-400 select-none">
+                                {grpTmpl?.unit || group.unit}
+                              </span>
+                            )}
                             <Button
                               type="button"
                               variant="ghost"
                               size="icon"
-                              className="text-red-500"
+                              className="shrink-0 text-red-500"
                               onClick={() => removeOptionValue(group.id, value.id)}
                               aria-label="Видалити значення"
                             >
@@ -904,7 +998,8 @@ export default function ProductForm({ mode, productId }: Props) {
                         </Button>
                       </div>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
