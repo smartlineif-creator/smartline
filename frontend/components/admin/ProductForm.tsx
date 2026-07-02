@@ -1275,10 +1275,10 @@ export default function ProductForm({ mode, productId }: Props) {
         </div>
         <div className="space-y-3">
           {attributes.map((attribute, index) => {
-            const tmpl = getTemplate(attribute.name);
-            const isTemplate = !!tmpl;
-            const isOpen = attrDropdownOpenIdx === index;
             const collides = isVariantGroup(attribute.name);
+            const tmpl = getTemplate(attribute.name);
+            const isTemplate = !!tmpl && !collides;
+            const isOpen = attrDropdownOpenIdx === index;
 
             return (
               <div key={index} className="space-y-1">
@@ -1289,7 +1289,7 @@ export default function ProductForm({ mode, productId }: Props) {
                 </p>
               )}
               <div
-                className={cn('grid gap-2 md:grid-cols-[1fr_1fr_120px_40px]', collides && 'opacity-60')}
+                className="grid gap-2 md:grid-cols-[1fr_1fr_120px_40px]"
                 onBlur={(e) => {
                   if (!e.currentTarget.contains(e.relatedTarget as Node)) {
                     setAttrDropdownOpenIdx(null);
