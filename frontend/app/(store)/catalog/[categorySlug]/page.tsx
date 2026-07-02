@@ -229,7 +229,12 @@ export default async function CatalogPage({ params, searchParams }: Props) {
                     }
 
                     // When option filters are active — show only matching variants
-                    const optionEntries = Object.entries(activeOptions).filter(([, vals]) => vals.length > 0);
+                    const variantGroupNames = new Set(
+                      variants.flatMap((v) => v.selections?.map((s) => s.optionValue.group.name) ?? [])
+                    );
+                    const optionEntries = Object.entries(activeOptions).filter(
+                      ([groupName, vals]) => vals.length > 0 && variantGroupNames.has(groupName),
+                    );
                     const visibleVariants = optionEntries.length > 0
                       ? variants.filter((v) =>
                           optionEntries.every(([groupName, values]) =>
