@@ -402,45 +402,70 @@ export class ProductsService {
 
     if (inheritedTemplates.length === 0) return variantFilters;
 
-    // Attribute-based facets — skip groups already covered by variant filters
+    // Attribute-based facets with exclude-self pattern
     const variantGroupNames = new Set(variantFilters.map((f) => f.groupName.toLowerCase()));
+    const attrTemplateNamesSet = new Set(inheritedTemplates.map((t) => t.name));
+    const BADGE_GROUP = 'Бейдж';
+    const activeAttrEntries = activeEntries.filter(([name]) => attrTemplateNamesSet.has(name));
+    const activeVariantEntries = activeEntries.filter(
+      ([name]) => !attrTemplateNamesSet.has(name) && name !== BADGE_GROUP,
+    );
 
-    const productIds = (
-      await this.prisma.product.findMany({
-        where: baseProductWhere,
-        select: { id: true },
-      })
-    ).map((p) => p.id);
+    const sortedTemplates = [...inheritedTemplates]
+      .filter((t) => !variantGroupNames.has(t.name.toLowerCase()))
+      .sort((a, b) => a.sortOrder - b.sortOrder);
 
-    if (productIds.length > 0) {
-      const templateNames = inheritedTemplates
-        .filter((t) => !variantGroupNames.has(t.name.toLowerCase()))
-        .map((t) => t.name);
+    for (const tmpl of sortedTemplates) {
+      const otherAttrEntries = activeAttrEntries.filter(
+        ([name]) => name.toLowerCase() !== tmpl.name.toLowerCase(),
+      );
 
-      if (templateNames.length > 0) {
-        const attrRows = await this.prisma.attribute.groupBy({
-          by: ['name', 'value'],
-          where: { name: { in: templateNames }, productId: { in: productIds } },
-          _count: { productId: true },
-          orderBy: [{ name: 'asc' }, { value: 'asc' }],
+      const productWhere: Prisma.ProductWhereInput = {
+        ...baseProductWhere,
+        ...(otherAttrEntries.length > 0
+          ? {
+              AND: otherAttrEntries.map(([name, values]) => ({
+                attributes: { some: { name, value: { in: values } } },
+              })) as Prisma.ProductWhereInput[],
+            }
+          : {}),
+        ...(activeVariantEntries.length > 0
+          ? {
+              variants: {
+                some: {
+                  isActive: true,
+                  price: { gt: 0 },
+                  AND: activeVariantEntries.map(([groupName, values]) => ({
+                    selections: {
+                      some: {
+                        optionValue: { value: { in: values }, group: { name: groupName } },
+                      },
+                    },
+                  })),
+                },
+              },
+            }
+          : {}),
+      };
+
+      const matchingProductIds = await this.prisma.product
+        .findMany({ where: productWhere, select: { id: true } })
+        .then((r) => r.map((p) => p.id));
+
+      if (matchingProductIds.length === 0) continue;
+
+      const attrRows = await this.prisma.attribute.groupBy({
+        by: ['value'],
+        where: { name: tmpl.name, productId: { in: matchingProductIds } },
+        _count: { productId: true },
+        orderBy: [{ value: 'asc' }],
+      });
+
+      if (attrRows.length > 0) {
+        variantFilters.push({
+          groupName: tmpl.name,
+          values: attrRows.map((r) => ({ value: r.value, count: r._count.productId })),
         });
-
-        const attrMap = new Map<string, { value: string; count: number }[]>();
-        for (const row of attrRows) {
-          if (!attrMap.has(row.name)) attrMap.set(row.name, []);
-          attrMap.get(row.name)!.push({ value: row.value, count: row._count.productId });
-        }
-
-        const sorted = [...inheritedTemplates]
-          .filter((t) => !variantGroupNames.has(t.name.toLowerCase()))
-          .sort((a, b) => a.sortOrder - b.sortOrder);
-
-        for (const tmpl of sorted) {
-          const values = attrMap.get(tmpl.name);
-          if (values && values.length > 0) {
-            variantFilters.push({ groupName: tmpl.name, values });
-          }
-        }
       }
     }
 
