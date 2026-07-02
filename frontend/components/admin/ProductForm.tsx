@@ -307,8 +307,38 @@ export default function ProductForm({ mode, productId }: Props) {
 
   const categoryOptions = useMemo(() => flattenCategories(categories), [categories]);
   const selectedCategory = categoryOptions.find((option) => option.category.id === categoryId)?.category;
-  const categoryTemplates = selectedCategory?.attributeTemplates ?? [];
-  const optionGroupTemplates = selectedCategory?.optionGroupTemplates ?? [];
+  const categoryTemplates = useMemo(() => {
+    if (!selectedCategory) return [];
+    const templates = [...(selectedCategory.attributeTemplates ?? [])];
+    let parentId = selectedCategory.parentId;
+    while (parentId) {
+      const parent = categoryOptions.find((o) => o.category.id === parentId)?.category;
+      if (!parent) break;
+      for (const t of (parent.attributeTemplates ?? [])) {
+        if (!templates.some((existing) => existing.name.toLowerCase() === t.name.toLowerCase())) {
+          templates.push(t);
+        }
+      }
+      parentId = parent.parentId;
+    }
+    return templates;
+  }, [selectedCategory, categoryOptions]);
+  const optionGroupTemplates = useMemo(() => {
+    if (!selectedCategory) return [];
+    const templates = [...(selectedCategory.optionGroupTemplates ?? [])];
+    let parentId = selectedCategory.parentId;
+    while (parentId) {
+      const parent = categoryOptions.find((o) => o.category.id === parentId)?.category;
+      if (!parent) break;
+      for (const t of (parent.optionGroupTemplates ?? [])) {
+        if (!templates.some((existing) => existing.name.toLowerCase() === t.name.toLowerCase())) {
+          templates.push(t);
+        }
+      }
+      parentId = parent.parentId;
+    }
+    return templates;
+  }, [selectedCategory, categoryOptions]);
   const getTemplate = (name: string) =>
     categoryTemplates.find((t) => t.name.toLowerCase() === name.toLowerCase());
   const getGroupTemplate = (name: string) =>
