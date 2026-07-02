@@ -1330,7 +1330,7 @@ export default function ProductForm({ mode, productId }: Props) {
 
                   {isOpen && categoryTemplates.length > 0 && (
                     <div className="absolute z-30 mt-1 w-full rounded-lg border bg-white shadow-xl">
-                      {categoryTemplates.map((t) => (
+                      {categoryTemplates.filter((t) => !isVariantGroup(t.name)).map((t) => (
                         <button
                           key={t.name}
                           type="button"
