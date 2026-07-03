@@ -2,6 +2,10 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   images: {
+    // Uploaded photos are already resized WebP served by the Cloudflare R2
+    // CDN. Next's optimizer adds no benefit and times out on Render's free
+    // tier for large originals (blank main gallery image). Serve as-is.
+    unoptimized: true,
     remotePatterns: [
       { protocol: 'https', hostname: 'via.placeholder.com' },
       { protocol: 'https', hostname: 'placehold.co' },
