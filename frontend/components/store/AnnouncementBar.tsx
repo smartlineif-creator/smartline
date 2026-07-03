@@ -24,7 +24,7 @@ export default function AnnouncementBar() {
         {' · '}
         <span style={{ color: 'var(--sl-accent)' }}>Рейтинг 4.9★</span>
         {' · '}
-        Гарантія 2 роки
+        Гарантія
       </span>
       <button
         onClick={() => setDismissed(true)}

@@ -34,7 +34,7 @@ export default async function Footer() {
             </p>
             {/* Trust badges */}
             <div className="flex flex-wrap gap-2">
-              {['🔒 Безпечна оплата', '🚚 Нова Пошта', '✅ Перевірена техніка'].map((badge) => (
+              {['🔒 Безпечна оплата', '🚚 Доставка 1–2 дні', '✅ Гарантія'].map((badge) => (
                 <span
                   key={badge}
                   className="rounded-full px-3 py-1 text-xs"

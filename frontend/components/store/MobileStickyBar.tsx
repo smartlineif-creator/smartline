@@ -7,7 +7,7 @@ export default function MobileStickyBar() {
       <span style={{ color: 'var(--sl-border-hover)' }}>·</span>
       <span>🚚 Доставка 1–2 дні</span>
       <span style={{ color: 'var(--sl-border-hover)' }}>·</span>
-      <span>✅ Гарантія 2 роки</span>
+      <span>✅ Гарантія</span>
     </div>
   );
 }

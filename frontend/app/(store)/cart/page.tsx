@@ -392,7 +392,7 @@ export default function CartPage() {
                 {[
                   { icon: '🔒', text: 'Безпечна оплата' },
                   { icon: '🚚', text: 'Доставка 1–2 дні' },
-                  { icon: '✅', text: 'Гарантія 2 роки' },
+                  { icon: '✅', text: 'Гарантія' },
                 ].map(({ icon, text }) => (
                   <div key={text} className="flex items-center gap-2 text-xs" style={{ color: 'var(--sl-text-muted)', fontFamily: 'var(--sl-font-mono)' }}>
                     <span>{icon}</span>

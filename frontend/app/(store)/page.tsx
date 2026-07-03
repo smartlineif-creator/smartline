@@ -157,7 +157,7 @@ function HeroSpotlight({ product, title, subtitle }: { product: Product; title?:
 
           {/* Trust mini-row */}
           <div className="flex flex-wrap gap-3 pt-2">
-            {['🔒 Безпечна оплата', '🚚 1–2 дні', '✅ Гарантія 2 роки'].map((item) => (
+            {['🔒 Безпечна оплата', '🚚 Доставка 1–2 дні', '✅ Гарантія'].map((item) => (
               <span
                 key={item}
                 className="rounded-full px-3 py-1 text-xs"

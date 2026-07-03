@@ -71,8 +71,8 @@ const SECTION_TYPES: SectionType[] = ['hero', 'marquee', 'banners', 'categories'
 const DEFAULT_MARQUEE_ITEMS = [
   '★ 4.9 з 5 — рейтинг покупців',
   '2 400+ замовлень щомісяця',
-  'Доставка від 1 дня',
-  'Гарантія 2 роки',
+  'Доставка 1–2 дні',
+  'Гарантія',
   'Безпечна оплата',
 ];
 
