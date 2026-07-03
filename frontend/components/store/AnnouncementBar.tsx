@@ -19,7 +19,7 @@ export default function AnnouncementBar() {
       <span style={{ color: 'var(--sl-text-secondary)' }}>
         🔥{' '}
         <span style={{ color: 'var(--sl-text-primary)' }}>
-          Безкоштовна доставка від 5&nbsp;000&nbsp;грн
+          Доставка 1&ndash;2 дні
         </span>
         {' · '}
         <span style={{ color: 'var(--sl-accent)' }}>Рейтинг 4.9★</span>
