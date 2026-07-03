@@ -7,6 +7,7 @@ import Link from 'next/link';
 import {
   adminCreateProduct,
   adminGetAttributeValues,
+  adminGetBadges,
   adminGetOptionGroupNames,
   adminGetProduct,
   adminGetProductOptions,
@@ -27,6 +28,15 @@ import {
   ChevronDown, ChevronLeft, ChevronRight, Loader2, Plus, Trash2, Upload, X,
 } from 'lucide-react';
 import { toast } from 'sonner';
+
+const BADGE_OPTIONS = ['ХІТ', 'НОВИНКА', 'Б/В', 'ЕКСКЛЮЗИВ'];
+const BADGE_COLORS: Record<string, { bg: string; text: string; border: string }> = {
+  'ХІТ':       { bg: 'bg-orange-50',  text: 'text-orange-600', border: 'border-orange-300' },
+  'НОВИНКА':   { bg: 'bg-blue-50',    text: 'text-blue-600',   border: 'border-blue-300'   },
+  'Б/В':       { bg: 'bg-gray-100',   text: 'text-gray-600',   border: 'border-gray-300'   },
+  'ЕКСКЛЮЗИВ': { bg: 'bg-purple-50',  text: 'text-purple-600', border: 'border-purple-300' },
+  _custom:     { bg: 'bg-emerald-50', text: 'text-emerald-600', border: 'border-emerald-300' },
+};
 
 type Mode = 'create' | 'edit';
 
@@ -291,6 +301,8 @@ export default function ProductForm({ mode, productId }: Props) {
   const [isActive, setIsActive] = useState(true);
   const [isFeatured, setIsFeatured] = useState(false);
   const [badge, setBadge] = useState<string>('');
+  const [customBadges, setCustomBadges] = useState<string[]>([]);
+  const [newBadge, setNewBadge] = useState('');
   const [hasVariants, setHasVariants] = useState(false);
   const [basePrice, setBasePrice] = useState('');
   const [baseCompareAtPrice, setBaseCompareAtPrice] = useState('');
@@ -371,6 +383,7 @@ export default function ProductForm({ mode, productId }: Props) {
   useEffect(() => {
     getCategories().then(setCategories).catch(() => {});
     adminGetProductOptions({ limit: 250 }).then((items) => setProductOptions(items)).catch(() => {});
+    adminGetBadges().then(setCustomBadges).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -574,6 +587,16 @@ export default function ProductForm({ mode, productId }: Props) {
         .then((vals) => setAttrValueSuggestions((prev) => ({ ...prev, [index]: vals })))
         .catch(() => {});
     }
+  };
+
+  const addCustomBadge = () => {
+    const value = newBadge.trim();
+    if (!value) return;
+    if (!BADGE_OPTIONS.includes(value) && !customBadges.includes(value)) {
+      setCustomBadges((prev) => [...prev, value]);
+    }
+    setBadge(value);
+    setNewBadge('');
   };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -833,19 +856,13 @@ export default function ProductForm({ mode, productId }: Props) {
           <h2 className="text-lg font-semibold">Бейдж</h2>
           <p className="mt-1 text-sm text-muted-foreground">Відображається на картці товару. Акційний % замінює бейдж автоматично.</p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          {['', 'ХІТ', 'НОВИНКА', 'Б/В', 'ЕКСКЛЮЗИВ'].map((option) => {
-            const COLORS: Record<string, { bg: string; text: string; border: string }> = {
-              'ХІТ':      { bg: 'bg-orange-50',  text: 'text-orange-600', border: 'border-orange-300' },
-              'НОВИНКА':  { bg: 'bg-blue-50',    text: 'text-blue-600',   border: 'border-blue-300'  },
-              'Б/В':      { bg: 'bg-gray-100',   text: 'text-gray-600',   border: 'border-gray-300'  },
-              'ЕКСКЛЮЗИВ':{ bg: 'bg-purple-50',  text: 'text-purple-600', border: 'border-purple-300'},
-            };
-            const c = COLORS[option];
+        <div className="flex flex-wrap items-center gap-2">
+          {['', ...BADGE_OPTIONS, ...customBadges.filter((b) => !BADGE_OPTIONS.includes(b)), ...(badge && !BADGE_OPTIONS.includes(badge) && !customBadges.includes(badge) ? [badge] : [])].map((option) => {
+            const c = BADGE_COLORS[option] ?? BADGE_COLORS._custom;
             const isSelected = badge === option;
             return (
               <button
-                key={option}
+                key={option || '__none'}
                 type="button"
                 onClick={() => setBadge(option)}
                 className={cn(
@@ -863,13 +880,21 @@ export default function ProductForm({ mode, productId }: Props) {
               </button>
             );
           })}
-          <input
-            type="text"
-            value={!['', 'ХІТ', 'НОВИНКА', 'Б/В', 'ЕКСКЛЮЗИВ'].includes(badge) ? badge : ''}
-            onChange={(e) => setBadge(e.target.value.toUpperCase())}
-            placeholder="Свій текст..."
-            className="h-9 rounded-full border border-dashed border-gray-300 bg-white px-4 text-sm text-gray-600 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
-          />
+          <div className="flex items-center gap-1">
+            <input
+              type="text"
+              value={newBadge}
+              onChange={(e) => setNewBadge(e.target.value.toUpperCase())}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') { e.preventDefault(); addCustomBadge(); }
+              }}
+              placeholder="Свій текст..."
+              className="h-9 rounded-full border border-dashed border-gray-300 bg-white px-4 text-sm text-gray-600 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+            />
+            <Button type="button" variant="outline" size="sm" className="h-9 rounded-full" onClick={addCustomBadge} disabled={!newBadge.trim()}>
+              <Plus className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       </section>
 

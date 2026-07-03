@@ -86,6 +86,13 @@ export class ProductsController {
     return this.productsService.getAttributeValues(name, categoryId);
   }
 
+  @Get('badges')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
+  getBadges() {
+    return this.productsService.getBadges();
+  }
+
   @Get(':slug')
   findBySlug(@Param('slug') slug: string) {
     return this.productsService.findBySlug(slug);

@@ -675,6 +675,17 @@ export class ProductsService {
     return rows.map((r) => r.value);
   }
 
+  async getBadges(): Promise<string[]> {
+    const rows = await this.prisma.product.groupBy({
+      by: ['badge'],
+      where: { badge: { not: null } },
+      _count: { badge: true },
+      orderBy: { _count: { badge: 'desc' } },
+      take: 50,
+    });
+    return rows.map((r) => r.badge).filter((b): b is string => !!b);
+  }
+
   async create(dto: CreateProductDto) {
     const slug = dto.slug || this.toSlug(dto.name);
     const {

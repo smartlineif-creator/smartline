@@ -373,6 +373,10 @@ export async function adminGetAttributeValues(name: string, categoryId?: string)
   return apiFetch<string[]>(`/products/attribute-values?${params}`);
 }
 
+export async function adminGetBadges(): Promise<string[]> {
+  return apiFetch<string[]>('/products/badges');
+}
+
 export async function adminGetProductOptions(params: { q?: string; limit?: number } = {}) {
   const query = new URLSearchParams(
     Object.entries(params)
