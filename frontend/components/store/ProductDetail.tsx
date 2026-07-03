@@ -652,7 +652,7 @@ export default function ProductDetail({ product }: Props) {
 
                 {/* Thumbnail strip */}
                 {mediaItems.length > 1 && (
-                  <div className="flex gap-2 overflow-x-auto lg:order-2 lg:h-full lg:flex-col lg:overflow-y-auto lg:overflow-x-visible lg:pr-1">
+                  <div className="flex gap-2 overflow-x-auto lg:order-2 lg:h-full lg:flex-col lg:justify-between lg:overflow-y-auto lg:overflow-x-visible lg:pr-1">
                     {mediaItems.map((item, thumbIdx) => {
                       const isSelected = item.type === 'image'
                         ? selectedMedia.type === 'image' && selectedMedia.index === item.index
