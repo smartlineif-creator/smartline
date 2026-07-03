@@ -576,15 +576,6 @@ export default function ProductForm({ mode, productId }: Props) {
     }
   };
 
-  const convertHeicIfNeeded = async (file: File): Promise<File> => {
-    const isHeic = /\.(heic|heif)$/i.test(file.name) || /image\/heic|image\/heif/i.test(file.type);
-    if (!isHeic) return file;
-    const heic2any = (await import('heic2any')).default;
-    const blob = (await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.9 })) as Blob;
-    const name = file.name.replace(/\.(heic|heif)$/i, '.jpg');
-    return new File([blob], name, { type: 'image/jpeg' });
-  };
-
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (!files.length) return;
@@ -595,8 +586,7 @@ export default function ProductForm({ mode, productId }: Props) {
 
     setUploading(true);
     try {
-      const prepared = await Promise.all(files.map((file) => convertHeicIfNeeded(file)));
-      const urls = await Promise.all(prepared.map((file) => uploadImage(file)));
+      const urls = await Promise.all(files.map((file) => uploadImage(file)));
       setImages((current) => [...current, ...urls]);
     } catch {
       toast.error('Помилка завантаження фото');

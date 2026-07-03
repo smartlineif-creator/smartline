@@ -271,9 +271,21 @@ export async function searchStreets(cityRef: string, query: string) {
 
 // ─── Upload ──────────────────────────────────────────────────────────────────
 
+async function convertHeicIfNeeded(file: File): Promise<File> {
+  const isHeic =
+    /\.(heic|heif)$/i.test(file.name) || /image\/(heic|heif)/i.test(file.type);
+  if (!isHeic || typeof window === 'undefined') return file;
+  const heic2any = (await import('heic2any')).default;
+  const converted = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.9 });
+  const blob = Array.isArray(converted) ? converted[0] : converted;
+  const name = file.name.replace(/\.(heic|heif)$/i, '.jpg');
+  return new File([blob], name, { type: 'image/jpeg' });
+}
+
 export async function uploadImage(file: File): Promise<string> {
+  const prepared = await convertHeicIfNeeded(file);
   const formData = new FormData();
-  formData.append('file', file);
+  formData.append('file', prepared);
   const data = await apiFetch<{ url: string }>('/upload/image', {
     method: 'POST',
     body: formData,
