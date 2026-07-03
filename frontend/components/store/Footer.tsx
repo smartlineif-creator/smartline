@@ -1,6 +1,16 @@
 import Link from 'next/link';
+import { getCategories } from '@/lib/api';
 
-export default function Footer() {
+export default async function Footer() {
+  const categories = await getCategories().catch(() => []);
+  const catalogLinks = [
+    ...categories
+      .filter((c) => !c.parentId)
+      .slice(0, 5)
+      .map((c) => ({ href: `/catalog/${c.slug}`, label: c.name })),
+    { href: '/catalog', label: 'Усі категорії' },
+  ];
+
   return (
     <footer
       style={{
@@ -50,12 +60,7 @@ export default function Footer() {
               Каталог
             </h4>
             <ul className="space-y-3 text-sm">
-              {[
-                { href: '/catalog/smartfony', label: 'Смартфони' },
-                { href: '/catalog/noutbuky', label: 'Ноутбуки' },
-                { href: '/catalog/aksesuary', label: 'Аксесуари' },
-                { href: '/catalog', label: 'Усі категорії' },
-              ].map((item) => (
+              {catalogLinks.map((item) => (
                 <li key={item.href}>
                   <Link
                     href={item.href}
