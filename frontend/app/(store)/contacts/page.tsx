@@ -110,7 +110,7 @@ export default function ContactsPage() {
             {/* Google Maps embed */}
             <div className="overflow-hidden rounded-2xl" style={{ border: '1px solid var(--sl-border)' }}>
               <iframe
-                src="https://maps.google.com/maps?q=%D0%A2%D0%A6+%D0%A9%D0%B5%D0%B4%D1%80%D0%B8%D0%BA+%D0%86%D0%B2%D0%B0%D0%BD%D0%BE-%D0%A4%D1%80%D0%B0%D0%BD%D0%BA%D1%96%D0%B2%D1%81%D1%8C%D0%BA&output=embed&hl=uk"
+                src="https://maps.google.com/maps?q=48.9437052,24.698141&z=17&output=embed&hl=uk"
                 width="100%"
                 height="220"
                 style={{ border: 0 }}
