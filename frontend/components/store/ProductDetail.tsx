@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -1392,7 +1393,7 @@ export default function ProductDetail({ product }: Props) {
       </div>
 
       {/* ─── Lightbox ────────────────────────────────────────────────────────── */}
-      {lightbox && (
+      {lightbox && typeof document !== 'undefined' && createPortal(
         <div
           className="fixed inset-0 z-[9999] flex items-center justify-center"
           style={{ background: 'rgba(0,0,0,0.92)', backdropFilter: 'blur(12px)' }}
@@ -1502,7 +1503,8 @@ export default function ProductDetail({ product }: Props) {
               />
             </div>
           )}
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );

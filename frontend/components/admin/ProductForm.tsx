@@ -635,8 +635,8 @@ export default function ProductForm({ mode, productId }: Props) {
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (!files.length) return;
-    if (images.length + files.length > 10) {
-      toast.error('Максимум 10 фото');
+    if (images.length + files.length > 15) {
+      toast.error('Максимум 15 фото');
       return;
     }
 
