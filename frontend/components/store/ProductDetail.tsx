@@ -330,6 +330,27 @@ export default function ProductDetail({ product }: Props) {
   const [selectedMedia, setSelectedMedia] = useState<{ type: 'image'; index: number } | { type: 'video' }>({ type: 'image', index: 0 });
   const [mobileCarouselIndex, setMobileCarouselIndex] = useState(0);
   const mobileCarouselRef = useRef<HTMLDivElement>(null);
+  const mainViewerRef = useRef<HTMLDivElement>(null);
+  const [mainViewerHeight, setMainViewerHeight] = useState<number | null>(null);
+  const [isDesktopColumn, setIsDesktopColumn] = useState(false);
+
+  useEffect(() => {
+    const mql = window.matchMedia('(min-width: 1024px)');
+    const update = () => setIsDesktopColumn(mql.matches);
+    update();
+    mql.addEventListener('change', update);
+    return () => mql.removeEventListener('change', update);
+  }, []);
+
+  useEffect(() => {
+    const el = mainViewerRef.current;
+    if (!el) return;
+    const update = () => setMainViewerHeight(el.getBoundingClientRect().height);
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
   const [showAllAttrs, setShowAllAttrs] = useState(false);
   const [reviewText, setReviewText] = useState('');
   const [reviewRating, setReviewRating] = useState(5);
@@ -532,6 +553,7 @@ export default function ProductDetail({ product }: Props) {
                 {/* Main viewer */}
                 <div className="lg:order-1">
                   <div
+                    ref={mainViewerRef}
                     className="group/gallery relative aspect-[4/3] overflow-hidden rounded-2xl"
                     style={{ background: 'var(--sl-bg-elevated)', border: '1px solid var(--sl-border)' }}
                   >
@@ -652,7 +674,10 @@ export default function ProductDetail({ product }: Props) {
 
                 {/* Thumbnail strip */}
                 {mediaItems.length > 1 && (
-                  <div className="sl-thumb-scroll flex gap-2 overflow-x-auto lg:order-2 lg:h-full lg:flex-col lg:justify-between lg:overflow-y-auto lg:overflow-x-visible lg:pr-1">
+                  <div
+                    className="sl-thumb-scroll flex gap-2 overflow-x-auto lg:order-2 lg:flex-col lg:justify-between lg:overflow-y-auto lg:overflow-x-visible lg:pr-1"
+                    style={isDesktopColumn && mainViewerHeight ? { height: mainViewerHeight } : undefined}
+                  >
                     {mediaItems.map((item, thumbIdx) => {
                       const isSelected = item.type === 'image'
                         ? selectedMedia.type === 'image' && selectedMedia.index === item.index
