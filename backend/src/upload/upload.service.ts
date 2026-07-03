@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import * as sharp from 'sharp';
+import * as heicConvert from 'heic-convert';
 import { randomUUID } from 'crypto';
 
 @Injectable()
@@ -28,7 +29,14 @@ export class UploadService {
       throw new BadRequestException('File too large (max 5MB)');
     }
 
-    const webp = await sharp(buffer).webp({ quality: 85 }).toBuffer();
+    let source = buffer;
+    if (mimeType === 'image/heic') {
+      source = Buffer.from(
+        await heicConvert({ buffer, format: 'JPEG', quality: 0.9 }),
+      );
+    }
+
+    const webp = await sharp(source).webp({ quality: 85 }).toBuffer();
 
     const key = `products/${randomUUID()}.webp`;
     const bucket = this.config.get<string>('R2_BUCKET');
@@ -109,6 +117,9 @@ export class UploadService {
       png: 'image/png',
       gif: 'image/gif',
       webp: 'image/webp',
+      heic: 'image/heic',
+      heif: 'image/heic',
+      avif: 'image/avif',
     };
     return types[ext || ''] || null;
   }
