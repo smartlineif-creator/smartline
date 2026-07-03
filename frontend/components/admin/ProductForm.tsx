@@ -31,13 +31,6 @@ import {
 import { toast } from 'sonner';
 
 const BADGE_OPTIONS = ['ХІТ', 'НОВИНКА', 'Б/В', 'ЕКСКЛЮЗИВ'];
-const BADGE_COLORS: Record<string, { bg: string; text: string; border: string }> = {
-  'ХІТ':       { bg: 'bg-orange-50',  text: 'text-orange-600', border: 'border-orange-300' },
-  'НОВИНКА':   { bg: 'bg-blue-50',    text: 'text-blue-600',   border: 'border-blue-300'   },
-  'Б/В':       { bg: 'bg-gray-100',   text: 'text-gray-600',   border: 'border-gray-300'   },
-  'ЕКСКЛЮЗИВ': { bg: 'bg-purple-50',  text: 'text-purple-600', border: 'border-purple-300' },
-  _custom:     { bg: 'bg-emerald-50', text: 'text-emerald-600', border: 'border-emerald-300' },
-};
 
 type Mode = 'create' | 'edit';
 
@@ -898,29 +891,27 @@ export default function ProductForm({ mode, productId }: Props) {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {['', ...BADGE_OPTIONS, ...customBadges.filter((b) => !BADGE_OPTIONS.includes(b)), ...(badge && !BADGE_OPTIONS.includes(badge) && !customBadges.includes(badge) ? [badge] : [])].map((option) => {
-            const c = BADGE_COLORS[option] ?? BADGE_COLORS._custom;
             const isSelected = badge === option;
             const isCustom = option !== '' && !BADGE_OPTIONS.includes(option);
+            const chipBase = 'inline-flex h-9 items-center rounded-full border text-sm font-medium transition-all';
+            const chipState = isSelected
+              ? 'border-gray-900 bg-gray-900 text-white'
+              : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:bg-gray-50';
 
             if (isCustom) {
               return (
-                <div
-                  key={option}
-                  className={cn(
-                    'inline-flex items-center gap-1 rounded-full border py-1.5 pl-4 pr-2 text-sm font-medium transition-all',
-                    isSelected
-                      ? cn(c.bg, c.text, c.border, 'ring-2 ring-offset-1', c.border.replace('border-', 'ring-'))
-                      : cn('border-gray-200 text-gray-400 hover:border-gray-300'),
-                  )}
-                >
+                <div key={option} className={cn(chipBase, 'gap-1 pl-4 pr-2', chipState)}>
                   <button type="button" onClick={() => setBadge(option)}>{option}</button>
                   <button
                     type="button"
                     onClick={() => requestDeleteBadge(option)}
                     title="Видалити бейдж"
-                    className="rounded-full p-0.5 opacity-60 transition hover:bg-black/10 hover:opacity-100"
+                    className={cn(
+                      'rounded-full p-0.5 transition',
+                      isSelected ? 'text-white/70 hover:bg-white/20 hover:text-white' : 'text-gray-400 hover:bg-gray-200 hover:text-gray-600',
+                    )}
                   >
-                    <X className="h-3 w-3" />
+                    <X className="h-3.5 w-3.5" />
                   </button>
                 </div>
               );
@@ -931,16 +922,7 @@ export default function ProductForm({ mode, productId }: Props) {
                 key={option || '__none'}
                 type="button"
                 onClick={() => setBadge(option)}
-                className={cn(
-                  'rounded-full border px-4 py-1.5 text-sm font-medium transition-all',
-                  option === ''
-                    ? isSelected
-                      ? 'border-gray-400 bg-gray-100 text-gray-700'
-                      : 'border-gray-200 text-gray-400 hover:border-gray-300'
-                    : isSelected
-                      ? cn(c.bg, c.text, c.border, 'ring-2 ring-offset-1', c.border.replace('border-', 'ring-'))
-                      : cn('border-gray-200 text-gray-400 hover:border-gray-300 hover:', c.text),
-                )}
+                className={cn(chipBase, 'px-4', chipState)}
               >
                 {option === '' ? 'Без бейджу' : option}
               </button>
