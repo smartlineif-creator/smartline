@@ -641,11 +641,19 @@ export default function ProductForm({ mode, productId }: Props) {
     }
 
     setUploading(true);
+    let failed = 0;
     try {
-      const urls = await Promise.all(files.map((file) => uploadImage(file)));
-      setImages((current) => [...current, ...urls]);
-    } catch {
-      toast.error('Помилка завантаження фото');
+      // Upload one at a time — parallel uploads overwhelm the image
+      // processing on the server (memory) and cause 502s on large photos.
+      for (const file of files) {
+        try {
+          const url = await uploadImage(file);
+          setImages((current) => [...current, url]);
+        } catch {
+          failed += 1;
+        }
+      }
+      if (failed > 0) toast.error(`Не вдалося завантажити ${failed} з ${files.length} фото`);
     } finally {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';

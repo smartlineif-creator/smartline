@@ -5,6 +5,9 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import * as sharp from 'sharp';
 import { randomUUID } from 'crypto';
 
+sharp.concurrency(1);
+sharp.cache(false);
+
 @Injectable()
 export class UploadService {
   private s3: S3Client;
@@ -28,7 +31,11 @@ export class UploadService {
       throw new BadRequestException('File too large (max 5MB)');
     }
 
-    const webp = await sharp(buffer).webp({ quality: 85 }).toBuffer();
+    const webp = await sharp(buffer, { limitInputPixels: 50_000_000 })
+      .rotate()
+      .resize(2000, 2000, { fit: 'inside', withoutEnlargement: true })
+      .webp({ quality: 82 })
+      .toBuffer();
 
     const key = `products/${randomUUID()}.webp`;
     const bucket = this.config.get<string>('R2_BUCKET');
