@@ -24,7 +24,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn, toSlug } from '@/lib/utils';
 import {
-  ChevronDown, ChevronLeft, ChevronRight, Plus, Trash2, Upload, X,
+  ChevronDown, ChevronLeft, ChevronRight, Loader2, Plus, Trash2, Upload, X,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -1413,10 +1413,18 @@ export default function ProductForm({ mode, productId }: Props) {
         </div>
         <button
           type="button"
+          disabled={uploading}
           onClick={() => fileInputRef.current?.click()}
-          className="w-full rounded-lg border-2 border-dashed p-8 text-center transition-colors hover:border-blue-400"
+          className={cn(
+            'w-full rounded-lg border-2 border-dashed p-8 text-center transition-colors',
+            uploading ? 'cursor-not-allowed bg-gray-50' : 'hover:border-blue-400',
+          )}
         >
-          <Upload className="mx-auto mb-2 h-8 w-8 text-gray-400" />
+          {uploading ? (
+            <Loader2 className="mx-auto mb-2 h-8 w-8 animate-spin text-blue-500" />
+          ) : (
+            <Upload className="mx-auto mb-2 h-8 w-8 text-gray-400" />
+          )}
           <span className="text-sm text-muted-foreground">
             {uploading ? 'Завантаження...' : 'Натисніть, щоб завантажити фото'}
           </span>
@@ -1469,10 +1477,18 @@ export default function ProductForm({ mode, productId }: Props) {
         ) : (
           <button
             type="button"
+            disabled={uploadingVideo}
             onClick={() => videoInputRef.current?.click()}
-            className="w-full rounded-lg border-2 border-dashed p-8 text-center transition-colors hover:border-blue-400"
+            className={cn(
+              'w-full rounded-lg border-2 border-dashed p-8 text-center transition-colors',
+              uploadingVideo ? 'cursor-not-allowed bg-gray-50' : 'hover:border-blue-400',
+            )}
           >
-            <Upload className="mx-auto mb-2 h-8 w-8 text-gray-400" />
+            {uploadingVideo ? (
+              <Loader2 className="mx-auto mb-2 h-8 w-8 animate-spin text-blue-500" />
+            ) : (
+              <Upload className="mx-auto mb-2 h-8 w-8 text-gray-400" />
+            )}
             <span className="text-sm text-muted-foreground">
               {uploadingVideo ? 'Завантаження відео...' : 'Натисніть, щоб завантажити відео'}
             </span>
