@@ -272,12 +272,11 @@ export async function searchStreets(cityRef: string, query: string) {
 // ─── Upload ──────────────────────────────────────────────────────────────────
 
 async function convertHeicIfNeeded(file: File): Promise<File> {
-  const isHeic =
+  const looksHeic =
     /\.(heic|heif)$/i.test(file.name) || /image\/(heic|heif)/i.test(file.type);
-  if (!isHeic || typeof window === 'undefined') return file;
-  const heic2any = (await import('heic2any')).default;
-  const converted = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.9 });
-  const blob = Array.isArray(converted) ? converted[0] : converted;
+  if (!looksHeic || typeof window === 'undefined') return file;
+  const { heicTo } = await import('heic-to/next');
+  const blob = await heicTo({ blob: file, type: 'image/jpeg', quality: 0.9 });
   const name = file.name.replace(/\.(heic|heif)$/i, '.jpg');
   return new File([blob], name, { type: 'image/jpeg' });
 }
