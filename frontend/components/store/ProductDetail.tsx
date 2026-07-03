@@ -579,6 +579,29 @@ export default function ProductDetail({ product }: Props) {
                             </div>
                           )}
                         </div>
+                        {/* Prev / Next arrows */}
+                        {images.length > 1 && (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => setSelectedMedia({ type: 'image', index: (selectedMedia.index - 1 + images.length) % images.length })}
+                              className="absolute left-3 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full opacity-0 transition-opacity duration-200 group-hover/gallery:opacity-100"
+                              style={{ background: 'rgba(0,0,0,0.55)', color: '#fff', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.12)' }}
+                              aria-label="Попереднє фото"
+                            >
+                              <ChevronLeft className="h-5 w-5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setSelectedMedia({ type: 'image', index: (selectedMedia.index + 1) % images.length })}
+                              className="absolute right-3 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full opacity-0 transition-opacity duration-200 group-hover/gallery:opacity-100"
+                              style={{ background: 'rgba(0,0,0,0.55)', color: '#fff', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.12)' }}
+                              aria-label="Наступне фото"
+                            >
+                              <ChevronRight className="h-5 w-5" />
+                            </button>
+                          </>
+                        )}
                         {/* Watch video pill (bottom-left, only when video exists) */}
                         {product.videoUrl && (
                           <button
