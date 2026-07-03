@@ -93,6 +93,13 @@ export class ProductsController {
     return this.productsService.getBadges();
   }
 
+  @Delete('badges')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
+  deleteBadge(@Query('value') value: string) {
+    return this.productsService.deleteBadge(value);
+  }
+
   @Get(':slug')
   findBySlug(@Param('slug') slug: string) {
     return this.productsService.findBySlug(slug);

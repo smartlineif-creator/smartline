@@ -8,6 +8,7 @@ import {
   adminCreateProduct,
   adminGetAttributeValues,
   adminGetBadges,
+  adminDeleteBadge,
   adminGetOptionGroupNames,
   adminGetProduct,
   adminGetProductOptions,
@@ -302,7 +303,10 @@ export default function ProductForm({ mode, productId }: Props) {
   const [isFeatured, setIsFeatured] = useState(false);
   const [badge, setBadge] = useState<string>('');
   const [customBadges, setCustomBadges] = useState<string[]>([]);
+  const [badgeUsage, setBadgeUsage] = useState<Record<string, number>>({});
   const [newBadge, setNewBadge] = useState('');
+  const [badgeToDelete, setBadgeToDelete] = useState<string | null>(null);
+  const [deletingBadge, setDeletingBadge] = useState(false);
   const [hasVariants, setHasVariants] = useState(false);
   const [basePrice, setBasePrice] = useState('');
   const [baseCompareAtPrice, setBaseCompareAtPrice] = useState('');
@@ -383,7 +387,10 @@ export default function ProductForm({ mode, productId }: Props) {
   useEffect(() => {
     getCategories().then(setCategories).catch(() => {});
     adminGetProductOptions({ limit: 250 }).then((items) => setProductOptions(items)).catch(() => {});
-    adminGetBadges().then(setCustomBadges).catch(() => {});
+    adminGetBadges().then((rows) => {
+      setCustomBadges(rows.map((r) => r.value));
+      setBadgeUsage(Object.fromEntries(rows.map((r) => [r.value, r.count])));
+    }).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -597,6 +604,39 @@ export default function ProductForm({ mode, productId }: Props) {
     }
     setBadge(value);
     setNewBadge('');
+  };
+
+  const removeBadgeFromList = (value: string) => {
+    setCustomBadges((prev) => prev.filter((b) => b !== value));
+    setBadgeUsage((prev) => {
+      const next = { ...prev };
+      delete next[value];
+      return next;
+    });
+    if (badge === value) setBadge('');
+  };
+
+  const requestDeleteBadge = (value: string) => {
+    if ((badgeUsage[value] ?? 0) > 0) {
+      setBadgeToDelete(value);
+    } else {
+      removeBadgeFromList(value);
+    }
+  };
+
+  const confirmDeleteBadge = async () => {
+    if (!badgeToDelete) return;
+    setDeletingBadge(true);
+    try {
+      await adminDeleteBadge(badgeToDelete);
+      removeBadgeFromList(badgeToDelete);
+      toast.success('Бейдж видалено');
+      setBadgeToDelete(null);
+    } catch {
+      toast.error('Не вдалося видалити бейдж');
+    } finally {
+      setDeletingBadge(false);
+    }
   };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -860,6 +900,32 @@ export default function ProductForm({ mode, productId }: Props) {
           {['', ...BADGE_OPTIONS, ...customBadges.filter((b) => !BADGE_OPTIONS.includes(b)), ...(badge && !BADGE_OPTIONS.includes(badge) && !customBadges.includes(badge) ? [badge] : [])].map((option) => {
             const c = BADGE_COLORS[option] ?? BADGE_COLORS._custom;
             const isSelected = badge === option;
+            const isCustom = option !== '' && !BADGE_OPTIONS.includes(option);
+
+            if (isCustom) {
+              return (
+                <div
+                  key={option}
+                  className={cn(
+                    'inline-flex items-center gap-1 rounded-full border py-1.5 pl-4 pr-2 text-sm font-medium transition-all',
+                    isSelected
+                      ? cn(c.bg, c.text, c.border, 'ring-2 ring-offset-1', c.border.replace('border-', 'ring-'))
+                      : cn('border-gray-200 text-gray-400 hover:border-gray-300'),
+                  )}
+                >
+                  <button type="button" onClick={() => setBadge(option)}>{option}</button>
+                  <button
+                    type="button"
+                    onClick={() => requestDeleteBadge(option)}
+                    title="Видалити бейдж"
+                    className="rounded-full p-0.5 opacity-60 transition hover:bg-black/10 hover:opacity-100"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              );
+            }
+
             return (
               <button
                 key={option || '__none'}
@@ -1548,8 +1614,42 @@ export default function ProductForm({ mode, productId }: Props) {
           </div>
         </div>
       </div>
+
+      {badgeToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
+          <div className="w-full max-w-sm rounded-xl border bg-white p-6 shadow-xl space-y-4">
+            <div>
+              <h3 className="font-semibold text-gray-950">Видалити бейдж?</h3>
+              <p className="mt-1.5 text-sm text-muted-foreground">
+                Бейдж «{badgeToDelete}» використовується у {badgeUsage[badgeToDelete] ?? 0}{' '}
+                {getProductWord(badgeUsage[badgeToDelete] ?? 0)}. Його буде прибрано з усіх цих товарів.
+              </p>
+            </div>
+            <div className="flex gap-2 pt-1">
+              <Button variant="outline" className="flex-1" onClick={() => setBadgeToDelete(null)} disabled={deletingBadge}>
+                Скасувати
+              </Button>
+              <Button
+                className="flex-1 bg-red-600 hover:bg-red-700"
+                onClick={confirmDeleteBadge}
+                disabled={deletingBadge}
+              >
+                {deletingBadge ? 'Видалення...' : 'Видалити'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
+}
+
+function getProductWord(n: number): string {
+  const mod10 = n % 10;
+  const mod100 = n % 100;
+  if (mod10 === 1 && mod100 !== 11) return 'товарі';
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return 'товарах';
+  return 'товарах';
 }
 
 // ── MerchPanel ──────────────────────────────────────────────────────────────
