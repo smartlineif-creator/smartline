@@ -222,6 +222,41 @@ html.light {
     all: revert;
     cursor: pointer;
   }
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  a[href],
+  select,
+  summary,
+  label[for] {
+    cursor: pointer;
+  }
+  button:disabled,
+  [aria-disabled="true"] {
+    cursor: not-allowed;
+  }
+}
+
+/* ── Universal hover/active affordance fallback ───────────────────────────
+   Applies a subtle brightness shift to any button/link that doesn't already
+   define its own hover state, so every clickable element gives feedback
+   without having to touch each call site individually. Layers harmlessly
+   on top of components that already have custom hover: classes. */
+@media (hover: hover) and (pointer: fine) {
+  button:not(:disabled):not(.no-hover-fx),
+  [role="button"]:not([aria-disabled="true"]):not(.no-hover-fx),
+  a[href]:not(.no-hover-fx) {
+    transition: filter 150ms ease;
+  }
+  button:not(:disabled):not(.no-hover-fx):hover,
+  [role="button"]:not([aria-disabled="true"]):not(.no-hover-fx):hover,
+  a[href]:not(.no-hover-fx):hover {
+    filter: brightness(1.07);
+  }
+  button:not(:disabled):not(.no-hover-fx):active,
+  [role="button"]:not([aria-disabled="true"]):not(.no-hover-fx):active,
+  a[href]:not(.no-hover-fx):active {
+    filter: brightness(0.93);
+  }
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
