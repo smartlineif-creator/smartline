@@ -189,14 +189,18 @@ function HeroSpotlight({ product, title, subtitle }: { product: Product; title?:
             style={{ background: 'radial-gradient(circle at 50% 40%, var(--sl-accent-glow) 0%, transparent 70%)' }}
           />
           <div className="relative aspect-[4/3] overflow-hidden">
-            <Image
-              src={getMainImage(product)}
-              alt={product.name}
-              fill
-              priority
-              className="object-contain p-6 transition-transform duration-500 group-hover:scale-105"
-              sizes="(max-width: 1280px) 100vw, 440px"
-            />
+            <div className="absolute inset-0 p-6">
+              <div className="relative h-full w-full overflow-hidden rounded-xl">
+                <Image
+                  src={getMainImage(product)}
+                  alt={product.name}
+                  fill
+                  priority
+                  className="object-cover transition-transform duration-500 group-hover:scale-105"
+                  sizes="(max-width: 1280px) 100vw, 440px"
+                />
+              </div>
+            </div>
           </div>
           <div className="space-y-3 p-5" style={{ borderTop: '1px solid var(--sl-border)' }}>
             <div className="flex flex-wrap gap-2">

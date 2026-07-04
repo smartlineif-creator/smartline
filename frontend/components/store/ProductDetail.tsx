@@ -34,6 +34,7 @@ import {
   getProductStock,
   getMainImage,
   pickCardHighlights,
+  getBadgeStyle,
 } from '@/lib/utils';
 import { useCartStore } from '@/store/cart';
 import { toast } from 'sonner';
@@ -239,12 +240,7 @@ function ProductShelfCard({ item }: { item: Product }) {
             </span>
           )}
           {!promo && item.badge && (
-            <span className="rounded-full px-2.5 py-1 text-xs font-bold" style={{
-              background: item.badge === 'ХІТ' ? 'var(--sl-accent-muted)' : item.badge === 'НОВИНКА' ? 'rgba(59,130,246,0.12)' : item.badge === 'Б/В' ? 'rgba(100,116,139,0.12)' : item.badge === 'ЕКСКЛЮЗИВ' ? 'rgba(147,51,234,0.12)' : 'var(--sl-bg-elevated)',
-              color: item.badge === 'ХІТ' ? 'var(--sl-accent)' : item.badge === 'НОВИНКА' ? '#3b82f6' : item.badge === 'Б/В' ? '#64748b' : item.badge === 'ЕКСКЛЮЗИВ' ? '#9333ea' : 'var(--sl-text-secondary)',
-              border: `1px solid ${item.badge === 'ХІТ' ? 'var(--sl-accent)' : item.badge === 'НОВИНКА' ? '#93c5fd' : item.badge === 'Б/В' ? '#cbd5e1' : item.badge === 'ЕКСКЛЮЗИВ' ? '#d8b4fe' : 'var(--sl-border)'}`,
-              fontFamily: 'var(--sl-font-mono)',
-            }}>
+            <span className="rounded-full px-2.5 py-1 text-xs font-bold" style={{ ...getBadgeStyle(item.badge), fontFamily: 'var(--sl-font-mono)' }}>
               {item.badge}
             </span>
           )}

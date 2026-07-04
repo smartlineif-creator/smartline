@@ -116,6 +116,18 @@ export function getMainImage(product: Product): string {
   return main?.url || product.images?.[0]?.url || '/placeholder.svg';
 }
 
+const BADGE_COLORS: Record<string, string> = {
+  'ХІТ': '#0055CC',
+  'НОВИНКА': '#2563EB',
+  'Б/В': '#475569',
+  'ЕКСКЛЮЗИВ': '#7E22CE',
+};
+
+/** Solid background + white text for a product badge pill — falls back to accent for custom badges. */
+export function getBadgeStyle(badge: string): { background: string; color: string } {
+  return { background: BADGE_COLORS[badge] ?? 'var(--sl-accent)', color: '#fff' };
+}
+
 const CARD_ATTRIBUTE_RULES: Array<{ label: string; pattern: RegExp }> = [
   { label: 'Екран', pattern: /екран|диспле|матриц|діагонал/i },
   { label: 'Процесор', pattern: /процесор|чіп|cpu/i },
