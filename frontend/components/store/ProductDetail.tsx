@@ -586,7 +586,7 @@ export default function ProductDetail({ product }: Props) {
                             alt={images[selectedMedia.index]?.alt || displayName}
                             fill
                             priority
-                            className="object-contain p-2 sm:p-3 transition-transform duration-300 group-hover/gallery:scale-[1.02]"
+                            className="rounded-xl object-contain p-2 sm:p-3 transition-transform duration-300 group-hover/gallery:scale-[1.02]"
                             sizes="(max-width: 1280px) 100vw, 720px"
                           />
                           {mediaItems.length > 1 && (
@@ -748,7 +748,7 @@ export default function ProductDetail({ product }: Props) {
                           alt={item.image.alt || displayName}
                           fill
                           priority={idx === 0}
-                          className="object-contain p-2"
+                          className="rounded-xl object-contain p-2"
                           sizes="100vw"
                         />
                       ) : (
