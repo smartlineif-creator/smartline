@@ -18,7 +18,6 @@ import {
   Minus,
   Play,
   Plus,
-  ShieldCheck,
   ShoppingCart,
   Star,
   Truck,
@@ -406,8 +405,7 @@ export default function ProductDetail({ product }: Props) {
 
   const trustPoints = [
     { icon: CheckCircle2, title: currentStock > 0 ? 'Готовий до замовлення' : 'Актуальна картка', text: currentStock > 0 ? `${currentStock} шт. у системі` : 'Перевір опис і характеристики' },
-    { icon: ShieldCheck, title: 'Прозорі характеристики', text: `${attributes.length} параметрів для порівняння` },
-    { icon: Truck, title: 'Швидке оформлення', text: 'Один клік у кошик і далі checkout' },
+    { icon: Truck, title: 'Швидке оформлення', text: 'Один клік у кошик' },
     { icon: CreditCard, title: 'Зручна оплата', text: 'Можна перейти до покупки одразу' },
   ];
 
@@ -808,7 +806,7 @@ export default function ProductDetail({ product }: Props) {
               className="rounded-xl p-5 sm:p-6"
               style={{ background: 'var(--sl-bg-surface)', border: '1px solid var(--sl-border)' }}
             >
-              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              <div className="grid gap-4 sm:grid-cols-3">
                 {trustPoints.map((point) => {
                   const Icon = point.icon;
                   return (
