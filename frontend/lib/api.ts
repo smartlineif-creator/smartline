@@ -11,8 +11,18 @@ let refreshPromise: Promise<boolean> | null = null;
 // and browsers increasingly block third-party cookies cross-site — httpOnly
 // cookies set by the backend can silently fail to persist. Bearer tokens work
 // regardless of cookie policy.
+//
+// Server Components (admin dashboard, product/category edit pages, etc.) run
+// on the frontend's own server and have no access to localStorage. To let
+// them make authenticated calls too, the access token is mirrored into a
+// plain (non-httpOnly) cookie on the FRONTEND's own origin — this is a
+// first-party cookie from the browser's perspective (JS on this page sets it
+// for this page's domain), so it isn't subject to third-party cookie
+// blocking. Server Components read it back via next/headers and forward it
+// as a Bearer header.
 const ACCESS_TOKEN_KEY = 'sl_access_token';
 const REFRESH_TOKEN_KEY = 'sl_refresh_token';
+const ACCESS_COOKIE_NAME = 'sl_at';
 
 export function getAccessToken(): string | null {
   if (typeof window === 'undefined') return null;
@@ -26,7 +36,10 @@ function getRefreshToken(): string | null {
 
 function saveTokens(tokens: { accessToken?: string; refreshToken?: string }) {
   if (typeof window === 'undefined') return;
-  if (tokens.accessToken) localStorage.setItem(ACCESS_TOKEN_KEY, tokens.accessToken);
+  if (tokens.accessToken) {
+    localStorage.setItem(ACCESS_TOKEN_KEY, tokens.accessToken);
+    document.cookie = `${ACCESS_COOKIE_NAME}=${tokens.accessToken}; path=/; max-age=900; SameSite=Lax`;
+  }
   if (tokens.refreshToken) localStorage.setItem(REFRESH_TOKEN_KEY, tokens.refreshToken);
 }
 
@@ -34,6 +47,18 @@ function clearTokens() {
   if (typeof window === 'undefined') return;
   localStorage.removeItem(ACCESS_TOKEN_KEY);
   localStorage.removeItem(REFRESH_TOKEN_KEY);
+  document.cookie = `${ACCESS_COOKIE_NAME}=; path=/; max-age=0`;
+}
+
+async function getServerAccessToken(): Promise<string | null> {
+  try {
+    const { cookies } = await import('next/headers');
+    const cookieStore = await cookies();
+    return cookieStore.get(ACCESS_COOKIE_NAME)?.value ?? null;
+  } catch {
+    // Not in a request context (e.g. during build), skip
+    return null;
+  }
 }
 
 async function refreshSession() {
@@ -84,7 +109,9 @@ async function apiFetch<T>(
     headers.set('Content-Type', 'application/json');
   }
 
-  const accessToken = getAccessToken();
+  const accessToken = typeof window === 'undefined'
+    ? await getServerAccessToken()
+    : getAccessToken();
   if (accessToken && !headers.has('Authorization')) {
     headers.set('Authorization', `Bearer ${accessToken}`);
   }
@@ -98,7 +125,7 @@ async function apiFetch<T>(
 
   let res = await fetch(`${API_URL}${path}`, requestOptions);
 
-  if (res.status === 401 && shouldTryRefresh(path)) {
+  if (res.status === 401 && typeof window !== 'undefined' && shouldTryRefresh(path)) {
     const refreshed = await refreshSession();
     if (refreshed) {
       const newAccessToken = getAccessToken();
