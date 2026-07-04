@@ -59,13 +59,17 @@ export default function RecentlyViewed({ currentProductId }: Props) {
               className="relative aspect-square overflow-hidden"
               style={{ background: 'var(--sl-bg-elevated)' }}
             >
-              <Image
-                src={product.image}
-                alt={product.name}
-                fill
-                className="rounded-lg object-contain p-2 transition-transform duration-300 group-hover:scale-105"
-                sizes="144px"
-              />
+              <div className="absolute inset-0 p-2">
+                <div className="relative h-full w-full overflow-hidden rounded-lg">
+                  <Image
+                    src={product.image}
+                    alt={product.name}
+                    fill
+                    className="object-cover transition-transform duration-300 group-hover:scale-105"
+                    sizes="144px"
+                  />
+                </div>
+              </div>
             </div>
             {/* Info */}
             <div className="p-2">

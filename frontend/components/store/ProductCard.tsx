@@ -147,25 +147,29 @@ export default function ProductCard({ product, selectedVariant }: Props) {
           </div>
         ) : (
           <>
-            {/* Primary image — fades out on hover when second image exists */}
-            <Image
-              src={mainImage}
-              alt={product.name}
-              fill
-              className={`rounded-lg object-contain p-3 transition-all duration-500${(product.images?.length ?? 0) > 1 ? ' group-hover/card:opacity-0' : ' group-hover/card:scale-105'}`}
-              sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
-              onError={() => setImgError(true)}
-            />
-            {/* Second image — fades in on hover */}
-            {(product.images?.length ?? 0) > 1 && (
-              <Image
-                src={product.images![1].url}
-                alt={product.name}
-                fill
-                className="rounded-lg object-contain p-3 opacity-0 transition-opacity duration-500 group-hover/card:opacity-100"
-                sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
-              />
-            )}
+            <div className="absolute inset-0 p-3">
+              <div className="relative h-full w-full overflow-hidden rounded-lg">
+                {/* Primary image — fades out on hover when second image exists */}
+                <Image
+                  src={mainImage}
+                  alt={product.name}
+                  fill
+                  className={`object-cover transition-all duration-500${(product.images?.length ?? 0) > 1 ? ' group-hover/card:opacity-0' : ' group-hover/card:scale-105'}`}
+                  sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
+                  onError={() => setImgError(true)}
+                />
+                {/* Second image — fades in on hover */}
+                {(product.images?.length ?? 0) > 1 && (
+                  <Image
+                    src={product.images![1].url}
+                    alt={product.name}
+                    fill
+                    className="object-cover opacity-0 transition-opacity duration-500 group-hover/card:opacity-100"
+                    sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
+                  />
+                )}
+              </div>
+            </div>
           </>
         )}
 

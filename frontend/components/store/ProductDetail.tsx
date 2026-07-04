@@ -220,13 +220,17 @@ function ProductShelfCard({ item }: { item: Product }) {
     >
       {/* Image */}
       <Link href={getProductHref(item)} className="relative block aspect-[4/3] overflow-hidden" style={{ background: 'var(--sl-bg-primary)' }}>
-        <Image
-          src={getMainImage(item)}
-          alt={item.name}
-          fill
-          className="rounded-lg object-contain p-5 transition-transform duration-500 group-hover/shelf:scale-105"
-          sizes="260px"
-        />
+        <div className="absolute inset-0 p-5">
+          <div className="relative h-full w-full overflow-hidden rounded-lg">
+            <Image
+              src={getMainImage(item)}
+              alt={item.name}
+              fill
+              className="object-cover transition-transform duration-500 group-hover/shelf:scale-105"
+              sizes="260px"
+            />
+          </div>
+        </div>
         {/* Badges */}
         <div className="absolute left-3 top-3 flex flex-wrap gap-2">
           {promo && (
@@ -568,6 +572,18 @@ export default function ProductDetail({ product }: Props) {
                           role="button"
                           aria-label="Відкрити фото на весь екран"
                         >
+                          <div className="absolute inset-0 p-2 sm:p-3">
+                            <div className="relative h-full w-full overflow-hidden rounded-xl">
+                              <Image
+                                src={images[selectedMedia.index]?.url || '/placeholder.svg'}
+                                alt={images[selectedMedia.index]?.alt || displayName}
+                                fill
+                                priority
+                                className="object-cover transition-transform duration-300 group-hover/gallery:scale-[1.02]"
+                                sizes="(max-width: 1280px) 100vw, 720px"
+                              />
+                            </div>
+                          </div>
                           <div className="absolute left-4 top-4 z-10 flex flex-wrap gap-2">
                             {product.category?.name && (
                               <span
@@ -586,14 +602,6 @@ export default function ProductDetail({ product }: Props) {
                               <Maximize2 className="h-4 w-4 text-white" />
                             </div>
                           </div>
-                          <Image
-                            src={images[selectedMedia.index]?.url || '/placeholder.svg'}
-                            alt={images[selectedMedia.index]?.alt || displayName}
-                            fill
-                            priority
-                            className="rounded-xl object-contain p-2 sm:p-3 transition-transform duration-300 group-hover/gallery:scale-[1.02]"
-                            sizes="(max-width: 1280px) 100vw, 720px"
-                          />
                           {mediaItems.length > 1 && (
                             <div
                               className="absolute bottom-3 right-3 z-10 rounded-full px-2.5 py-1 text-xs"
@@ -748,14 +756,18 @@ export default function ProductDetail({ product }: Props) {
                       style={{ scrollSnapAlign: 'start', background: 'var(--sl-bg-elevated)' }}
                     >
                       {item.type === 'image' ? (
-                        <Image
-                          src={item.image.url}
-                          alt={item.image.alt || displayName}
-                          fill
-                          priority={idx === 0}
-                          className="rounded-xl object-contain p-2"
-                          sizes="100vw"
-                        />
+                        <div className="absolute inset-0 p-2">
+                          <div className="relative h-full w-full overflow-hidden rounded-xl">
+                            <Image
+                              src={item.image.url}
+                              alt={item.image.alt || displayName}
+                              fill
+                              priority={idx === 0}
+                              className="object-cover"
+                              sizes="100vw"
+                            />
+                          </div>
+                        </div>
                       ) : (
                         <video
                           src={item.url}
