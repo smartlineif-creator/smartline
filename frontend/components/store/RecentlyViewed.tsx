@@ -63,7 +63,7 @@ export default function RecentlyViewed({ currentProductId }: Props) {
                 src={product.image}
                 alt={product.name}
                 fill
-                className="object-contain p-2 transition-transform duration-300 group-hover:scale-105"
+                className="rounded-lg object-contain p-2 transition-transform duration-300 group-hover:scale-105"
                 sizes="144px"
               />
             </div>

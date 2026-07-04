@@ -142,12 +142,16 @@ export default function ProductCard({ product, selectedVariant }: Props) {
       : (product.stock ?? 0) === 0;
   const { hasMultiple } = selectedVariant ? { hasMultiple: false } : getProductMinPrice(product);
   const mainImage = getMainImage(product);
-  const highlights = selectedVariant?.selections?.length
+  const variantHighlights = selectedVariant?.selections?.length
     ? selectedVariant.selections
         .sort((a, b) => (a.optionValue.group.sortOrder ?? 0) - (b.optionValue.group.sortOrder ?? 0))
-        .slice(0, 3)
         .map((s) => ({ label: s.optionValue.group.name, value: s.optionValue.value }))
-    : pickCardHighlights(product);
+    : [];
+  // Variant selections cover only their own option groups (e.g. just SSD size) —
+  // fill remaining slots with product attributes so cards always show up to 4 specs.
+  const usedLabels = new Set(variantHighlights.map((h) => h.label.toLowerCase()));
+  const attributeHighlights = pickCardHighlights(product).filter((h) => !usedLabels.has(h.label.toLowerCase()));
+  const highlights = [...variantHighlights, ...attributeHighlights].slice(0, 4);
   const cardHref = selectedVariant?.slug
     ? `/product/${selectedVariant.slug}`
     : getProductHref(product, firstVariant);
@@ -200,7 +204,7 @@ export default function ProductCard({ product, selectedVariant }: Props) {
               src={mainImage}
               alt={product.name}
               fill
-              className={`object-contain p-3 transition-all duration-500${(product.images?.length ?? 0) > 1 ? ' group-hover/card:opacity-0' : ' group-hover/card:scale-105'}`}
+              className={`rounded-lg object-contain p-3 transition-all duration-500${(product.images?.length ?? 0) > 1 ? ' group-hover/card:opacity-0' : ' group-hover/card:scale-105'}`}
               sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
               onError={() => setImgError(true)}
             />
@@ -210,7 +214,7 @@ export default function ProductCard({ product, selectedVariant }: Props) {
                 src={product.images![1].url}
                 alt={product.name}
                 fill
-                className="object-contain p-3 opacity-0 transition-opacity duration-500 group-hover/card:opacity-100"
+                className="rounded-lg object-contain p-3 opacity-0 transition-opacity duration-500 group-hover/card:opacity-100"
                 sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
               />
             )}

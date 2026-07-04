@@ -230,7 +230,7 @@ function ProductShelfCard({ item }: { item: Product }) {
           src={getMainImage(item)}
           alt={item.name}
           fill
-          className="object-contain p-5 transition-transform duration-500 group-hover/shelf:scale-105"
+          className="rounded-lg object-contain p-5 transition-transform duration-500 group-hover/shelf:scale-105"
           sizes="260px"
         />
         {/* Badges */}
