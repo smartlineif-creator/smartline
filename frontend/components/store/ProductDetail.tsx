@@ -33,6 +33,7 @@ import {
   getProductHref,
   getProductStock,
   getMainImage,
+  pickCardHighlights,
 } from '@/lib/utils';
 import { useCartStore } from '@/store/cart';
 import { toast } from 'sonner';
@@ -167,13 +168,6 @@ function groupAttributes(attributes: Attribute[]) {
   ];
 }
 
-function getShelfMeta(product: Product) {
-  return (product.attributes || [])
-    .filter((attribute) => /бренд|виробник|процесор|чіп|оперативн.*пам|ram|ssd|hdd|накопичувач|екран|діагонал|стан|колір/i.test(attribute.name))
-    .slice(0, 2)
-    .map((attribute) => `${attribute.value}${attribute.unit ? ` ${attribute.unit}` : ''}`);
-}
-
 function ProductShelf({ title, description, products }: { title: string; description: string; products: Product[] }) {
   if (!products.length) return null;
   return (
@@ -208,7 +202,7 @@ function ProductShelf({ title, description, products }: { title: string; descrip
 
 function ProductShelfCard({ item }: { item: Product }) {
   const { finalPrice, crossedPrice, promo } = getProductDisplayPrices(item);
-  const highlights = getShelfMeta(item);
+  const highlights = pickCardHighlights(item);
   return (
     <article
       className="group/shelf w-[260px] shrink-0 snap-start overflow-hidden rounded-2xl transition-all duration-300"
@@ -256,19 +250,30 @@ function ProductShelfCard({ item }: { item: Product }) {
           <div className="pointer-events-none absolute inset-x-3 bottom-3 z-10 hidden translate-y-2 opacity-0 transition-all duration-200 md:block group-hover/shelf:translate-y-0 group-hover/shelf:opacity-100">
             <div
               className="overflow-hidden rounded-xl"
-              style={{ background: 'var(--sl-bg-surface-glass)', border: '1px solid var(--sl-border)', backdropFilter: 'blur(12px)' }}
+              style={{
+                background: 'var(--sl-bg-surface-glass)',
+                border: '1px solid var(--sl-border)',
+                backdropFilter: 'blur(12px)',
+                WebkitBackdropFilter: 'blur(12px)',
+                boxShadow: '0 4px 20px rgba(0,0,0,0.18)',
+              }}
             >
-              <div
-                className="px-3 py-2 text-[10px] font-semibold uppercase tracking-widest"
-                style={{ color: 'var(--sl-text-muted)', borderBottom: '1px solid var(--sl-border)', fontFamily: 'var(--sl-font-mono)' }}
-              >
-                Характеристики
-              </div>
-              <div className="px-3 py-2" style={{ display: 'grid', gap: '5px' }}>
-                {highlights.map((val, i) => (
-                  <span key={i} className="truncate text-xs font-semibold leading-tight" style={{ color: 'var(--sl-text-primary)', fontFamily: 'var(--sl-font-mono)' }}>
-                    {val}
-                  </span>
+              <div className="px-3 py-2.5" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '5px 10px' }}>
+                {highlights.map((item) => (
+                  <div key={`${item.label}-${item.value}`} className="flex min-w-0 flex-col gap-0.5">
+                    <span
+                      className="truncate text-[9px] uppercase tracking-wide"
+                      style={{ color: 'var(--sl-text-muted)', fontFamily: 'var(--sl-font-mono)' }}
+                    >
+                      {item.label}
+                    </span>
+                    <span
+                      className="truncate text-xs font-semibold leading-tight"
+                      style={{ color: 'var(--sl-text-primary)', fontFamily: 'var(--sl-font-mono)' }}
+                    >
+                      {item.value}
+                    </span>
+                  </div>
                 ))}
               </div>
             </div>

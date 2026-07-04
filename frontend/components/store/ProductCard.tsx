@@ -7,7 +7,7 @@ import { Product } from '@/types';
 import { useState } from 'react';
 import {
   formatPrice, getMainImage, getProductDisplayPrices, getProductHref,
-  getFirstAvailableVariant, getProductMinPrice,
+  getFirstAvailableVariant, getProductMinPrice, pickCardHighlights,
 } from '@/lib/utils';
 import { useCartStore } from '@/store/cart';
 import { toast } from 'sonner';
@@ -17,58 +17,6 @@ import WishlistButton from './WishlistButton';
 interface Props {
   product: Product;
   selectedVariant?: Variant;
-}
-
-const CARD_ATTRIBUTE_RULES: Array<{ label: string; pattern: RegExp }> = [
-  { label: 'Екран', pattern: /екран|диспле|матриц|діагонал/i },
-  { label: 'Процесор', pattern: /процесор|чіп|cpu/i },
-  { label: "Пам'ять", pattern: /оперативн.*пам|ram/i },
-  { label: 'Накопичувач', pattern: /ssd|hdd|накопичувач|вбудован.*пам/i },
-  { label: 'Відео', pattern: /відео|граф|gpu/i },
-  { label: 'Стан', pattern: /стан/i },
-  { label: 'Колір', pattern: /колір/i },
-];
-
-const FALLBACK_LABEL_PATTERNS: Array<{ label: string; pattern: RegExp }> = [
-  { label: 'Екран', pattern: /\d{1,2}(?:[.,]\d)?\s*(?:[""]|inch|in)?\s*(?:full hd|fhd|qhd|uhd|4k|ips|oled)?/i },
-  { label: 'Процесор', pattern: /(?:intel\s+core\s+i[3579][-\w]*|amd\s+ryzen\s+[3579][-\w]*|apple\s+m[1234][-\w]*|snapdragon[\w\s-]*)/i },
-  { label: "Пам'ять", pattern: /\b\d{1,3}\s?(?:гб|gb)\s?(?:ram|ddr\d|lpddr\d)?/i },
-  { label: 'Накопичувач', pattern: /\b\d{2,4}\s?(?:гб|gb|tb)\s?(?:ssd|hdd)?/i },
-];
-
-function pickCardHighlights(product: Product) {
-  const used = new Set<string>();
-  const attributes = product.attributes || [];
-  const highlights: Array<{ label: string; value: string }> = [];
-
-  for (const rule of CARD_ATTRIBUTE_RULES) {
-    const match = attributes.find((attribute) => !used.has(attribute.id) && rule.pattern.test(attribute.name));
-    if (!match) continue;
-    used.add(match.id);
-    highlights.push({
-      label: rule.label,
-      value: `${match.value}${match.unit ? ` ${match.unit}` : ''}`,
-    });
-    if (highlights.length === 4) break;
-  }
-
-  if (highlights.length < 4 && product.category?.name) {
-    highlights.push({ label: 'Категорія', value: product.category.name });
-  }
-
-  if (highlights.length < 3) {
-    for (const rule of FALLBACK_LABEL_PATTERNS) {
-      if (highlights.some((item) => item.label === rule.label)) continue;
-      const match = product.name.match(rule.pattern);
-      if (!match) continue;
-      const value = match[0].trim().replace(/\s+/g, ' ');
-      if (value.length < 3) continue;
-      highlights.push({ label: rule.label, value });
-      if (highlights.length === 4) break;
-    }
-  }
-
-  return highlights.slice(0, 4);
 }
 
 /** Compact star rating row for product cards */
