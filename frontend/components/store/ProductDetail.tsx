@@ -16,7 +16,6 @@ import {
   CreditCard,
   Maximize2,
   Minus,
-  PackageCheck,
   Play,
   Plus,
   ShieldCheck,
@@ -1169,27 +1168,6 @@ export default function ProductDetail({ product }: Props) {
                     <ArrowRight className="h-4 w-4" />
                   </Link>
                 )}
-              </div>
-
-              {/* Mini trust block */}
-              <div
-                className="space-y-3 rounded-xl p-4"
-                style={{ background: 'var(--sl-bg-elevated)', border: '1px solid var(--sl-border)' }}
-              >
-                <div className="flex items-start gap-3">
-                  <PackageCheck className="mt-0.5 h-5 w-5 shrink-0" style={{ color: 'var(--sl-accent)' }} />
-                  <div>
-                    <p className="text-sm font-medium" style={{ color: 'var(--sl-text-primary)' }}>Швидкий старт до рішення</p>
-                    <p className="text-sm" style={{ color: 'var(--sl-text-muted)' }}>Головні характеристики й візуали вже над згином.</p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-3">
-                  <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0" style={{ color: 'var(--sl-accent)' }} />
-                  <div>
-                    <p className="text-sm font-medium" style={{ color: 'var(--sl-text-primary)' }}>Менше ризику перед оплатою</p>
-                    <p className="text-sm" style={{ color: 'var(--sl-text-muted)' }}>Можна швидко звірити конфігурацію й артикул.</p>
-                  </div>
-                </div>
               </div>
             </div>
           </aside>
