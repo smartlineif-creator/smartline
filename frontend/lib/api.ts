@@ -20,9 +20,15 @@ let refreshPromise: Promise<boolean> | null = null;
 // for this page's domain), so it isn't subject to third-party cookie
 // blocking. Server Components read it back via next/headers and forward it
 // as a Bearer header.
+//
+// Named "accessToken" (not a custom name) because proxy.ts (Next 16's
+// middleware) already gates /account and /admin on a cookie with this exact
+// name — it runs at the edge before any page code, so it must see the same
+// cookie this module writes. It's a different cookie from the backend's
+// httpOnly one of the same name (different origin), so there's no clash.
 const ACCESS_TOKEN_KEY = 'sl_access_token';
 const REFRESH_TOKEN_KEY = 'sl_refresh_token';
-const ACCESS_COOKIE_NAME = 'sl_at';
+const ACCESS_COOKIE_NAME = 'accessToken';
 
 export function getAccessToken(): string | null {
   if (typeof window === 'undefined') return null;
