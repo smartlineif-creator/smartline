@@ -31,8 +31,8 @@ export default function CategoryForm({ mode, category }: Props) {
   const [categories, setCategories] = useState<Category[]>([]);
   const [name, setName] = useState(category?.name || '');
   const [parentId, setParentId] = useState(category?.parentId || '');
-  const [attrTemplates, setAttrTemplates] = useState<{ name: string; unit: string }[]>(
-    (category?.attributeTemplates || []).map((t) => ({ name: t.name, unit: t.unit || '' })),
+  const [attrTemplates, setAttrTemplates] = useState<{ name: string; unit: string; filterable: boolean }[]>(
+    (category?.attributeTemplates || []).map((t) => ({ name: t.name, unit: t.unit || '', filterable: t.filterable ?? true })),
   );
   const [groupTemplates, setGroupTemplates] = useState<{ name: string; unit: string }[]>(
     (category?.optionGroupTemplates || []).map((t) => ({ name: t.name, unit: t.unit || '' })),
@@ -89,7 +89,7 @@ export default function CategoryForm({ mode, category }: Props) {
         parentId: parentId || undefined,
         attributeTemplates: attrTemplates
           .filter((t) => t.name.trim())
-          .map((t, i) => ({ name: t.name.trim(), unit: t.unit.trim() || undefined, sortOrder: i })),
+          .map((t, i) => ({ name: t.name.trim(), unit: t.unit.trim() || undefined, sortOrder: i, filterable: t.filterable })),
         optionGroupTemplates: groupTemplates
           .filter((t) => t.name.trim())
           .map((t, i) => ({ name: t.name.trim(), unit: t.unit.trim() || undefined, sortOrder: i })),
@@ -196,6 +196,22 @@ export default function CategoryForm({ mode, category }: Props) {
                     placeholder="Одиниця (ГБ...)"
                     className="h-9 w-32"
                   />
+                  <label
+                    className="flex h-9 shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border border-gray-200 px-2.5 text-xs text-gray-600 hover:border-gray-300"
+                    title="Чи можна фільтрувати товари за цією характеристикою в каталозі"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={tmpl.filterable}
+                      onChange={(e) => {
+                        const updated = [...attrTemplates];
+                        updated[i] = { ...updated[i], filterable: e.target.checked };
+                        setAttrTemplates(updated);
+                      }}
+                      className="h-3.5 w-3.5"
+                    />
+                    Фільтр
+                  </label>
                   <button
                     type="button"
                     onClick={() => setAttrTemplates(attrTemplates.filter((_, j) => j !== i))}
@@ -207,7 +223,7 @@ export default function CategoryForm({ mode, category }: Props) {
               ))}
               <button
                 type="button"
-                onClick={() => setAttrTemplates([...attrTemplates, { name: '', unit: '' }])}
+                onClick={() => setAttrTemplates([...attrTemplates, { name: '', unit: '', filterable: true }])}
                 className="flex h-9 items-center gap-2 rounded-lg border border-dashed border-gray-300 px-3 text-sm text-gray-500 hover:border-blue-300 hover:text-blue-600"
               >
                 <Plus className="h-4 w-4" />

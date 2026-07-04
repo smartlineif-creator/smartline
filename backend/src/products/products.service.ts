@@ -208,7 +208,7 @@ export class ProductsService {
     const inheritedTemplates = primaryCategoryId
       ? await this.getInheritedTemplates(primaryCategoryId)
       : [];
-    const attrTemplateNames = new Set(inheritedTemplates.map((t) => t.name));
+    const attrTemplateNames = new Set(inheritedTemplates.filter((t) => t.filterable).map((t) => t.name));
 
     // Split filters: badge, variant-based, attribute-based
     const BADGE_GROUP = 'Бейдж';
@@ -308,7 +308,7 @@ export class ProductsService {
     activeOptions: Record<string, string[]> = {},
     minPrice?: number,
     maxPrice?: number,
-    inheritedTemplates: { name: string; sortOrder: number }[] = [],
+    inheritedTemplates: { name: string; sortOrder: number; filterable: boolean }[] = [],
   ) {
     // One query: fetch all active variants (with selections) for qualifying products.
     // Then compute facets in-memory using the "exclude-self" faceted pattern:
@@ -412,7 +412,7 @@ export class ProductsService {
     );
 
     const sortedTemplates = [...inheritedTemplates]
-      .filter((t) => !variantGroupNames.has(t.name.toLowerCase()))
+      .filter((t) => t.filterable && !variantGroupNames.has(t.name.toLowerCase()))
       .sort((a, b) => a.sortOrder - b.sortOrder);
 
     for (const tmpl of sortedTemplates) {
@@ -1138,13 +1138,13 @@ export class ProductsService {
   }
 
   private async getInheritedTemplates(categoryId: string) {
-    const templates: { name: string; sortOrder: number }[] = [];
+    const templates: { name: string; sortOrder: number; filterable: boolean }[] = [];
     let currentId: string | null = categoryId;
     while (currentId) {
-      const cat: { parentId: string | null; attributeTemplates: { name: string; sortOrder: number }[] } | null =
+      const cat: { parentId: string | null; attributeTemplates: { name: string; sortOrder: number; filterable: boolean }[] } | null =
         await this.prisma.category.findUnique({
           where: { id: currentId },
-          select: { parentId: true, attributeTemplates: { select: { name: true, sortOrder: true } } },
+          select: { parentId: true, attributeTemplates: { select: { name: true, sortOrder: true, filterable: true } } },
         });
       if (!cat) break;
       templates.push(...cat.attributeTemplates);

@@ -348,6 +348,24 @@ export default function ProductForm({ mode, productId }: Props) {
     }
     return templates;
   }, [selectedCategory, categoryOptions]);
+  // Pre-fill empty rows for any category characteristic template not yet present,
+  // so admins don't forget to fill something in. Only adds missing ones — never
+  // touches rows the admin already typed a name into.
+  useEffect(() => {
+    if (!categoryId || categoryTemplates.length === 0) return;
+    setAttributes((current) => {
+      const existingNames = new Set(
+        current.filter((a) => a.name.trim()).map((a) => a.name.trim().toLowerCase()),
+      );
+      const missing = categoryTemplates.filter((t) => !existingNames.has(t.name.toLowerCase()));
+      if (missing.length === 0) return current;
+
+      const missingRows = missing.map((t) => ({ name: t.name, value: '', unit: t.unit || '' }));
+      const isPristine = current.length === 1 && !current[0].name && !current[0].value && !current[0].unit;
+      return isPristine ? missingRows : [...current, ...missingRows];
+    });
+  }, [categoryId, categoryTemplates]);
+
   const getTemplate = (name: string) =>
     categoryTemplates.find((t) => t.name.toLowerCase() === name.toLowerCase());
   const getGroupTemplate = (name: string) =>

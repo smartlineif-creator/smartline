@@ -167,7 +167,7 @@ export default function Header() {
           <div className="flex h-16 items-center gap-2 sm:gap-3">
             {/* Logo */}
             <Link href="/" className="relative shrink-0" onClick={closeMenus}>
-              <Image src="/logo.png" alt="SmartLine" width={48} height={48} priority className="hidden dark:block" />
+              <Image src="/logo.svg" alt="SmartLine" width={48} height={48} priority className="hidden dark:block" />
               <Image src="/logo-light.png" alt="SmartLine" width={48} height={48} priority className="dark:hidden" />
             </Link>
 
@@ -633,7 +633,7 @@ export default function Header() {
           className="flex items-center justify-between px-5 py-4"
           style={{ borderBottom: '1px solid var(--sl-border)' }}
         >
-          <Image src="/logo.png" alt="SmartLine" width={40} height={40} className="hidden rounded-lg dark:block" />
+          <Image src="/logo.svg" alt="SmartLine" width={40} height={40} className="hidden rounded-lg dark:block" />
           <Image src="/logo-light.png" alt="SmartLine" width={40} height={40} className="rounded-lg dark:hidden" />
           <button
             type="button"

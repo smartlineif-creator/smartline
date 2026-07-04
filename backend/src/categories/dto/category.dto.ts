@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsArray, IsInt, ValidateNested } from 'class-validator';
+import { IsString, IsOptional, IsArray, IsInt, IsBoolean, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class AttributeTemplateDto {
@@ -12,6 +12,10 @@ export class AttributeTemplateDto {
   @IsInt()
   @IsOptional()
   sortOrder?: number;
+
+  @IsBoolean()
+  @IsOptional()
+  filterable?: boolean;
 }
 
 export class OptionGroupTemplateDto {

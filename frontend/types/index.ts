@@ -29,6 +29,8 @@ export interface AttributeTemplate {
   id: string;
   name: string;
   unit?: string;
+  sortOrder?: number;
+  filterable?: boolean;
 }
 
 export interface OptionGroupTemplate {
