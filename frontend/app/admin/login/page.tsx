@@ -32,8 +32,7 @@ export default function AdminLoginPage() {
     setError('');
     setLoading(true);
     try {
-      const data = await login(email, password);
-      document.cookie = `accessToken=${data.accessToken}; path=/; max-age=900; SameSite=Lax`;
+      await login(email, password);
       router.push('/admin');
     } catch (err: any) {
       setError(err.message || 'Invalid email or password. Please try again.');

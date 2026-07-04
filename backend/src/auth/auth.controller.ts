@@ -35,7 +35,7 @@ export class AuthController {
   ) {
     const tokens = await this.authService.register(dto);
     this.setTokenCookies(res, tokens);
-    return { message: 'Registered successfully' };
+    return tokens;
   }
 
   @Post('login')
@@ -46,7 +46,7 @@ export class AuthController {
   ) {
     const tokens = await this.authService.login(dto);
     this.setTokenCookies(res, tokens);
-    return { accessToken: tokens.accessToken };
+    return tokens;
   }
 
   @Post('refresh')
@@ -57,7 +57,9 @@ export class AuthController {
     @Req() req: FastifyRequest,
     @Res({ passthrough: true }) res: FastifyReply,
   ) {
-    const oldToken = (req.cookies as any)?.refreshToken;
+    const oldToken =
+      (req.cookies as any)?.refreshToken ||
+      req.headers.authorization?.replace(/^Bearer\s+/i, '');
     const tokens = await this.authService.refresh(
       user.id,
       user.email,
@@ -65,7 +67,7 @@ export class AuthController {
       oldToken,
     );
     this.setTokenCookies(res, tokens);
-    return { accessToken: tokens.accessToken };
+    return tokens;
   }
 
   @Post('logout')
@@ -75,7 +77,9 @@ export class AuthController {
     @Req() req: FastifyRequest,
     @Res({ passthrough: true }) res: FastifyReply,
   ) {
-    const refreshToken = (req.cookies as any)?.refreshToken;
+    const refreshToken =
+      (req.cookies as any)?.refreshToken ||
+      req.headers.authorization?.replace(/^Bearer\s+/i, '');
     if (refreshToken) await this.authService.logout(refreshToken);
     res.clearCookie('accessToken');
     res.clearCookie('refreshToken');

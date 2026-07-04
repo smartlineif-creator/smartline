@@ -6,22 +6,52 @@ import {
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
 let refreshPromise: Promise<boolean> | null = null;
 
+// Auth tokens live in localStorage and are sent via the Authorization header.
+// The frontend and backend are on different origins (separate Render services),
+// and browsers increasingly block third-party cookies cross-site — httpOnly
+// cookies set by the backend can silently fail to persist. Bearer tokens work
+// regardless of cookie policy.
+const ACCESS_TOKEN_KEY = 'sl_access_token';
+const REFRESH_TOKEN_KEY = 'sl_refresh_token';
+
+export function getAccessToken(): string | null {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem(ACCESS_TOKEN_KEY);
+}
+
+function getRefreshToken(): string | null {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem(REFRESH_TOKEN_KEY);
+}
+
+function saveTokens(tokens: { accessToken?: string; refreshToken?: string }) {
+  if (typeof window === 'undefined') return;
+  if (tokens.accessToken) localStorage.setItem(ACCESS_TOKEN_KEY, tokens.accessToken);
+  if (tokens.refreshToken) localStorage.setItem(REFRESH_TOKEN_KEY, tokens.refreshToken);
+}
+
+function clearTokens() {
+  if (typeof window === 'undefined') return;
+  localStorage.removeItem(ACCESS_TOKEN_KEY);
+  localStorage.removeItem(REFRESH_TOKEN_KEY);
+}
+
 async function refreshSession() {
   if (!refreshPromise) {
+    const refreshToken = getRefreshToken();
     refreshPromise = fetch(`${API_URL}/auth/refresh`, {
       method: 'POST',
       credentials: 'include',
+      headers: refreshToken ? { Authorization: `Bearer ${refreshToken}` } : undefined,
     })
       .then(async (res) => {
         if (!res.ok) return false;
-        // Update the frontend-domain cookie so SSR requests stay authenticated
-        if (typeof window !== 'undefined') {
-          const data = await res.json().catch(() => null);
-          if (data?.accessToken) {
-            document.cookie = `accessToken=${data.accessToken}; path=/; max-age=900; SameSite=Lax`;
-          }
+        const data = await res.json().catch(() => null);
+        if (data?.accessToken) {
+          saveTokens(data);
+          return true;
         }
-        return true;
+        return false;
       })
       .catch(() => false)
       .finally(() => {
@@ -54,23 +84,16 @@ async function apiFetch<T>(
     headers.set('Content-Type', 'application/json');
   }
 
-  // Forward cookies from the browser in Server Component requests
-  if (typeof window === 'undefined') {
-    try {
-      const { cookies } = await import('next/headers');
-      const cookieStore = await cookies();
-      const cookieHeader = cookieStore.getAll().map((c) => `${c.name}=${c.value}`).join('; ');
-      if (cookieHeader) headers.set('Cookie', cookieHeader);
-    } catch {
-      // Not in a request context (e.g. during build), skip
-    }
+  const accessToken = getAccessToken();
+  if (accessToken && !headers.has('Authorization')) {
+    headers.set('Authorization', `Bearer ${accessToken}`);
   }
 
   const requestOptions: RequestInit = {
-    headers,
     credentials: 'include',
     ...(tags ? { next: { tags } } : {}),
     ...options,
+    headers,
   };
 
   let res = await fetch(`${API_URL}${path}`, requestOptions);
@@ -78,6 +101,8 @@ async function apiFetch<T>(
   if (res.status === 401 && shouldTryRefresh(path)) {
     const refreshed = await refreshSession();
     if (refreshed) {
+      const newAccessToken = getAccessToken();
+      if (newAccessToken) headers.set('Authorization', `Bearer ${newAccessToken}`);
       res = await fetch(`${API_URL}${path}`, requestOptions);
     }
   }
@@ -192,21 +217,29 @@ export async function clearCartApi() {
 // ─── Auth ────────────────────────────────────────────────────────────────────
 
 export async function login(email: string, password: string) {
-  return apiFetch<{ accessToken: string }>('/auth/login', {
+  const tokens = await apiFetch<{ accessToken: string; refreshToken: string }>('/auth/login', {
     method: 'POST',
     body: JSON.stringify({ email, password }),
   });
+  saveTokens(tokens);
+  return tokens;
 }
 
 export async function register(data: { email: string; password: string; name?: string; phone?: string }) {
-  return apiFetch<void>('/auth/register', {
+  const tokens = await apiFetch<{ accessToken: string; refreshToken: string }>('/auth/register', {
     method: 'POST',
     body: JSON.stringify(data),
   });
+  saveTokens(tokens);
+  return tokens;
 }
 
 export async function logout() {
-  return apiFetch<void>('/auth/logout', { method: 'POST' });
+  try {
+    await apiFetch<void>('/auth/logout', { method: 'POST' });
+  } finally {
+    clearTokens();
+  }
 }
 
 export async function getMe() {
