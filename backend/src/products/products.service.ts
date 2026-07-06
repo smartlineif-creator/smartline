@@ -1068,6 +1068,7 @@ export class ProductsService {
           sku: variant.sku,
           isActive: variant.isActive !== false,
           videoUrl: variant.videoUrl || null,
+          description: variant.description || null,
         },
       });
 

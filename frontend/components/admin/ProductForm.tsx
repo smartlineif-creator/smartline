@@ -76,6 +76,7 @@ interface VariantEntry {
   isEnabled: boolean;
   images: string[];
   videoUrl: string | null;
+  description: string;
   attributes: AttributeEntry[];
 }
 
@@ -118,10 +119,11 @@ function getMainImage(product?: ProductOptionItem) {
   return product?.images?.[0]?.url || '/placeholder.jpg';
 }
 
-function variantMediaFromApi(variant: Variant): Pick<VariantEntry, 'images' | 'videoUrl' | 'attributes'> {
+function variantMediaFromApi(variant: Variant): Pick<VariantEntry, 'images' | 'videoUrl' | 'description' | 'attributes'> {
   return {
     images: (variant.images || []).map((image) => image.url),
     videoUrl: variant.videoUrl ?? null,
+    description: variant.description ?? '',
     attributes: (variant.attributes || []).map((attribute) => ({
       name: attribute.name,
       value: attribute.value,
@@ -258,6 +260,7 @@ function generateVariantMatrix(optionGroups: OptionGroupEntry[]): VariantEntry[]
     isEnabled: true,
     images: [],
     videoUrl: null,
+    description: '',
     attributes: [],
     selections,
   }));
@@ -302,7 +305,8 @@ export default function ProductForm({ mode, productId }: Props) {
   const [copyAttributesSource, setCopyAttributesSource] = useState('');
   const [copyImagesSource, setCopyImagesSource] = useState('');
   const [copyVideoSource, setCopyVideoSource] = useState('');
-  const [copyDropdownOpen, setCopyDropdownOpen] = useState<'attributes' | 'images' | 'video' | null>(null);
+  const [copyDescriptionSource, setCopyDescriptionSource] = useState('');
+  const [copyDropdownOpen, setCopyDropdownOpen] = useState<'attributes' | 'images' | 'video' | 'description' | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [productOptions, setProductOptions] = useState<ProductOptionItem[]>([]);
   const [categoryOpen, setCategoryOpen] = useState(false);
@@ -617,6 +621,16 @@ export default function ProductForm({ mode, productId }: Props) {
     setVariants((items) => items.map((item) => (item.key === key ? { ...item, attributes: updater(item.attributes) } : item)));
   };
 
+  const updateVariantDescription = (key: string, value: string) => {
+    setVariants((items) => items.map((item) => (item.key === key ? { ...item, description: value } : item)));
+  };
+
+  const copyVariantDescriptionFrom = (targetKey: string, sourceKey: string) => {
+    const sourceDescription = sourceKey === PRODUCT_SOURCE_KEY ? description : variants.find((v) => v.key === sourceKey)?.description;
+    if (sourceDescription === undefined) return;
+    updateVariantDescription(targetKey, sourceDescription);
+  };
+
   const copyVariantAttributesFrom = (targetKey: string, sourceKey: string) => {
     const sourceAttributes = sourceKey === PRODUCT_SOURCE_KEY ? attributes : variants.find((v) => v.key === sourceKey)?.attributes;
     if (!sourceAttributes) return;
@@ -700,6 +714,7 @@ export default function ProductForm({ mode, productId }: Props) {
     setCopyAttributesSource('');
     setCopyImagesSource('');
     setCopyVideoSource('');
+    setCopyDescriptionSource('');
     setCopyDropdownOpen(null);
   };
 
@@ -708,6 +723,7 @@ export default function ProductForm({ mode, productId }: Props) {
   const effectiveImages = mediaTargetVariant ? mediaTargetVariant.images : images;
   const effectiveVideoUrl = mediaTargetVariant ? mediaTargetVariant.videoUrl : videoUrl;
   const effectiveAttributes = mediaTargetVariant ? mediaTargetVariant.attributes : attributes;
+  const effectiveDescription = mediaTargetVariant ? mediaTargetVariant.description : description;
 
   const renderMediaTargetTabs = () => {
     if (!hasVariants || variants.length === 0) return null;
@@ -749,7 +765,7 @@ export default function ProductForm({ mode, productId }: Props) {
   };
 
   const renderCopyControl = (
-    kind: 'attributes' | 'images' | 'video',
+    kind: 'attributes' | 'images' | 'video' | 'description',
     label: string,
     sourceValue: string,
     setSourceValue: (value: string) => void,
@@ -1040,6 +1056,7 @@ export default function ProductForm({ mode, productId }: Props) {
                 value: selection.value,
               })),
               videoUrl: variant.videoUrl || null,
+              description: variant.description || null,
               attributes: variant.attributes
                 .filter((a) => a.name.trim() && a.value.trim())
                 .map((a, index) => ({
@@ -1894,9 +1911,25 @@ export default function ProductForm({ mode, productId }: Props) {
       <section className="rounded-lg border bg-white p-6 shadow-sm">
         <div className="mb-5">
           <h2 className="text-lg font-semibold">Опис</h2>
-          <p className="mt-1 text-sm text-muted-foreground">Коротко опишіть переваги, комплектацію та важливі деталі.</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {mediaTargetVariant
+              ? 'Опис цієї конфігурації (повністю замінює загальний опис товару, якщо заповнений).'
+              : 'Коротко опишіть переваги, комплектацію та важливі деталі.'}
+          </p>
         </div>
-        <RichEditor value={description} onChange={setDescription} placeholder="Опис товару..." />
+        {renderMediaTargetTabs()}
+        {renderCopyControl(
+          'description',
+          'Скопіювати опис з:',
+          copyDescriptionSource,
+          setCopyDescriptionSource,
+          (sourceKey) => resolvedMediaTargetKey && copyVariantDescriptionFrom(resolvedMediaTargetKey, sourceKey),
+        )}
+        <RichEditor
+          value={effectiveDescription}
+          onChange={(value) => (resolvedMediaTargetKey ? updateVariantDescription(resolvedMediaTargetKey, value) : setDescription(value))}
+          placeholder="Опис товару..."
+        />
       </section>
 
       <div className="pointer-events-none sticky bottom-4 z-30 -mt-2">

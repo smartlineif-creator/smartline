@@ -51,6 +51,10 @@ export class VariantDto {
   @IsOptional()
   videoUrl?: string | null;
 
+  @IsString()
+  @IsOptional()
+  description?: string | null;
+
   @IsArray()
   @IsOptional()
   @ValidateNested({ each: true })

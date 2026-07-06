@@ -379,6 +379,7 @@ export default function ProductDetail({ product }: Props) {
   const displayName = getProductDisplayName(product, resolvedVariant);
   const images = (resolvedVariant?.images?.length ? resolvedVariant.images : product.images) || [];
   const videoUrl = resolvedVariant?.videoUrl || product.videoUrl || null;
+  const resolvedDescription = resolvedVariant?.description || product.description;
   const mediaItems = useMemo(() => [
     ...images.map((image, index) => ({ type: 'image' as const, image, index })),
     ...(videoUrl ? [{ type: 'video' as const, url: videoUrl }] : []),
@@ -1302,11 +1303,11 @@ export default function ProductDetail({ product }: Props) {
                 className="rounded-2xl px-5 py-6 sm:px-6"
                 style={{ background: 'var(--sl-bg-surface)', border: '1px solid var(--sl-border)' }}
               >
-                {product.description ? (
+                {resolvedDescription ? (
                   <div
                     className="rich-content max-w-none"
                     style={{ color: 'var(--sl-text-secondary)' }}
-                    dangerouslySetInnerHTML={{ __html: product.description }}
+                    dangerouslySetInnerHTML={{ __html: resolvedDescription }}
                   />
                 ) : (
                   <p className="text-sm" style={{ color: 'var(--sl-text-muted)' }}>Опис відсутній</p>

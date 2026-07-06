@@ -58,6 +58,7 @@ export interface Variant {
   isActive?: boolean;
   selections?: VariantSelection[];
   videoUrl?: string | null;
+  description?: string | null;
   images?: ProductImage[];
   attributes?: Attribute[];
 }

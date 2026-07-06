@@ -178,6 +178,7 @@ model Variant {
   sku        String?
   isActive   Boolean     @default(true)
   videoUrl   String?
+  description String?
   selections VariantOptionSelection[]
   images     VariantImage[]
   attributes VariantAttribute[]
