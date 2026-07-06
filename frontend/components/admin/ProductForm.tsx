@@ -73,6 +73,9 @@ interface VariantEntry {
   slug: string;
   selections: VariantSelectionEntry[];
   isEnabled: boolean;
+  images: string[];
+  videoUrl: string | null;
+  attributes: AttributeEntry[];
 }
 
 interface CategoryOption {
@@ -114,6 +117,18 @@ function getMainImage(product?: ProductOptionItem) {
   return product?.images?.[0]?.url || '/placeholder.jpg';
 }
 
+function variantMediaFromApi(variant: Variant): Pick<VariantEntry, 'images' | 'videoUrl' | 'attributes'> {
+  return {
+    images: (variant.images || []).map((image) => image.url),
+    videoUrl: variant.videoUrl ?? null,
+    attributes: (variant.attributes || []).map((attribute) => ({
+      name: attribute.name,
+      value: attribute.value,
+      unit: attribute.unit || '',
+    })),
+  };
+}
+
 function normalizeLegacyVariants(variants: Variant[]): { groups: OptionGroupEntry[]; items: VariantEntry[] } {
   const fallbackGroupId = createEntryId();
   const groups = [{
@@ -137,6 +152,7 @@ function normalizeLegacyVariants(variants: Variant[]): { groups: OptionGroupEntr
       groupName: 'Варіант',
       value: variant.name,
     }],
+    ...variantMediaFromApi(variant),
   }));
 
   return { groups, items };
@@ -184,6 +200,7 @@ function buildConfiguredState(
       slug: variant.slug || '',
       isEnabled: variant.isActive !== false,
       selections,
+      ...variantMediaFromApi(variant),
     };
   });
 
@@ -238,6 +255,9 @@ function generateVariantMatrix(optionGroups: OptionGroupEntry[]): VariantEntry[]
     sku: '',
     slug: '',
     isEnabled: true,
+    images: [],
+    videoUrl: null,
+    attributes: [],
     selections,
   }));
 }
@@ -274,6 +294,9 @@ export default function ProductForm({ mode, productId }: Props) {
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
   const [expandedVariantSlugs, setExpandedVariantSlugs] = useState<Set<string>>(new Set());
+  // null = product-level upload target; a variant key routes the shared file/video
+  // inputs' onChange to that variant's own media instead of the product's.
+  const [uploadTargetKey, setUploadTargetKey] = useState<string | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [productOptions, setProductOptions] = useState<ProductOptionItem[]>([]);
   const [categoryOpen, setCategoryOpen] = useState(false);
@@ -576,6 +599,28 @@ export default function ProductForm({ mode, productId }: Props) {
     });
   };
 
+  const updateVariantImages = (key: string, updater: (images: string[]) => string[]) => {
+    setVariants((items) => items.map((item) => (item.key === key ? { ...item, images: updater(item.images) } : item)));
+  };
+
+  const updateVariantVideoUrl = (key: string, videoUrl: string | null) => {
+    setVariants((items) => items.map((item) => (item.key === key ? { ...item, videoUrl } : item)));
+  };
+
+  const updateVariantAttributes = (key: string, updater: (attributes: AttributeEntry[]) => AttributeEntry[]) => {
+    setVariants((items) => items.map((item) => (item.key === key ? { ...item, attributes: updater(item.attributes) } : item)));
+  };
+
+  const copyVariantMedia = (targetKey: string, sourceKey: string) => {
+    const source = variants.find((v) => v.key === sourceKey);
+    if (!source) return;
+    setVariants((items) => items.map((item) => (
+      item.key === targetKey
+        ? { ...item, images: [...source.images], videoUrl: source.videoUrl, attributes: source.attributes.map((a) => ({ ...a })) }
+        : item
+    )));
+  };
+
   const addAttribute = () => setAttributes((items) => [...items, { name: '', value: '', unit: '' }]);
   const removeAttribute = (index: number) => setAttributes((items) => items.filter((_, i) => i !== index));
   const updateAttribute = (index: number, field: keyof AttributeEntry, value: string) =>
@@ -650,10 +695,13 @@ export default function ProductForm({ mode, productId }: Props) {
     }
   };
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, variantKey?: string) => {
     const files = Array.from(e.target.files || []);
     if (!files.length) return;
-    if (images.length + files.length > 15) {
+    const currentCount = variantKey
+      ? variants.find((v) => v.key === variantKey)?.images.length ?? 0
+      : images.length;
+    if (currentCount + files.length > 15) {
       toast.error('Максимум 15 фото');
       return;
     }
@@ -666,7 +714,11 @@ export default function ProductForm({ mode, productId }: Props) {
       for (const file of files) {
         try {
           const url = await uploadImage(file);
-          setImages((current) => [...current, url]);
+          if (variantKey) {
+            updateVariantImages(variantKey, (imgs) => [...imgs, url]);
+          } else {
+            setImages((current) => [...current, url]);
+          }
         } catch {
           failed += 1;
         }
@@ -674,33 +726,49 @@ export default function ProductForm({ mode, productId }: Props) {
       if (failed > 0) toast.error(`Не вдалося завантажити ${failed} з ${files.length} фото`);
     } finally {
       setUploading(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
+      e.target.value = '';
     }
   };
 
-  const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>, variantKey?: string) => {
     const file = e.target.files?.[0];
     if (!file) return;
     setUploadingVideo(true);
     try {
       const url = await uploadVideo(file);
-      setVideoUrl(url);
+      if (variantKey) {
+        updateVariantVideoUrl(variantKey, url);
+      } else {
+        setVideoUrl(url);
+      }
     } catch {
       toast.error('Помилка завантаження відео');
     } finally {
       setUploadingVideo(false);
-      if (videoInputRef.current) videoInputRef.current.value = '';
+      e.target.value = '';
     }
   };
 
-  const removeImage = (index: number) => setImages((items) => items.filter((_, i) => i !== index));
-  const moveImage = (from: number, to: number) => {
-    setImages((items) => {
+  const removeImage = (index: number, variantKey?: string) => {
+    if (variantKey) {
+      updateVariantImages(variantKey, (imgs) => imgs.filter((_, i) => i !== index));
+    } else {
+      setImages((items) => items.filter((_, i) => i !== index));
+    }
+  };
+
+  const moveImage = (from: number, to: number, variantKey?: string) => {
+    const reorder = (items: string[]) => {
       const next = [...items];
       const [image] = next.splice(from, 1);
       next.splice(to, 0, image);
       return next;
-    });
+    };
+    if (variantKey) {
+      updateVariantImages(variantKey, reorder);
+    } else {
+      setImages(reorder);
+    }
   };
 
   const canSave = () => {
@@ -807,6 +875,20 @@ export default function ProductForm({ mode, productId }: Props) {
               selections: variant.selections.map((selection) => ({
                 groupName: selection.groupName,
                 value: selection.value,
+              })),
+              videoUrl: variant.videoUrl || null,
+              attributes: variant.attributes
+                .filter((a) => a.name.trim() && a.value.trim())
+                .map((a, index) => ({
+                  name: a.name.trim(),
+                  value: a.value.trim(),
+                  unit: a.unit.trim() || undefined,
+                  sortOrder: index,
+                })),
+              images: variant.images.map((url, index) => ({
+                url,
+                isMain: index === 0,
+                sortOrder: index,
               })),
             }))
           : [],
@@ -1292,16 +1374,148 @@ export default function ProductForm({ mode, productId }: Props) {
                         </div>
 
                         {slugExpanded && variant.isEnabled && (
-                          <div className="mt-3 border-t border-gray-100 pt-3">
-                            <Label className="text-xs text-muted-foreground">
-                              SEO slug — URL цієї конфігурації (залиш порожнім для авто)
-                            </Label>
-                            <Input
-                              value={variant.slug}
-                              onChange={(e) => updateVariant(variant.key, 'slug', e.target.value)}
-                              placeholder={`${slug}-${variant.selections.map((s) => toSlug(s.value)).join('-')}`}
-                              className="mt-2 h-9 font-mono text-xs"
-                            />
+                          <div className="mt-3 space-y-4 border-t border-gray-100 pt-3">
+                            <div>
+                              <Label className="text-xs text-muted-foreground">
+                                SEO slug — URL цієї конфігурації (залиш порожнім для авто)
+                              </Label>
+                              <Input
+                                value={variant.slug}
+                                onChange={(e) => updateVariant(variant.key, 'slug', e.target.value)}
+                                placeholder={`${slug}-${variant.selections.map((s) => toSlug(s.value)).join('-')}`}
+                                className="mt-2 h-9 font-mono text-xs"
+                              />
+                            </div>
+
+                            {variants.length > 1 && (
+                              <div className="flex items-center gap-2">
+                                <Label className="shrink-0 text-xs text-muted-foreground">
+                                  Скопіювати фото/відео/характеристики з:
+                                </Label>
+                                <select
+                                  value=""
+                                  onChange={(e) => {
+                                    if (e.target.value) copyVariantMedia(variant.key, e.target.value);
+                                    e.target.value = '';
+                                  }}
+                                  className="h-8 rounded-md border border-input bg-white px-2 text-xs"
+                                >
+                                  <option value="">— обрати варіант —</option>
+                                  {variants.filter((v) => v.key !== variant.key).map((v) => (
+                                    <option key={v.key} value={v.key}>{v.name}</option>
+                                  ))}
+                                </select>
+                              </div>
+                            )}
+
+                            <div>
+                              <Label className="text-xs text-muted-foreground">
+                                Фото цього варіанта (необов&apos;язково — інакше показуються фото товару)
+                              </Label>
+                              <div className="mt-2 flex flex-wrap gap-2">
+                                {variant.images.map((url, index) => (
+                                  <div key={`${url}-${index}`} className="group relative h-16 w-16 shrink-0 overflow-hidden rounded-lg border bg-gray-50">
+                                    <Image src={url} alt="" fill className="object-contain p-1" />
+                                    <div className="absolute inset-0 flex items-center justify-center gap-1 bg-black/0 opacity-0 transition group-hover:bg-black/30 group-hover:opacity-100">
+                                      {index > 0 && (
+                                        <button type="button" onClick={() => moveImage(index, index - 1, variant.key)} className="rounded bg-white p-0.5">
+                                          <ChevronLeft className="h-3 w-3" />
+                                        </button>
+                                      )}
+                                      <button type="button" onClick={() => removeImage(index, variant.key)} className="rounded bg-white p-0.5 text-red-500">
+                                        <X className="h-3 w-3" />
+                                      </button>
+                                      {index < variant.images.length - 1 && (
+                                        <button type="button" onClick={() => moveImage(index, index + 1, variant.key)} className="rounded bg-white p-0.5">
+                                          <ChevronRight className="h-3 w-3" />
+                                        </button>
+                                      )}
+                                    </div>
+                                  </div>
+                                ))}
+                                <button
+                                  type="button"
+                                  onClick={() => { setUploadTargetKey(variant.key); fileInputRef.current?.click(); }}
+                                  className="flex h-16 w-16 shrink-0 items-center justify-center rounded-lg border border-dashed text-gray-400 hover:border-blue-400"
+                                >
+                                  <Upload className="h-4 w-4" />
+                                </button>
+                              </div>
+                            </div>
+
+                            <div>
+                              <Label className="text-xs text-muted-foreground">
+                                Відео цього варіанта (необов&apos;язково — інакше показується відео товару)
+                              </Label>
+                              {variant.videoUrl ? (
+                                <div className="mt-2 flex items-center gap-2">
+                                  <video src={variant.videoUrl} className="h-16 w-24 rounded-lg border object-cover" muted />
+                                  <Button type="button" variant="ghost" size="icon" onClick={() => updateVariantVideoUrl(variant.key, null)}>
+                                    <X className="h-4 w-4 text-red-500" />
+                                  </Button>
+                                </div>
+                              ) : (
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  className="mt-2"
+                                  onClick={() => { setUploadTargetKey(variant.key); videoInputRef.current?.click(); }}
+                                >
+                                  <Upload className="h-3.5 w-3.5" /> Завантажити відео
+                                </Button>
+                              )}
+                            </div>
+
+                            <div>
+                              <Label className="text-xs text-muted-foreground">
+                                Характеристики цього варіанта (перевизначають загальні за назвою)
+                              </Label>
+                              <div className="mt-2 space-y-2">
+                                {variant.attributes.map((attr, attrIdx) => (
+                                  <div key={attrIdx} className="flex items-center gap-2">
+                                    <Input
+                                      placeholder="Назва"
+                                      value={attr.name}
+                                      onChange={(e) => updateVariantAttributes(variant.key, (attrs) =>
+                                        attrs.map((a, i) => (i === attrIdx ? { ...a, name: e.target.value } : a)))}
+                                      className="h-8 flex-1 text-xs"
+                                    />
+                                    <Input
+                                      placeholder="Значення"
+                                      value={attr.value}
+                                      onChange={(e) => updateVariantAttributes(variant.key, (attrs) =>
+                                        attrs.map((a, i) => (i === attrIdx ? { ...a, value: e.target.value } : a)))}
+                                      className="h-8 flex-1 text-xs"
+                                    />
+                                    <Input
+                                      placeholder="Од."
+                                      value={attr.unit}
+                                      onChange={(e) => updateVariantAttributes(variant.key, (attrs) =>
+                                        attrs.map((a, i) => (i === attrIdx ? { ...a, unit: e.target.value } : a)))}
+                                      className="h-8 w-16 shrink-0 text-xs"
+                                    />
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="icon"
+                                      className="shrink-0 text-red-500"
+                                      onClick={() => updateVariantAttributes(variant.key, (attrs) => attrs.filter((_, i) => i !== attrIdx))}
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                ))}
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => updateVariantAttributes(variant.key, (attrs) => [...attrs, { name: '', value: '', unit: '' }])}
+                                >
+                                  <Plus className="h-3.5 w-3.5" /> Додати характеристику
+                                </Button>
+                              </div>
+                            </div>
                           </div>
                         )}
                       </div>
@@ -1513,7 +1727,7 @@ export default function ProductForm({ mode, productId }: Props) {
         <button
           type="button"
           disabled={uploading}
-          onClick={() => fileInputRef.current?.click()}
+          onClick={() => { setUploadTargetKey(null); fileInputRef.current?.click(); }}
           className={cn(
             'w-full rounded-lg border-2 border-dashed p-8 text-center transition-colors',
             uploading ? 'cursor-not-allowed bg-gray-50' : 'hover:border-blue-400',
@@ -1528,7 +1742,14 @@ export default function ProductForm({ mode, productId }: Props) {
             {uploading ? 'Завантаження...' : 'Натисніть, щоб завантажити фото'}
           </span>
         </button>
-        <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handleImageUpload} />
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          multiple
+          className="hidden"
+          onChange={(e) => handleImageUpload(e, uploadTargetKey ?? undefined)}
+        />
 
         {images.length > 0 && (
           <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -1577,7 +1798,7 @@ export default function ProductForm({ mode, productId }: Props) {
           <button
             type="button"
             disabled={uploadingVideo}
-            onClick={() => videoInputRef.current?.click()}
+            onClick={() => { setUploadTargetKey(null); videoInputRef.current?.click(); }}
             className={cn(
               'w-full rounded-lg border-2 border-dashed p-8 text-center transition-colors',
               uploadingVideo ? 'cursor-not-allowed bg-gray-50' : 'hover:border-blue-400',
@@ -1598,7 +1819,7 @@ export default function ProductForm({ mode, productId }: Props) {
           type="file"
           accept="video/mp4,video/webm,video/quicktime"
           className="hidden"
-          onChange={handleVideoUpload}
+          onChange={(e) => handleVideoUpload(e, uploadTargetKey ?? undefined)}
         />
       </section>
 

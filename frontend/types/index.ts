@@ -57,6 +57,9 @@ export interface Variant {
   sku?: string;
   isActive?: boolean;
   selections?: VariantSelection[];
+  videoUrl?: string | null;
+  images?: ProductImage[];
+  attributes?: Attribute[];
 }
 
 export interface Attribute {

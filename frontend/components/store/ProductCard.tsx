@@ -89,7 +89,7 @@ export default function ProductCard({ product, selectedVariant }: Props) {
       ? product.variants.every((v) => (v.stock ?? 0) === 0)
       : (product.stock ?? 0) === 0;
   const { hasMultiple } = selectedVariant ? { hasMultiple: false } : getProductMinPrice(product);
-  const mainImage = getMainImage(product);
+  const mainImage = getMainImage(product, firstVariant);
   const variantHighlights = selectedVariant?.selections?.length
     ? selectedVariant.selections
         .sort((a, b) => (a.optionValue.group.sortOrder ?? 0) - (b.optionValue.group.sortOrder ?? 0))

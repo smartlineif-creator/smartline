@@ -177,7 +177,10 @@ model Variant {
   stock      Int         @default(0)
   sku        String?
   isActive   Boolean     @default(true)
+  videoUrl   String?
   selections VariantOptionSelection[]
+  images     VariantImage[]
+  attributes VariantAttribute[]
   cartItems  CartItem[]
   orderItems OrderItem[]
   createdAt  DateTime    @default(now())
@@ -191,6 +194,26 @@ model VariantOptionSelection {
   optionValue    ProductOptionValue @relation(fields: [optionValueId], references: [id], onDelete: Cascade)
 
   @@unique([variantId, optionValueId])
+}
+
+model VariantAttribute {
+  id        String  @id @default(cuid())
+  variantId String
+  variant   Variant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  name      String
+  value     String
+  unit      String?
+  sortOrder Int     @default(0)
+}
+
+model VariantImage {
+  id        String  @id @default(cuid())
+  variantId String
+  variant   Variant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  url       String
+  alt       String?
+  isMain    Boolean @default(false)
+  sortOrder Int     @default(0)
 }
 
 model Attribute {

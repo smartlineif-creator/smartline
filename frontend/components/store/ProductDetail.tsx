@@ -121,6 +121,16 @@ function dedupeAttributes(attributes: Attribute[]) {
   });
 }
 
+/** Variant attributes override product attributes with the same (normalized) name; the rest of the product's attributes pass through unchanged. */
+function mergeVariantAttributes(productAttributes: Attribute[], variantAttributes: Attribute[]) {
+  if (variantAttributes.length === 0) return productAttributes;
+  const variantNames = new Set(variantAttributes.map((a) => normalizeAttributeName(a.name)));
+  return [
+    ...variantAttributes,
+    ...productAttributes.filter((a) => !variantNames.has(normalizeAttributeName(a.name))),
+  ];
+}
+
 function formatAttribute(attribute: Attribute) {
   return `${attribute.value}${attribute.unit ? ` ${attribute.unit}` : ''}`;
 }
@@ -367,11 +377,12 @@ export default function ProductDetail({ product }: Props) {
 
   const { finalPrice, crossedPrice, promo } = getProductDisplayPrices(product, resolvedVariant);
   const displayName = getProductDisplayName(product, resolvedVariant);
-  const images = product.images || [];
+  const images = (resolvedVariant?.images?.length ? resolvedVariant.images : product.images) || [];
+  const videoUrl = resolvedVariant?.videoUrl || product.videoUrl || null;
   const mediaItems = useMemo(() => [
     ...images.map((image, index) => ({ type: 'image' as const, image, index })),
-    ...(product.videoUrl ? [{ type: 'video' as const, url: product.videoUrl }] : []),
-  ], [images, product.videoUrl]);
+    ...(videoUrl ? [{ type: 'video' as const, url: videoUrl }] : []),
+  ], [images, videoUrl]);
 
   const handleMobileScroll = useCallback(() => {
     const el = mobileCarouselRef.current;
@@ -381,10 +392,10 @@ export default function ProductDetail({ product }: Props) {
   }, []);
 
   const reviews = (product as Product & { reviews?: any[] }).reviews || [];
-  const attributes = useMemo(
-    () => dedupeAttributes((product.attributes || []).filter((attribute) => !shouldHideAttribute(attribute))),
-    [product.attributes],
-  );
+  const attributes = useMemo(() => {
+    const merged = mergeVariantAttributes(product.attributes || [], resolvedVariant?.attributes || []);
+    return dedupeAttributes(merged.filter((attribute) => !shouldHideAttribute(attribute)));
+  }, [product.attributes, resolvedVariant]);
   const recommendedProducts = product.recommendedProducts || [];
   const withThisBuyProducts = product.withThisBuyProducts || [];
   const accessoryProducts = product.accessoryProducts || [];
@@ -631,7 +642,7 @@ export default function ProductDetail({ product }: Props) {
                           </>
                         )}
                         {/* Watch video pill (bottom-left, only when video exists) */}
-                        {product.videoUrl && (
+                        {videoUrl && (
                           <button
                             type="button"
                             onClick={() => setSelectedMedia({ type: 'video' })}
@@ -647,7 +658,7 @@ export default function ProductDetail({ product }: Props) {
                       /* Video player inline */
                       <>
                         <video
-                          src={product.videoUrl!}
+                          src={videoUrl!}
                           controls
                           playsInline
                           className="absolute inset-0 h-full w-full rounded-2xl object-contain"
@@ -1149,7 +1160,7 @@ export default function ProductDetail({ product }: Props) {
                       variantId: resolvedVariant?.id,
                       slug: resolvedVariant?.slug ?? product.slug,
                       name: displayName,
-                      image: getMainImage(product),
+                      image: getMainImage(product, resolvedVariant),
                       price: finalPrice ?? 0,
                     }}
                     size="md"
@@ -1525,13 +1536,13 @@ export default function ProductDetail({ product }: Props) {
             </>
           )}
 
-          {lightbox.type === 'video' && product.videoUrl && (
+          {lightbox.type === 'video' && videoUrl && (
             <div
               className="mx-4 w-full max-w-4xl"
               onClick={(e) => e.stopPropagation()}
             >
               <video
-                src={product.videoUrl}
+                src={videoUrl}
                 controls
                 autoPlay
                 playsInline

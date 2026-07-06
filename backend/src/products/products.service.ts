@@ -27,7 +27,10 @@ const CARD_PRODUCT_INCLUDE = {
   },
   attributes: true,
   images: { where: { isMain: true } },
-  variants: { where: { isActive: true, price: { gt: 0 } } },
+  variants: {
+    where: { isActive: true, price: { gt: 0 } },
+    include: { images: { orderBy: { sortOrder: 'asc' as const } } },
+  },
   promotions: {
     include: { promotion: true },
     where: { promotion: ACTIVE_PROMOTION_WHERE },
@@ -49,6 +52,8 @@ const VARIANT_SELECTIONS_INCLUDE = {
         },
       },
     },
+    images: { orderBy: { sortOrder: 'asc' as const } },
+    attributes: { orderBy: { sortOrder: 'asc' as const } },
   },
 };
 
@@ -1062,6 +1067,7 @@ export class ProductsService {
           stock: variant.stock ?? 0,
           sku: variant.sku,
           isActive: variant.isActive !== false,
+          videoUrl: variant.videoUrl || null,
         },
       });
 
@@ -1075,6 +1081,29 @@ export class ProductsService {
             variantId: createdVariant.id,
             optionValueId,
           },
+        });
+      }
+
+      if (variant.attributes && variant.attributes.length > 0) {
+        await tx.variantAttribute.createMany({
+          data: variant.attributes.map((attribute, attrIndex) => ({
+            variantId: createdVariant.id,
+            name: attribute.name,
+            value: attribute.value,
+            unit: attribute.unit,
+            sortOrder: attribute.sortOrder ?? attrIndex,
+          })),
+        });
+      }
+
+      if (variant.images && variant.images.length > 0) {
+        await tx.variantImage.createMany({
+          data: variant.images.map((image, imgIndex) => ({
+            variantId: createdVariant.id,
+            url: image.url,
+            isMain: image.isMain ?? imgIndex === 0,
+            sortOrder: image.sortOrder ?? imgIndex,
+          })),
         });
       }
     }

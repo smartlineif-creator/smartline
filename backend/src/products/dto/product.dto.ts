@@ -46,6 +46,22 @@ export class VariantDto {
   @ValidateNested({ each: true })
   @Type(() => VariantSelectionDto)
   selections?: VariantSelectionDto[];
+
+  @IsString()
+  @IsOptional()
+  videoUrl?: string | null;
+
+  @IsArray()
+  @IsOptional()
+  @ValidateNested({ each: true })
+  @Type(() => AttributeDto)
+  attributes?: AttributeDto[];
+
+  @IsArray()
+  @IsOptional()
+  @ValidateNested({ each: true })
+  @Type(() => ProductImageDto)
+  images?: ProductImageDto[];
 }
 
 export class VariantSelectionDto {

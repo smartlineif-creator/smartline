@@ -111,7 +111,9 @@ export function getActivePromotion(product: Product) {
   );
 }
 
-export function getMainImage(product: Product): string {
+export function getMainImage(product: Product, variant?: Variant): string {
+  const variantMain = variant?.images?.find((i) => i.isMain) ?? variant?.images?.[0];
+  if (variantMain?.url) return variantMain.url;
   const main = product.images?.find((i) => i.isMain);
   return main?.url || product.images?.[0]?.url || '/placeholder.svg';
 }
