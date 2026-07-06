@@ -294,9 +294,10 @@ export default function ProductForm({ mode, productId }: Props) {
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
   const [expandedVariantSlugs, setExpandedVariantSlugs] = useState<Set<string>>(new Set());
-  // null = product-level upload target; a variant key routes the shared file/video
-  // inputs' onChange to that variant's own media instead of the product's.
-  const [uploadTargetKey, setUploadTargetKey] = useState<string | null>(null);
+  // null = product-level target; a variant key routes the Характеристики/Фото/Відео
+  // sections (and the shared file/video inputs' onChange) to that variant's own
+  // media/attributes instead of the product's.
+  const [mediaTargetKey, setMediaTargetKey] = useState<string | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [productOptions, setProductOptions] = useState<ProductOptionItem[]>([]);
   const [categoryOpen, setCategoryOpen] = useState(false);
@@ -621,13 +622,30 @@ export default function ProductForm({ mode, productId }: Props) {
     )));
   };
 
-  const addAttribute = () => setAttributes((items) => [...items, { name: '', value: '', unit: '' }]);
-  const removeAttribute = (index: number) => setAttributes((items) => items.filter((_, i) => i !== index));
-  const updateAttribute = (index: number, field: keyof AttributeEntry, value: string) =>
+  const addAttribute = (variantKey?: string) => {
+    if (variantKey) {
+      updateVariantAttributes(variantKey, (items) => [...items, { name: '', value: '', unit: '' }]);
+      return;
+    }
+    setAttributes((items) => [...items, { name: '', value: '', unit: '' }]);
+  };
+  const removeAttribute = (index: number, variantKey?: string) => {
+    if (variantKey) {
+      updateVariantAttributes(variantKey, (items) => items.filter((_, i) => i !== index));
+      return;
+    }
+    setAttributes((items) => items.filter((_, i) => i !== index));
+  };
+  const updateAttribute = (index: number, field: keyof AttributeEntry, value: string, variantKey?: string) => {
+    if (variantKey) {
+      updateVariantAttributes(variantKey, (items) => items.map((item, i) => (i === index ? { ...item, [field]: value } : item)));
+      return;
+    }
     setAttributes((items) => items.map((item, i) => (i === index ? { ...item, [field]: value } : item)));
+  };
 
-  const handleAttrNameChange = (index: number, value: string) => {
-    updateAttribute(index, 'name', value);
+  const handleAttrNameChange = (index: number, value: string, variantKey?: string) => {
+    updateAttribute(index, 'name', value, variantKey);
     if (attrDebounceRef.current) window.clearTimeout(attrDebounceRef.current);
     if (!value.trim()) return;
     attrDebounceRef.current = window.setTimeout(async () => {
@@ -640,16 +658,93 @@ export default function ProductForm({ mode, productId }: Props) {
     }, 300);
   };
 
-  const handleSelectTemplate = (index: number, tmpl: { name: string; unit?: string | null }) => {
-    setAttributes((items) =>
-      items.map((item, i) => (i === index ? { ...item, name: tmpl.name, unit: tmpl.unit || '' } : item)),
-    );
+  const handleSelectTemplate = (index: number, tmpl: { name: string; unit?: string | null }, variantKey?: string) => {
+    if (variantKey) {
+      updateVariantAttributes(variantKey, (items) =>
+        items.map((item, i) => (i === index ? { ...item, name: tmpl.name, unit: tmpl.unit || '' } : item)),
+      );
+    } else {
+      setAttributes((items) =>
+        items.map((item, i) => (i === index ? { ...item, name: tmpl.name, unit: tmpl.unit || '' } : item)),
+      );
+    }
     setAttrDropdownOpenIdx(null);
     if (tmpl.name && categoryId) {
       adminGetAttributeValues(tmpl.name, categoryId)
         .then((vals) => setAttrValueSuggestions((prev) => ({ ...prev, [index]: vals })))
         .catch(() => {});
     }
+  };
+
+  const selectMediaTarget = (key: string | null) => {
+    setMediaTargetKey(key);
+    setAttrDropdownOpenIdx(null);
+    setAttrValueSuggestions({});
+  };
+
+  const resolvedMediaTargetKey = variants.some((v) => v.key === mediaTargetKey) ? mediaTargetKey : null;
+  const mediaTargetVariant = resolvedMediaTargetKey ? variants.find((v) => v.key === resolvedMediaTargetKey) ?? null : null;
+  const effectiveImages = mediaTargetVariant ? mediaTargetVariant.images : images;
+  const effectiveVideoUrl = mediaTargetVariant ? mediaTargetVariant.videoUrl : videoUrl;
+  const effectiveAttributes = mediaTargetVariant ? mediaTargetVariant.attributes : attributes;
+
+  const renderMediaTargetTabs = () => {
+    if (!hasVariants || variants.length === 0) return null;
+    return (
+      <div className="flex flex-wrap gap-2 mb-4">
+        <button
+          type="button"
+          onClick={() => selectMediaTarget(null)}
+          className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
+            resolvedMediaTargetKey === null
+              ? 'bg-gray-900 text-white border-gray-900'
+              : 'bg-white text-gray-600 border-gray-300 hover:border-gray-400'
+          }`}
+        >
+          Товар (за замовчуванням)
+        </button>
+        {variants.map((variant) => (
+          <button
+            key={variant.key}
+            type="button"
+            onClick={() => selectMediaTarget(variant.key)}
+            className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
+              resolvedMediaTargetKey === variant.key
+                ? 'bg-gray-900 text-white border-gray-900'
+                : 'bg-white text-gray-600 border-gray-300 hover:border-gray-400'
+            }`}
+          >
+            {variant.name || 'Варіант'}
+          </button>
+        ))}
+      </div>
+    );
+  };
+
+  const renderCopyFromVariant = () => {
+    if (!resolvedMediaTargetKey) return null;
+    const otherVariants = variants.filter((v) => v.key !== resolvedMediaTargetKey);
+    if (otherVariants.length === 0) return null;
+    return (
+      <div className="mb-4">
+        <label className="block text-sm text-gray-600 mb-1">Скопіювати фото/відео/характеристики з:</label>
+        <select
+          className="w-full sm:w-auto border border-gray-300 rounded-lg px-3 py-2 text-sm"
+          value=""
+          onChange={(e) => {
+            if (e.target.value) copyVariantMedia(resolvedMediaTargetKey, e.target.value);
+            e.target.value = '';
+          }}
+        >
+          <option value="">Оберіть варіант...</option>
+          {otherVariants.map((variant) => (
+            <option key={variant.key} value={variant.key}>
+              {variant.name || 'Варіант'}
+            </option>
+          ))}
+        </select>
+      </div>
+    );
   };
 
   const addCustomBadge = () => {
@@ -1387,135 +1482,6 @@ export default function ProductForm({ mode, productId }: Props) {
                               />
                             </div>
 
-                            {variants.length > 1 && (
-                              <div className="flex items-center gap-2">
-                                <Label className="shrink-0 text-xs text-muted-foreground">
-                                  Скопіювати фото/відео/характеристики з:
-                                </Label>
-                                <select
-                                  value=""
-                                  onChange={(e) => {
-                                    if (e.target.value) copyVariantMedia(variant.key, e.target.value);
-                                    e.target.value = '';
-                                  }}
-                                  className="h-8 rounded-md border border-input bg-white px-2 text-xs"
-                                >
-                                  <option value="">— обрати варіант —</option>
-                                  {variants.filter((v) => v.key !== variant.key).map((v) => (
-                                    <option key={v.key} value={v.key}>{v.name}</option>
-                                  ))}
-                                </select>
-                              </div>
-                            )}
-
-                            <div>
-                              <Label className="text-xs text-muted-foreground">
-                                Фото цього варіанта (необов&apos;язково — інакше показуються фото товару)
-                              </Label>
-                              <div className="mt-2 flex flex-wrap gap-2">
-                                {variant.images.map((url, index) => (
-                                  <div key={`${url}-${index}`} className="group relative h-16 w-16 shrink-0 overflow-hidden rounded-lg border bg-gray-50">
-                                    <Image src={url} alt="" fill className="object-contain p-1" />
-                                    <div className="absolute inset-0 flex items-center justify-center gap-1 bg-black/0 opacity-0 transition group-hover:bg-black/30 group-hover:opacity-100">
-                                      {index > 0 && (
-                                        <button type="button" onClick={() => moveImage(index, index - 1, variant.key)} className="rounded bg-white p-0.5">
-                                          <ChevronLeft className="h-3 w-3" />
-                                        </button>
-                                      )}
-                                      <button type="button" onClick={() => removeImage(index, variant.key)} className="rounded bg-white p-0.5 text-red-500">
-                                        <X className="h-3 w-3" />
-                                      </button>
-                                      {index < variant.images.length - 1 && (
-                                        <button type="button" onClick={() => moveImage(index, index + 1, variant.key)} className="rounded bg-white p-0.5">
-                                          <ChevronRight className="h-3 w-3" />
-                                        </button>
-                                      )}
-                                    </div>
-                                  </div>
-                                ))}
-                                <button
-                                  type="button"
-                                  onClick={() => { setUploadTargetKey(variant.key); fileInputRef.current?.click(); }}
-                                  className="flex h-16 w-16 shrink-0 items-center justify-center rounded-lg border border-dashed text-gray-400 hover:border-blue-400"
-                                >
-                                  <Upload className="h-4 w-4" />
-                                </button>
-                              </div>
-                            </div>
-
-                            <div>
-                              <Label className="text-xs text-muted-foreground">
-                                Відео цього варіанта (необов&apos;язково — інакше показується відео товару)
-                              </Label>
-                              {variant.videoUrl ? (
-                                <div className="mt-2 flex items-center gap-2">
-                                  <video src={variant.videoUrl} className="h-16 w-24 rounded-lg border object-cover" muted />
-                                  <Button type="button" variant="ghost" size="icon" onClick={() => updateVariantVideoUrl(variant.key, null)}>
-                                    <X className="h-4 w-4 text-red-500" />
-                                  </Button>
-                                </div>
-                              ) : (
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  size="sm"
-                                  className="mt-2"
-                                  onClick={() => { setUploadTargetKey(variant.key); videoInputRef.current?.click(); }}
-                                >
-                                  <Upload className="h-3.5 w-3.5" /> Завантажити відео
-                                </Button>
-                              )}
-                            </div>
-
-                            <div>
-                              <Label className="text-xs text-muted-foreground">
-                                Характеристики цього варіанта (перевизначають загальні за назвою)
-                              </Label>
-                              <div className="mt-2 space-y-2">
-                                {variant.attributes.map((attr, attrIdx) => (
-                                  <div key={attrIdx} className="flex items-center gap-2">
-                                    <Input
-                                      placeholder="Назва"
-                                      value={attr.name}
-                                      onChange={(e) => updateVariantAttributes(variant.key, (attrs) =>
-                                        attrs.map((a, i) => (i === attrIdx ? { ...a, name: e.target.value } : a)))}
-                                      className="h-8 flex-1 text-xs"
-                                    />
-                                    <Input
-                                      placeholder="Значення"
-                                      value={attr.value}
-                                      onChange={(e) => updateVariantAttributes(variant.key, (attrs) =>
-                                        attrs.map((a, i) => (i === attrIdx ? { ...a, value: e.target.value } : a)))}
-                                      className="h-8 flex-1 text-xs"
-                                    />
-                                    <Input
-                                      placeholder="Од."
-                                      value={attr.unit}
-                                      onChange={(e) => updateVariantAttributes(variant.key, (attrs) =>
-                                        attrs.map((a, i) => (i === attrIdx ? { ...a, unit: e.target.value } : a)))}
-                                      className="h-8 w-16 shrink-0 text-xs"
-                                    />
-                                    <Button
-                                      type="button"
-                                      variant="ghost"
-                                      size="icon"
-                                      className="shrink-0 text-red-500"
-                                      onClick={() => updateVariantAttributes(variant.key, (attrs) => attrs.filter((_, i) => i !== attrIdx))}
-                                    >
-                                      <Trash2 className="h-4 w-4" />
-                                    </Button>
-                                  </div>
-                                ))}
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => updateVariantAttributes(variant.key, (attrs) => [...attrs, { name: '', value: '', unit: '' }])}
-                                >
-                                  <Plus className="h-3.5 w-3.5" /> Додати характеристику
-                                </Button>
-                              </div>
-                            </div>
                           </div>
                         )}
                       </div>
@@ -1584,10 +1550,16 @@ export default function ProductForm({ mode, productId }: Props) {
       <section className="rounded-lg border bg-white p-6 shadow-sm">
         <div className="mb-5">
           <h2 className="text-lg font-semibold">Характеристики</h2>
-          <p className="mt-1 text-sm text-muted-foreground">Фіксовані параметри товару, які не змінюються при виборі конфігурації.</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {mediaTargetVariant
+              ? 'Характеристики цієї конфігурації (перевизначають загальні за назвою).'
+              : 'Фіксовані параметри товару, які не змінюються при виборі конфігурації.'}
+          </p>
         </div>
+        {renderMediaTargetTabs()}
+        {renderCopyFromVariant()}
         <div className="space-y-3">
-          {attributes.map((attribute, index) => {
+          {effectiveAttributes.map((attribute, index) => {
             const collides = isVariantGroup(attribute.name);
             const tmpl = getTemplate(attribute.name);
             const isTemplate = !!tmpl && !collides;
@@ -1625,7 +1597,7 @@ export default function ProductForm({ mode, productId }: Props) {
                       <Input
                         placeholder="Характеристика"
                         value={attribute.name}
-                        onChange={(e) => handleAttrNameChange(index, e.target.value)}
+                        onChange={(e) => handleAttrNameChange(index, e.target.value, resolvedMediaTargetKey ?? undefined)}
                         className="h-9 flex-1"
                       />
                       {categoryTemplates.length > 0 && (
@@ -1648,7 +1620,7 @@ export default function ProductForm({ mode, productId }: Props) {
                           key={t.name}
                           type="button"
                           tabIndex={0}
-                          onClick={() => handleSelectTemplate(index, t)}
+                          onClick={() => handleSelectTemplate(index, t, resolvedMediaTargetKey ?? undefined)}
                           className={cn(
                             'flex w-full items-center justify-between px-3 py-2 text-sm hover:bg-blue-50',
                             attribute.name.toLowerCase() === t.name.toLowerCase() && 'bg-blue-50 text-blue-700',
@@ -1663,9 +1635,15 @@ export default function ProductForm({ mode, productId }: Props) {
                           type="button"
                           tabIndex={0}
                           onClick={() => {
-                            setAttributes((items) =>
-                              items.map((item, i) => (i === index ? { ...item, name: '', unit: '' } : item)),
-                            );
+                            if (resolvedMediaTargetKey) {
+                              updateVariantAttributes(resolvedMediaTargetKey, (items) =>
+                                items.map((item, i) => (i === index ? { ...item, name: '', unit: '' } : item)),
+                              );
+                            } else {
+                              setAttributes((items) =>
+                                items.map((item, i) => (i === index ? { ...item, name: '', unit: '' } : item)),
+                              );
+                            }
                             setAttrDropdownOpenIdx(null);
                           }}
                           className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-500 hover:bg-gray-50"
@@ -1683,7 +1661,7 @@ export default function ProductForm({ mode, productId }: Props) {
                   placeholder="Значення"
                   value={attribute.value}
                   list={`attr-value-suggestions-${index}`}
-                  onChange={(e) => updateAttribute(index, 'value', e.target.value)}
+                  onChange={(e) => updateAttribute(index, 'value', e.target.value, resolvedMediaTargetKey ?? undefined)}
                   className="h-9"
                 />
 
@@ -1696,12 +1674,12 @@ export default function ProductForm({ mode, productId }: Props) {
                   <Input
                     placeholder="Одиниця"
                     value={attribute.unit}
-                    onChange={(e) => updateAttribute(index, 'unit', e.target.value)}
+                    onChange={(e) => updateAttribute(index, 'unit', e.target.value, resolvedMediaTargetKey ?? undefined)}
                     className="h-9"
                   />
                 )}
 
-                <Button type="button" variant="ghost" size="icon" className="text-red-500" onClick={() => removeAttribute(index)} aria-label="Видалити характеристику">
+                <Button type="button" variant="ghost" size="icon" className="text-red-500" onClick={() => removeAttribute(index, resolvedMediaTargetKey ?? undefined)} aria-label="Видалити характеристику">
                   <Trash2 className="h-4 w-4" />
                 </Button>
 
@@ -1712,7 +1690,7 @@ export default function ProductForm({ mode, productId }: Props) {
               </div>
             );
           })}
-          <Button type="button" variant="outline" size="sm" onClick={addAttribute}>
+          <Button type="button" variant="outline" size="sm" onClick={() => addAttribute(resolvedMediaTargetKey ?? undefined)}>
             <Plus className="h-4 w-4" />
             Додати характеристику
           </Button>
@@ -1724,10 +1702,11 @@ export default function ProductForm({ mode, productId }: Props) {
           <h2 className="text-lg font-semibold">Фото</h2>
           <p className="mt-1 text-sm text-muted-foreground">Перше фото буде головним у каталозі.</p>
         </div>
+        {renderMediaTargetTabs()}
         <button
           type="button"
           disabled={uploading}
-          onClick={() => { setUploadTargetKey(null); fileInputRef.current?.click(); }}
+          onClick={() => { setMediaTargetKey(resolvedMediaTargetKey); fileInputRef.current?.click(); }}
           className={cn(
             'w-full rounded-lg border-2 border-dashed p-8 text-center transition-colors',
             uploading ? 'cursor-not-allowed bg-gray-50' : 'hover:border-blue-400',
@@ -1748,26 +1727,26 @@ export default function ProductForm({ mode, productId }: Props) {
           accept="image/*"
           multiple
           className="hidden"
-          onChange={(e) => handleImageUpload(e, uploadTargetKey ?? undefined)}
+          onChange={(e) => handleImageUpload(e, resolvedMediaTargetKey ?? undefined)}
         />
 
-        {images.length > 0 && (
+        {effectiveImages.length > 0 && (
           <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-            {images.map((url, index) => (
+            {effectiveImages.map((url, index) => (
               <div key={`${url}-${index}`} className="group relative aspect-square overflow-hidden rounded-lg border bg-gray-50">
                 <Image src={url} alt="" fill className="object-contain p-1" />
                 {index === 0 && <span className="absolute left-2 top-2 rounded bg-blue-600 px-2 py-0.5 text-xs text-white">Головне</span>}
                 <div className="absolute inset-0 flex items-center justify-center gap-1 bg-black/0 opacity-0 transition group-hover:bg-black/30 group-hover:opacity-100">
                   {index > 0 && (
-                    <button type="button" onClick={() => moveImage(index, index - 1)} className="rounded bg-white p-1">
+                    <button type="button" onClick={() => moveImage(index, index - 1, resolvedMediaTargetKey ?? undefined)} className="rounded bg-white p-1">
                       <ChevronLeft className="h-3 w-3" />
                     </button>
                   )}
-                  <button type="button" onClick={() => removeImage(index)} className="rounded bg-white p-1 text-red-500">
+                  <button type="button" onClick={() => removeImage(index, resolvedMediaTargetKey ?? undefined)} className="rounded bg-white p-1 text-red-500">
                     <X className="h-3 w-3" />
                   </button>
-                  {index < images.length - 1 && (
-                    <button type="button" onClick={() => moveImage(index, index + 1)} className="rounded bg-white p-1">
+                  {index < effectiveImages.length - 1 && (
+                    <button type="button" onClick={() => moveImage(index, index + 1, resolvedMediaTargetKey ?? undefined)} className="rounded bg-white p-1">
                       <ChevronRight className="h-3 w-3" />
                     </button>
                   )}
@@ -1783,12 +1762,13 @@ export default function ProductForm({ mode, productId }: Props) {
           <h2 className="text-lg font-semibold">Відео</h2>
           <p className="mt-1 text-sm text-muted-foreground">MP4, WebM або MOV. Максимум 200 МБ. Відображається на сторінці товару.</p>
         </div>
-        {videoUrl ? (
+        {renderMediaTargetTabs()}
+        {effectiveVideoUrl ? (
           <div className="relative overflow-hidden rounded-lg border bg-gray-50">
-            <video src={videoUrl} controls className="w-full max-h-72 object-contain" />
+            <video src={effectiveVideoUrl} controls className="w-full max-h-72 object-contain" />
             <button
               type="button"
-              onClick={() => setVideoUrl(null)}
+              onClick={() => (resolvedMediaTargetKey ? updateVariantVideoUrl(resolvedMediaTargetKey, null) : setVideoUrl(null))}
               className="absolute right-2 top-2 rounded bg-white p-1 text-red-500 shadow hover:bg-red-50"
             >
               <X className="h-4 w-4" />
@@ -1798,7 +1778,7 @@ export default function ProductForm({ mode, productId }: Props) {
           <button
             type="button"
             disabled={uploadingVideo}
-            onClick={() => { setUploadTargetKey(null); videoInputRef.current?.click(); }}
+            onClick={() => { setMediaTargetKey(resolvedMediaTargetKey); videoInputRef.current?.click(); }}
             className={cn(
               'w-full rounded-lg border-2 border-dashed p-8 text-center transition-colors',
               uploadingVideo ? 'cursor-not-allowed bg-gray-50' : 'hover:border-blue-400',
@@ -1819,7 +1799,7 @@ export default function ProductForm({ mode, productId }: Props) {
           type="file"
           accept="video/mp4,video/webm,video/quicktime"
           className="hidden"
-          onChange={(e) => handleVideoUpload(e, uploadTargetKey ?? undefined)}
+          onChange={(e) => handleVideoUpload(e, resolvedMediaTargetKey ?? undefined)}
         />
       </section>
 
