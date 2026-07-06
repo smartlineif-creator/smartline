@@ -31,6 +31,7 @@ import {
 import { toast } from 'sonner';
 
 const BADGE_OPTIONS = ['ХІТ', 'НОВИНКА', 'Б/В', 'ЕКСКЛЮЗИВ'];
+const PRODUCT_SOURCE_KEY = '__product__';
 
 type Mode = 'create' | 'edit';
 
@@ -301,6 +302,7 @@ export default function ProductForm({ mode, productId }: Props) {
   const [copyAttributesSource, setCopyAttributesSource] = useState('');
   const [copyImagesSource, setCopyImagesSource] = useState('');
   const [copyVideoSource, setCopyVideoSource] = useState('');
+  const [copyDropdownOpen, setCopyDropdownOpen] = useState<'attributes' | 'images' | 'video' | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [productOptions, setProductOptions] = useState<ProductOptionItem[]>([]);
   const [categoryOpen, setCategoryOpen] = useState(false);
@@ -616,18 +618,22 @@ export default function ProductForm({ mode, productId }: Props) {
   };
 
   const copyVariantAttributesFrom = (targetKey: string, sourceKey: string) => {
-    const source = variants.find((v) => v.key === sourceKey);
-    if (!source) return;
-    updateVariantAttributes(targetKey, () => source.attributes.map((a) => ({ ...a })));
+    const sourceAttributes = sourceKey === PRODUCT_SOURCE_KEY ? attributes : variants.find((v) => v.key === sourceKey)?.attributes;
+    if (!sourceAttributes) return;
+    updateVariantAttributes(targetKey, () => sourceAttributes.map((a) => ({ ...a })));
   };
 
   const copyVariantImagesFrom = (targetKey: string, sourceKey: string) => {
-    const source = variants.find((v) => v.key === sourceKey);
-    if (!source) return;
-    updateVariantImages(targetKey, () => [...source.images]);
+    const sourceImages = sourceKey === PRODUCT_SOURCE_KEY ? images : variants.find((v) => v.key === sourceKey)?.images;
+    if (!sourceImages) return;
+    updateVariantImages(targetKey, () => [...sourceImages]);
   };
 
   const copyVariantVideoFrom = (targetKey: string, sourceKey: string) => {
+    if (sourceKey === PRODUCT_SOURCE_KEY) {
+      updateVariantVideoUrl(targetKey, videoUrl);
+      return;
+    }
     const source = variants.find((v) => v.key === sourceKey);
     if (!source) return;
     updateVariantVideoUrl(targetKey, source.videoUrl);
@@ -694,6 +700,7 @@ export default function ProductForm({ mode, productId }: Props) {
     setCopyAttributesSource('');
     setCopyImagesSource('');
     setCopyVideoSource('');
+    setCopyDropdownOpen(null);
   };
 
   const resolvedMediaTargetKey = variants.some((v) => v.key === mediaTargetKey) ? mediaTargetKey : null;
@@ -735,7 +742,14 @@ export default function ProductForm({ mode, productId }: Props) {
     );
   };
 
+  const getCopySourceLabel = (sourceValue: string) => {
+    if (!sourceValue) return 'Оберіть варіант...';
+    if (sourceValue === PRODUCT_SOURCE_KEY) return 'Товар (за замовчуванням)';
+    return variants.find((v) => v.key === sourceValue)?.name || 'Варіант';
+  };
+
   const renderCopyControl = (
+    kind: 'attributes' | 'images' | 'video',
     label: string,
     sourceValue: string,
     setSourceValue: (value: string) => void,
@@ -743,23 +757,47 @@ export default function ProductForm({ mode, productId }: Props) {
   ) => {
     if (!resolvedMediaTargetKey) return null;
     const otherVariants = variants.filter((v) => v.key !== resolvedMediaTargetKey);
-    if (otherVariants.length === 0) return null;
+    const isOpen = copyDropdownOpen === kind;
     return (
       <div className="mb-4 flex flex-wrap items-end gap-2">
-        <div>
+        <div
+          className="relative"
+          onBlur={(e) => {
+            if (!e.currentTarget.contains(e.relatedTarget as Node)) setCopyDropdownOpen(null);
+          }}
+        >
           <label className="block text-sm text-gray-600 mb-1">{label}</label>
-          <select
-            value={sourceValue}
-            onChange={(e) => setSourceValue(e.target.value)}
-            className="border border-gray-300 rounded-lg px-3 py-2 text-sm"
+          <button
+            type="button"
+            onClick={() => setCopyDropdownOpen(isOpen ? null : kind)}
+            className="flex h-9 min-w-[200px] items-center justify-between gap-2 rounded-lg border border-gray-300 bg-white px-3 text-sm"
           >
-            <option value="">Оберіть варіант...</option>
-            {otherVariants.map((variant) => (
-              <option key={variant.key} value={variant.key}>
-                {variant.name || 'Варіант'}
-              </option>
-            ))}
-          </select>
+            <span className="truncate">{getCopySourceLabel(sourceValue)}</span>
+            <ChevronDown className={cn('h-4 w-4 shrink-0 transition-transform', isOpen && 'rotate-180')} />
+          </button>
+          {isOpen && (
+            <div className="absolute z-30 mt-1 w-full min-w-[200px] rounded-lg border bg-white shadow-xl">
+              <button
+                type="button"
+                tabIndex={0}
+                onClick={() => { setSourceValue(PRODUCT_SOURCE_KEY); setCopyDropdownOpen(null); }}
+                className="flex w-full items-center px-3 py-2 text-left text-sm hover:bg-blue-50"
+              >
+                Товар (за замовчуванням)
+              </button>
+              {otherVariants.map((variant) => (
+                <button
+                  key={variant.key}
+                  type="button"
+                  tabIndex={0}
+                  onClick={() => { setSourceValue(variant.key); setCopyDropdownOpen(null); }}
+                  className="flex w-full items-center px-3 py-2 text-left text-sm hover:bg-blue-50"
+                >
+                  {variant.name || 'Варіант'}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
         <Button
           type="button"
@@ -1588,6 +1626,7 @@ export default function ProductForm({ mode, productId }: Props) {
         </div>
         {renderMediaTargetTabs()}
         {renderCopyControl(
+          'attributes',
           'Скопіювати характеристики з:',
           copyAttributesSource,
           setCopyAttributesSource,
@@ -1739,6 +1778,7 @@ export default function ProductForm({ mode, productId }: Props) {
         </div>
         {renderMediaTargetTabs()}
         {renderCopyControl(
+          'images',
           'Скопіювати фото з:',
           copyImagesSource,
           setCopyImagesSource,
@@ -1805,6 +1845,7 @@ export default function ProductForm({ mode, productId }: Props) {
         </div>
         {renderMediaTargetTabs()}
         {renderCopyControl(
+          'video',
           'Скопіювати відео з:',
           copyVideoSource,
           setCopyVideoSource,
