@@ -298,7 +298,9 @@ export default function ProductForm({ mode, productId }: Props) {
   // sections (and the shared file/video inputs' onChange) to that variant's own
   // media/attributes instead of the product's.
   const [mediaTargetKey, setMediaTargetKey] = useState<string | null>(null);
-  const [copySourcePickerOpen, setCopySourcePickerOpen] = useState(false);
+  const [copyAttributesSource, setCopyAttributesSource] = useState('');
+  const [copyImagesSource, setCopyImagesSource] = useState('');
+  const [copyVideoSource, setCopyVideoSource] = useState('');
   const [categories, setCategories] = useState<Category[]>([]);
   const [productOptions, setProductOptions] = useState<ProductOptionItem[]>([]);
   const [categoryOpen, setCategoryOpen] = useState(false);
@@ -613,14 +615,22 @@ export default function ProductForm({ mode, productId }: Props) {
     setVariants((items) => items.map((item) => (item.key === key ? { ...item, attributes: updater(item.attributes) } : item)));
   };
 
-  const copyVariantMedia = (targetKey: string, sourceKey: string) => {
+  const copyVariantAttributesFrom = (targetKey: string, sourceKey: string) => {
     const source = variants.find((v) => v.key === sourceKey);
     if (!source) return;
-    setVariants((items) => items.map((item) => (
-      item.key === targetKey
-        ? { ...item, images: [...source.images], videoUrl: source.videoUrl, attributes: source.attributes.map((a) => ({ ...a })) }
-        : item
-    )));
+    updateVariantAttributes(targetKey, () => source.attributes.map((a) => ({ ...a })));
+  };
+
+  const copyVariantImagesFrom = (targetKey: string, sourceKey: string) => {
+    const source = variants.find((v) => v.key === sourceKey);
+    if (!source) return;
+    updateVariantImages(targetKey, () => [...source.images]);
+  };
+
+  const copyVariantVideoFrom = (targetKey: string, sourceKey: string) => {
+    const source = variants.find((v) => v.key === sourceKey);
+    if (!source) return;
+    updateVariantVideoUrl(targetKey, source.videoUrl);
   };
 
   const addAttribute = (variantKey?: string) => {
@@ -681,6 +691,9 @@ export default function ProductForm({ mode, productId }: Props) {
     setMediaTargetKey(key);
     setAttrDropdownOpenIdx(null);
     setAttrValueSuggestions({});
+    setCopyAttributesSource('');
+    setCopyImagesSource('');
+    setCopyVideoSource('');
   };
 
   const resolvedMediaTargetKey = variants.some((v) => v.key === mediaTargetKey) ? mediaTargetKey : null;
@@ -722,14 +735,43 @@ export default function ProductForm({ mode, productId }: Props) {
     );
   };
 
-  const renderCopyFromVariant = () => {
+  const renderCopyControl = (
+    label: string,
+    sourceValue: string,
+    setSourceValue: (value: string) => void,
+    onCopy: (sourceKey: string) => void,
+  ) => {
     if (!resolvedMediaTargetKey) return null;
     const otherVariants = variants.filter((v) => v.key !== resolvedMediaTargetKey);
     if (otherVariants.length === 0) return null;
     return (
-      <div className="mb-4">
-        <Button type="button" variant="outline" size="sm" onClick={() => setCopySourcePickerOpen(true)}>
-          Скопіювати фото/відео/характеристики з іншого варіанта
+      <div className="mb-4 flex flex-wrap items-end gap-2">
+        <div>
+          <label className="block text-sm text-gray-600 mb-1">{label}</label>
+          <select
+            value={sourceValue}
+            onChange={(e) => setSourceValue(e.target.value)}
+            className="border border-gray-300 rounded-lg px-3 py-2 text-sm"
+          >
+            <option value="">Оберіть варіант...</option>
+            {otherVariants.map((variant) => (
+              <option key={variant.key} value={variant.key}>
+                {variant.name || 'Варіант'}
+              </option>
+            ))}
+          </select>
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={!sourceValue}
+          onClick={() => {
+            onCopy(sourceValue);
+            setSourceValue('');
+          }}
+        >
+          Скопіювати
         </Button>
       </div>
     );
@@ -1545,7 +1587,12 @@ export default function ProductForm({ mode, productId }: Props) {
           </p>
         </div>
         {renderMediaTargetTabs()}
-        {renderCopyFromVariant()}
+        {renderCopyControl(
+          'Скопіювати характеристики з:',
+          copyAttributesSource,
+          setCopyAttributesSource,
+          (sourceKey) => resolvedMediaTargetKey && copyVariantAttributesFrom(resolvedMediaTargetKey, sourceKey),
+        )}
         <div className="space-y-3">
           {effectiveAttributes.map((attribute, index) => {
             const collides = isVariantGroup(attribute.name);
@@ -1691,6 +1738,12 @@ export default function ProductForm({ mode, productId }: Props) {
           <p className="mt-1 text-sm text-muted-foreground">Перше фото буде головним у каталозі.</p>
         </div>
         {renderMediaTargetTabs()}
+        {renderCopyControl(
+          'Скопіювати фото з:',
+          copyImagesSource,
+          setCopyImagesSource,
+          (sourceKey) => resolvedMediaTargetKey && copyVariantImagesFrom(resolvedMediaTargetKey, sourceKey),
+        )}
         <button
           type="button"
           disabled={uploading}
@@ -1751,6 +1804,12 @@ export default function ProductForm({ mode, productId }: Props) {
           <p className="mt-1 text-sm text-muted-foreground">MP4, WebM або MOV. Максимум 200 МБ. Відображається на сторінці товару.</p>
         </div>
         {renderMediaTargetTabs()}
+        {renderCopyControl(
+          'Скопіювати відео з:',
+          copyVideoSource,
+          setCopyVideoSource,
+          (sourceKey) => resolvedMediaTargetKey && copyVariantVideoFrom(resolvedMediaTargetKey, sourceKey),
+        )}
         {effectiveVideoUrl ? (
           <div className="relative overflow-hidden rounded-lg border bg-gray-50">
             <video src={effectiveVideoUrl} controls className="w-full max-h-72 object-contain" />
@@ -1811,37 +1870,6 @@ export default function ProductForm({ mode, productId }: Props) {
           </div>
         </div>
       </div>
-
-      {copySourcePickerOpen && resolvedMediaTargetKey && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
-          <div className="w-full max-w-sm rounded-xl border bg-white p-6 shadow-xl space-y-4">
-            <div>
-              <h3 className="font-semibold text-gray-950">Скопіювати з якого варіанта?</h3>
-              <p className="mt-1.5 text-sm text-muted-foreground">
-                Фото, відео та характеристики обраного варіанта буде замінено даними джерела.
-              </p>
-            </div>
-            <div className="space-y-1.5">
-              {variants.filter((v) => v.key !== resolvedMediaTargetKey).map((variant) => (
-                <button
-                  key={variant.key}
-                  type="button"
-                  onClick={() => {
-                    copyVariantMedia(resolvedMediaTargetKey, variant.key);
-                    setCopySourcePickerOpen(false);
-                  }}
-                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-left text-sm hover:border-gray-400 hover:bg-gray-50"
-                >
-                  {variant.name || 'Варіант'}
-                </button>
-              ))}
-            </div>
-            <Button variant="outline" className="w-full" onClick={() => setCopySourcePickerOpen(false)}>
-              Скасувати
-            </Button>
-          </div>
-        </div>
-      )}
 
       {badgeToDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
