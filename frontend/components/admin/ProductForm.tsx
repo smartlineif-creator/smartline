@@ -298,6 +298,7 @@ export default function ProductForm({ mode, productId }: Props) {
   // sections (and the shared file/video inputs' onChange) to that variant's own
   // media/attributes instead of the product's.
   const [mediaTargetKey, setMediaTargetKey] = useState<string | null>(null);
+  const [copySourcePickerOpen, setCopySourcePickerOpen] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
   const [productOptions, setProductOptions] = useState<ProductOptionItem[]>([]);
   const [categoryOpen, setCategoryOpen] = useState(false);
@@ -727,22 +728,9 @@ export default function ProductForm({ mode, productId }: Props) {
     if (otherVariants.length === 0) return null;
     return (
       <div className="mb-4">
-        <label className="block text-sm text-gray-600 mb-1">Скопіювати фото/відео/характеристики з:</label>
-        <select
-          className="w-full sm:w-auto border border-gray-300 rounded-lg px-3 py-2 text-sm"
-          value=""
-          onChange={(e) => {
-            if (e.target.value) copyVariantMedia(resolvedMediaTargetKey, e.target.value);
-            e.target.value = '';
-          }}
-        >
-          <option value="">Оберіть варіант...</option>
-          {otherVariants.map((variant) => (
-            <option key={variant.key} value={variant.key}>
-              {variant.name || 'Варіант'}
-            </option>
-          ))}
-        </select>
+        <Button type="button" variant="outline" size="sm" onClick={() => setCopySourcePickerOpen(true)}>
+          Скопіювати фото/відео/характеристики з іншого варіанта
+        </Button>
       </div>
     );
   };
@@ -1823,6 +1811,37 @@ export default function ProductForm({ mode, productId }: Props) {
           </div>
         </div>
       </div>
+
+      {copySourcePickerOpen && resolvedMediaTargetKey && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
+          <div className="w-full max-w-sm rounded-xl border bg-white p-6 shadow-xl space-y-4">
+            <div>
+              <h3 className="font-semibold text-gray-950">Скопіювати з якого варіанта?</h3>
+              <p className="mt-1.5 text-sm text-muted-foreground">
+                Фото, відео та характеристики обраного варіанта буде замінено даними джерела.
+              </p>
+            </div>
+            <div className="space-y-1.5">
+              {variants.filter((v) => v.key !== resolvedMediaTargetKey).map((variant) => (
+                <button
+                  key={variant.key}
+                  type="button"
+                  onClick={() => {
+                    copyVariantMedia(resolvedMediaTargetKey, variant.key);
+                    setCopySourcePickerOpen(false);
+                  }}
+                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-left text-sm hover:border-gray-400 hover:bg-gray-50"
+                >
+                  {variant.name || 'Варіант'}
+                </button>
+              ))}
+            </div>
+            <Button variant="outline" className="w-full" onClick={() => setCopySourcePickerOpen(false)}>
+              Скасувати
+            </Button>
+          </div>
+        </div>
+      )}
 
       {badgeToDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
