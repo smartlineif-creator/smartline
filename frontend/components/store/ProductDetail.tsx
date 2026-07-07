@@ -381,8 +381,8 @@ export default function ProductDetail({ product }: Props) {
   const videoUrl = resolvedVariant?.videoUrl || product.videoUrl || null;
   const resolvedDescription = resolvedVariant?.description || product.description;
   const mediaItems = useMemo(() => [
-    ...images.map((image, index) => ({ type: 'image' as const, image, index })),
     ...(videoUrl ? [{ type: 'video' as const, url: videoUrl }] : []),
+    ...images.map((image, index) => ({ type: 'image' as const, image, index })),
   ], [images, videoUrl]);
 
   const handleMobileScroll = useCallback(() => {
@@ -770,7 +770,7 @@ export default function ProductDetail({ product }: Props) {
                               src={item.image.url}
                               alt={item.image.alt || displayName}
                               fill
-                              priority={idx === 0}
+                              priority={item.index === 0}
                               className="object-cover"
                               sizes="100vw"
                             />
