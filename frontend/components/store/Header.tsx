@@ -247,11 +247,14 @@ export default function Header() {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-[220px_1fr]" style={{ minHeight: categories.length > 0 ? 300 : 80 }}>
+                    <div
+                      className="grid grid-cols-[220px_1fr]"
+                      style={{ minHeight: categories.length > 0 ? 300 : 80, maxHeight: 440 }}
+                    >
                       {/* Left: category list */}
                       <div
                         className="overflow-y-auto p-2"
-                        style={{ borderRight: '1px solid var(--sl-border)', background: 'var(--sl-bg-primary)', maxHeight: 340 }}
+                        style={{ borderRight: '1px solid var(--sl-border)', background: 'var(--sl-bg-primary)' }}
                       >
                         {categories.length > 0 ? (
                           <div className="space-y-0.5">
@@ -303,7 +306,7 @@ export default function Header() {
                       </div>
 
                       {/* Right: subcategories panel */}
-                      <div className="flex flex-col p-4">
+                      <div className="flex flex-col overflow-y-auto p-4">
                         {activeCategory && (
                           <>
                             {/* Category header */}
