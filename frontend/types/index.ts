@@ -15,6 +15,7 @@ export interface Category {
   parentId?: string;
   icon?: string;
   seoText?: string;
+  sortOrder: number;
   children?: Category[];
   attributeTemplates?: AttributeTemplate[];
   optionGroupTemplates?: OptionGroupTemplate[];

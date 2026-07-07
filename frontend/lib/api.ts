@@ -496,6 +496,10 @@ export async function adminDeleteCategory(id: string) {
   return apiFetch<void>(`/categories/${id}`, { method: 'DELETE' });
 }
 
+export async function adminReorderCategories(categories: { id: string; sortOrder: number }[]) {
+  return apiFetch<Category[]>('/categories/reorder', { method: 'PUT', body: JSON.stringify({ categories }) });
+}
+
 export async function adminGetPromotions() {
   return apiFetch<PaginatedResponse<Promotion>>('/promotions?all=true');
 }

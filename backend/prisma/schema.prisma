@@ -81,6 +81,7 @@ model Category {
   children           Category[]          @relation("CategoryTree")
   icon               String?
   seoText            String?
+  sortOrder          Int                 @default(0)
   attributeTemplates    AttributeTemplate[]
   optionGroupTemplates  OptionGroupTemplate[]
   products           Product[]

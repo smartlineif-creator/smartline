@@ -261,11 +261,11 @@ export default function ProductCard({ product, selectedVariant }: Props) {
         <ProductRating reviews={product.reviews?.map((r) => ({ rating: r.rating }))} count={product._count?.reviews} />
 
         <div className="mt-auto flex flex-col gap-2 pt-2">
-          {/* Price row */}
-          <div className="flex items-end justify-between gap-2">
-            <div className="min-w-0 flex flex-col">
+          {/* Price row — price only; stock status never shares this row */}
+          <div className="flex items-end gap-2">
+            <div className="min-w-0 flex flex-col overflow-hidden">
               <span
-                className="whitespace-nowrap text-base font-semibold tracking-tight"
+                className="truncate text-base font-semibold tracking-tight"
                 style={{ color: 'var(--sl-text-primary)', fontFamily: 'var(--sl-font-mono)' }}
               >
                 {hasMultiple && (
@@ -275,25 +275,23 @@ export default function ProductCard({ product, selectedVariant }: Props) {
               </span>
               {crossedPrice && (
                 <span
-                  className="whitespace-nowrap text-xs line-through"
+                  className="truncate text-xs line-through"
                   style={{ color: 'var(--sl-text-muted)', fontFamily: 'var(--sl-font-mono)' }}
                 >
                   {formatPrice(crossedPrice)}
                 </span>
               )}
             </div>
-            {/* Out-of-stock label — stays inline with price on all screens */}
-            {isOutOfStock && (
-              <span
-                className="shrink-0 pb-0.5 text-xs font-medium"
-                style={{ color: 'var(--sl-text-muted)', fontFamily: 'var(--sl-font-mono)' }}
-              >
-                Немає в наявності
-              </span>
-            )}
           </div>
-          {/* Cart button — full-width below price; fills on card hover */}
-          {!isOutOfStock && (
+          {/* Status slot — full-width below price: out-of-stock label OR cart button, never price */}
+          {isOutOfStock ? (
+            <span
+              className="flex h-8 w-full items-center justify-center text-xs font-medium"
+              style={{ color: 'var(--sl-text-muted)', fontFamily: 'var(--sl-font-mono)' }}
+            >
+              Немає в наявності
+            </span>
+          ) : (
             <button
               type="button"
               onClick={handleAddToCart}

@@ -2,10 +2,39 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
-import { getCategories, adminDeleteCategory } from '@/lib/api';
+import {
+  closestCenter,
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { getCategories, adminDeleteCategory, adminReorderCategories } from '@/lib/api';
 import { Category } from '@/types';
 import { Button } from '@/components/ui/button';
-import { AlertTriangle, ChevronDown, ChevronRight, ChevronsDownUp, ChevronsUpDown, FolderTree, Pencil, Plus, Trash2 } from 'lucide-react';
+import {
+  AlertTriangle,
+  ChevronDown,
+  ChevronRight,
+  ChevronsDownUp,
+  ChevronsUpDown,
+  ChevronUp,
+  FolderTree,
+  GripVertical,
+  Pencil,
+  Plus,
+  Trash2,
+} from 'lucide-react';
 import { toast } from 'sonner';
 import AdminPageHint from '@/components/admin/AdminPageHint';
 
@@ -15,6 +44,11 @@ export default function AdminCategoriesPage() {
   const [deleteTarget, setDeleteTarget] = useState<Category | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set());
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
 
   const load = () =>
     getCategories()
@@ -45,6 +79,54 @@ export default function AdminCategoriesPage() {
     }
   };
 
+  const persistOrder = async (list: Category[], scopeParentId: string | null) => {
+    const reordered = list.map((c, i) => ({ ...c, sortOrder: i }));
+    setCategories((prev) => {
+      if (scopeParentId === null) return reordered;
+      return prev.map((c) => (c.id === scopeParentId ? { ...c, children: reordered } : c));
+    });
+    try {
+      await adminReorderCategories(reordered.map((c) => ({ id: c.id, sortOrder: c.sortOrder })));
+    } catch {
+      toast.error('Помилка перестановки категорій');
+      load();
+    }
+  };
+
+  const handleRootDragEnd = async ({ active, over }: DragEndEvent) => {
+    if (!over || active.id === over.id) return;
+    const oldIndex = categories.findIndex((c) => c.id === active.id);
+    const newIndex = categories.findIndex((c) => c.id === over.id);
+    if (oldIndex < 0 || newIndex < 0) return;
+    await persistOrder(arrayMove(categories, oldIndex, newIndex), null);
+  };
+
+  const handleChildDragEnd = (parent: Category) => async ({ active, over }: DragEndEvent) => {
+    if (!over || active.id === over.id) return;
+    const children = parent.children ?? [];
+    const oldIndex = children.findIndex((c) => c.id === active.id);
+    const newIndex = children.findIndex((c) => c.id === over.id);
+    if (oldIndex < 0 || newIndex < 0) return;
+    await persistOrder(arrayMove(children, oldIndex, newIndex), parent.id);
+  };
+
+  const moveRoot = (idx: number, dir: -1 | 1) => {
+    const target = idx + dir;
+    if (target < 0 || target >= categories.length) return;
+    const next = [...categories];
+    [next[idx], next[target]] = [next[target], next[idx]];
+    persistOrder(next, null);
+  };
+
+  const moveChild = (parent: Category, idx: number, dir: -1 | 1) => {
+    const children = parent.children ?? [];
+    const target = idx + dir;
+    if (target < 0 || target >= children.length) return;
+    const next = [...children];
+    [next[idx], next[target]] = [next[target], next[idx]];
+    persistOrder(next, parent.id);
+  };
+
   const handleDelete = async () => {
     if (!deleteTarget) return;
     setDeleting(true);
@@ -67,6 +149,7 @@ export default function AdminCategoriesPage() {
         storageKey="categories"
         tips={[
           { text: 'Категорії утворюють дерево: дочірні відображаються з відступом під батьківськими.' },
+          { text: 'Перетягніть за іконку ≡ (або скористайтесь стрілками), щоб змінити порядок категорій — він одразу відобразиться в меню, каталозі й футері.' },
           { text: 'У налаштуваннях категорії задайте "Фільтровані характеристики" — назви атрибутів для фільтрів у каталозі (Процесор, ОС, Стан).' },
           { text: 'Також задайте "Шаблони варіантних груп" — назви конфігурацій зі своїми одиницями (Оперативна пам\'ять · ГБ, SSD · ГБ). Вони з\'являться у дропдауні при редагуванні товарів цієї категорії.' },
           { text: 'Видалення категорії неможливе, якщо в ній є товари або підкатегорії.' },
@@ -103,31 +186,47 @@ export default function AdminCategoriesPage() {
         ) : categories.length === 0 ? (
           <div className="p-8 text-center text-sm text-muted-foreground">Категорій ще немає</div>
         ) : (
-          categories.map((cat) => {
-            const hasChildren = (cat.children?.length ?? 0) > 0;
-            const isCollapsed = collapsedIds.has(cat.id);
-            return (
-              <div key={cat.id}>
-                <CategoryRow
-                  cat={cat}
-                  onDelete={setDeleteTarget}
-                  depth={0}
-                  hasChildren={hasChildren}
-                  isCollapsed={isCollapsed}
-                  onToggle={hasChildren ? () => toggleCollapse(cat.id) : undefined}
-                />
-                {hasChildren && !isCollapsed && cat.children?.map((sub) => (
-                  <CategoryRow
-                    key={sub.id}
-                    cat={sub}
-                    parentName={cat.name}
-                    onDelete={setDeleteTarget}
-                    depth={1}
-                  />
-                ))}
-              </div>
-            );
-          })
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleRootDragEnd}>
+            <SortableContext items={categories.map((c) => c.id)} strategy={verticalListSortingStrategy}>
+              {categories.map((cat, idx) => {
+                const hasChildren = (cat.children?.length ?? 0) > 0;
+                const isCollapsed = collapsedIds.has(cat.id);
+                return (
+                  <div key={cat.id}>
+                    <SortableCategoryRow
+                      cat={cat}
+                      onDelete={setDeleteTarget}
+                      depth={0}
+                      hasChildren={hasChildren}
+                      isCollapsed={isCollapsed}
+                      onToggle={hasChildren ? () => toggleCollapse(cat.id) : undefined}
+                      index={idx}
+                      total={categories.length}
+                      onMove={moveRoot}
+                    />
+                    {hasChildren && !isCollapsed && (
+                      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleChildDragEnd(cat)}>
+                        <SortableContext items={(cat.children ?? []).map((c) => c.id)} strategy={verticalListSortingStrategy}>
+                          {(cat.children ?? []).map((sub, subIdx) => (
+                            <SortableCategoryRow
+                              key={sub.id}
+                              cat={sub}
+                              parentName={cat.name}
+                              onDelete={setDeleteTarget}
+                              depth={1}
+                              index={subIdx}
+                              total={cat.children!.length}
+                              onMove={(i, dir) => moveChild(cat, i, dir)}
+                            />
+                          ))}
+                        </SortableContext>
+                      </DndContext>
+                    )}
+                  </div>
+                );
+              })}
+            </SortableContext>
+          </DndContext>
         )}
       </div>
 
@@ -174,6 +273,35 @@ export default function AdminCategoriesPage() {
   );
 }
 
+interface CategoryRowProps {
+  cat: Category;
+  parentName?: string;
+  onDelete: (category: Category) => void;
+  depth: number;
+  hasChildren?: boolean;
+  isCollapsed?: boolean;
+  onToggle?: () => void;
+  index: number;
+  total: number;
+  onMove: (idx: number, dir: -1 | 1) => void;
+  isDragging?: boolean;
+  handleRef?: (node: HTMLElement | null) => void;
+  handleProps?: Record<string, any>;
+}
+
+function SortableCategoryRow(props: Omit<CategoryRowProps, 'isDragging' | 'handleRef' | 'handleProps'>) {
+  const { attributes, listeners, setActivatorNodeRef, setNodeRef, transform, transition, isDragging } = useSortable({ id: props.cat.id });
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition, zIndex: isDragging ? 20 : undefined, position: 'relative' }}
+    >
+      <CategoryRow {...props} isDragging={isDragging} handleRef={setActivatorNodeRef} handleProps={{ ...attributes, ...listeners }} />
+    </div>
+  );
+}
+
 function CategoryRow({
   cat,
   parentName,
@@ -182,20 +310,51 @@ function CategoryRow({
   hasChildren = false,
   isCollapsed = false,
   onToggle,
-}: {
-  cat: Category;
-  parentName?: string;
-  onDelete: (category: Category) => void;
-  depth: number;
-  hasChildren?: boolean;
-  isCollapsed?: boolean;
-  onToggle?: () => void;
-}) {
+  index,
+  total,
+  onMove,
+  isDragging = false,
+  handleRef,
+  handleProps,
+}: CategoryRowProps) {
   return (
     <div
-      className={`flex items-center justify-between border-b px-4 py-3 last:border-0 transition-colors hover:bg-gray-50 ${depth > 0 ? 'bg-gray-50/50 pl-10' : ''}`}
+      className={`flex items-center justify-between border-b bg-white px-4 py-3 last:border-0 transition-colors hover:bg-gray-50 ${depth > 0 ? 'bg-gray-50/50 pl-10' : ''} ${isDragging ? 'opacity-50 shadow-lg' : ''}`}
     >
-      <div className="flex min-w-0 items-center gap-3">
+      <div className="flex min-w-0 items-center gap-2">
+        {/* Drag handle */}
+        <button
+          type="button"
+          ref={handleRef}
+          {...handleProps}
+          aria-label="Перетягнути для зміни порядку"
+          className="flex h-6 w-6 shrink-0 cursor-grab items-center justify-center rounded text-gray-300 transition-colors hover:text-gray-500 active:cursor-grabbing"
+        >
+          <GripVertical className="h-4 w-4" />
+        </button>
+
+        {/* Up/down order buttons */}
+        <div className="flex shrink-0 flex-col">
+          <button
+            type="button"
+            onClick={() => onMove(index, -1)}
+            disabled={index === 0}
+            aria-label="Перемістити вище"
+            className="flex h-3.5 w-5 items-center justify-center rounded text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 disabled:cursor-default disabled:opacity-20"
+          >
+            <ChevronUp className="h-3 w-3" />
+          </button>
+          <button
+            type="button"
+            onClick={() => onMove(index, 1)}
+            disabled={index === total - 1}
+            aria-label="Перемістити нижче"
+            className="flex h-3.5 w-5 items-center justify-center rounded text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 disabled:cursor-default disabled:opacity-20"
+          >
+            <ChevronDown className="h-3 w-3" />
+          </button>
+        </div>
+
         {/* Collapse toggle / indent indicator */}
         {depth === 0 ? (
           <button

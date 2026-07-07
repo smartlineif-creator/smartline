@@ -3,12 +3,13 @@ import {
   Get,
   Post,
   Patch,
+  Put,
   Delete,
   Param,
   Body,
   UseGuards,
 } from '@nestjs/common';
-import { CategoriesService } from './categories.service';
+import { CategoriesService, ReorderCategoriesDto } from './categories.service';
 import { CreateCategoryDto, UpdateCategoryDto } from './dto/category.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -39,6 +40,13 @@ export class CategoriesController {
   @Roles(Role.ADMIN)
   create(@Body() dto: CreateCategoryDto) {
     return this.categoriesService.create(dto);
+  }
+
+  @Put('reorder')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
+  reorder(@Body() dto: ReorderCategoriesDto) {
+    return this.categoriesService.reorder(dto);
   }
 
   @Patch(':id')

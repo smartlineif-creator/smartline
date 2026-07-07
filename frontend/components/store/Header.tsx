@@ -50,6 +50,7 @@ export default function Header() {
   const [catalogOpen, setCatalogOpen] = useState(false);
   const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [expandedMobileCats, setExpandedMobileCats] = useState<Record<string, boolean>>({});
   const [scrolled, setScrolled] = useState(false);
   const [mounted, setMounted] = useState(false);
   const closeTimerRef = useRef<number | null>(null);
@@ -127,6 +128,10 @@ export default function Header() {
     setCatalogOpen(false);
     setMobileMenuOpen(false);
     setSearchOpen(false);
+  };
+
+  const toggleMobileCat = (id: string) => {
+    setExpandedMobileCats((prev) => ({ ...prev, [id]: !prev[id] }));
   };
 
   const openCatalog = () => {
@@ -693,43 +698,63 @@ export default function Header() {
             Категорії
           </div>
           <div className="space-y-1">
-            {categories.map((cat) => (
-              <div key={cat.id}>
-                <Link
-                  href={`/catalog/${cat.slug}`}
-                  onClick={closeMenus}
-                  className="flex min-h-11 items-center rounded-xl px-3 py-2 text-sm font-medium transition-all"
-                  style={{ color: 'var(--sl-text-secondary)' }}
-                  onMouseEnter={(e) => {
-                    (e.currentTarget as HTMLElement).style.color = 'var(--sl-text-primary)';
-                    (e.currentTarget as HTMLElement).style.background = 'var(--sl-bg-elevated)';
-                  }}
-                  onMouseLeave={(e) => {
-                    (e.currentTarget as HTMLElement).style.color = 'var(--sl-text-secondary)';
-                    (e.currentTarget as HTMLElement).style.background = 'transparent';
-                  }}
-                >
-                  {cat.name}
-                </Link>
-                {cat.children && cat.children.length > 0 && (
-                  <div className="ml-4 border-l pl-3" style={{ borderColor: 'var(--sl-border)' }}>
-                    {cat.children.map((child) => (
-                      <Link
-                        key={child.id}
-                        href={`/catalog/${child.slug}`}
-                        onClick={closeMenus}
-                        className="block rounded-lg px-3 py-2 text-sm transition-all"
-                        style={{ color: 'var(--sl-text-muted)' }}
-                        onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.color = 'var(--sl-text-secondary)')}
-                        onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.color = 'var(--sl-text-muted)')}
+            {categories.map((cat) => {
+              const hasChildren = !!cat.children && cat.children.length > 0;
+              const isExpanded = !!expandedMobileCats[cat.id];
+              return (
+                <div key={cat.id}>
+                  <div className="flex items-center rounded-xl transition-all">
+                    <Link
+                      href={`/catalog/${cat.slug}`}
+                      onClick={closeMenus}
+                      className="flex min-h-11 flex-1 items-center rounded-xl px-3 py-2 text-sm font-medium transition-all"
+                      style={{ color: 'var(--sl-text-secondary)' }}
+                      onMouseEnter={(e) => {
+                        (e.currentTarget as HTMLElement).style.color = 'var(--sl-text-primary)';
+                        (e.currentTarget as HTMLElement).style.background = 'var(--sl-bg-elevated)';
+                      }}
+                      onMouseLeave={(e) => {
+                        (e.currentTarget as HTMLElement).style.color = 'var(--sl-text-secondary)';
+                        (e.currentTarget as HTMLElement).style.background = 'transparent';
+                      }}
+                    >
+                      {cat.name}
+                    </Link>
+                    {hasChildren && (
+                      <button
+                        type="button"
+                        onClick={() => toggleMobileCat(cat.id)}
+                        aria-expanded={isExpanded}
+                        aria-label={isExpanded ? `Згорнути ${cat.name}` : `Розгорнути ${cat.name}`}
+                        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl"
                       >
-                        {child.name}
-                      </Link>
-                    ))}
+                        <ChevronDown
+                          className="h-4 w-4 transition-transform duration-200"
+                          style={{ color: 'var(--sl-text-muted)', transform: isExpanded ? 'rotate(0deg)' : 'rotate(-90deg)' }}
+                        />
+                      </button>
+                    )}
                   </div>
-                )}
-              </div>
-            ))}
+                  {hasChildren && isExpanded && (
+                    <div className="ml-4 border-l pl-3" style={{ borderColor: 'var(--sl-border)' }}>
+                      {cat.children!.map((child) => (
+                        <Link
+                          key={child.id}
+                          href={`/catalog/${child.slug}`}
+                          onClick={closeMenus}
+                          className="block rounded-lg px-3 py-2 text-sm transition-all"
+                          style={{ color: 'var(--sl-text-muted)' }}
+                          onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.color = 'var(--sl-text-secondary)')}
+                          onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.color = 'var(--sl-text-muted)')}
+                        >
+                          {child.name}
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
 

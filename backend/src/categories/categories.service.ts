@@ -11,6 +11,10 @@ const CATEGORY_INCLUDE = {
   optionGroupTemplates: true,
 } as const;
 
+export interface ReorderCategoriesDto {
+  categories: { id: string; sortOrder: number }[];
+}
+
 @Injectable()
 export class CategoriesService {
   constructor(private prisma: PrismaService) {}
@@ -30,6 +34,7 @@ export class CategoriesService {
               },
             },
           },
+          orderBy: { sortOrder: 'asc' },
         },
         ...CATEGORY_INCLUDE,
         _count: {
@@ -39,7 +44,7 @@ export class CategoriesService {
           },
         },
       },
-      orderBy: { name: 'asc' },
+      orderBy: { sortOrder: 'asc' },
     });
     return categories;
   }
@@ -57,7 +62,10 @@ export class CategoriesService {
     const category = await this.prisma.category.findUnique({
       where: { slug },
       include: {
-        children: { include: { ...CATEGORY_INCLUDE } },
+        children: {
+          include: { ...CATEGORY_INCLUDE },
+          orderBy: { sortOrder: 'asc' },
+        },
         ...CATEGORY_INCLUDE,
       },
     });
@@ -68,10 +76,14 @@ export class CategoriesService {
   async create(dto: CreateCategoryDto) {
     const slug = dto.slug || this.toSlug(dto.name);
     const { attributeTemplates, optionGroupTemplates, ...rest } = dto;
+    const sortOrder = await this.prisma.category.count({
+      where: { parentId: dto.parentId ?? null },
+    });
     return this.prisma.category.create({
       data: {
         ...rest,
         slug,
+        sortOrder,
         attributeTemplates: attributeTemplates
           ? { create: attributeTemplates }
           : undefined,
@@ -81,6 +93,13 @@ export class CategoriesService {
       },
       include: { ...CATEGORY_INCLUDE },
     });
+  }
+
+  async reorder(dto: ReorderCategoriesDto) {
+    const ops = dto.categories.map(({ id, sortOrder }) =>
+      this.prisma.category.update({ where: { id }, data: { sortOrder } }),
+    );
+    return this.prisma.$transaction(ops);
   }
 
   async update(id: string, dto: UpdateCategoryDto) {
