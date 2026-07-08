@@ -694,7 +694,7 @@ export default function ProductDetail({ product }: Props) {
                 {/* Thumbnail strip */}
                 {mediaItems.length > 1 && (
                   <div
-                    className="sl-thumb-scroll flex gap-2 overflow-x-auto lg:order-2 lg:flex-col lg:justify-between lg:overflow-y-auto lg:overflow-x-visible lg:pr-1"
+                    className="sl-thumb-scroll flex gap-2 overflow-x-auto lg:order-2 lg:flex-col lg:justify-start lg:overflow-y-auto lg:overflow-x-visible lg:pr-1"
                     style={isDesktopColumn && mainViewerHeight ? { height: mainViewerHeight } : undefined}
                   >
                     {mediaItems.map((item, thumbIdx) => {
