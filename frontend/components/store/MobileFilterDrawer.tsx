@@ -71,7 +71,7 @@ export default function MobileFilterDrawer({
       {/* Backdrop */}
       {open && (
         <div
-          className="fixed inset-0 z-40 lg:hidden"
+          className="fixed inset-0 z-[300] lg:hidden"
           style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}
           onClick={() => setOpen(false)}
           aria-hidden="true"
@@ -80,7 +80,7 @@ export default function MobileFilterDrawer({
 
       {/* Drawer panel — slides in from the right */}
       <div
-        className="fixed right-0 top-0 z-50 h-full w-[320px] max-w-[90vw] overflow-y-auto p-4 lg:hidden transition-transform duration-300"
+        className="fixed right-0 top-0 z-[301] h-full w-[320px] max-w-[90vw] overflow-y-auto p-4 lg:hidden transition-transform duration-300"
         style={{
           background: 'var(--sl-bg-primary)',
           borderLeft: '1px solid var(--sl-border)',

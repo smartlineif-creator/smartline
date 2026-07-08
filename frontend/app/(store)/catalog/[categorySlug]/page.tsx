@@ -128,8 +128,8 @@ export default async function CatalogPage({ params, searchParams }: Props) {
 
           {/* Products grid */}
           <div className="flex-1 min-w-0">
-            {/* Mobile: filter button + sort bar */}
-            <div className="mb-4 flex items-center gap-2 lg:hidden">
+            {/* Mobile: filter button, then full-width sort bar */}
+            <div className="mb-4 flex flex-col gap-2 lg:hidden">
               <Suspense>
                 <MobileFilterDrawer
                   currentSort={sortBy}
@@ -139,14 +139,12 @@ export default async function CatalogPage({ params, searchParams }: Props) {
                   currentMaxPrice={maxPrice}
                 />
               </Suspense>
-              <div className="flex-1 min-w-0">
-                <SortBar
-                  total={products.total}
-                  currentSort={sortBy}
-                  baseHref={`/catalog/${categorySlug}`}
-                  sep="?"
-                />
-              </div>
+              <SortBar
+                total={products.total}
+                currentSort={sortBy}
+                baseHref={`/catalog/${categorySlug}`}
+                sep="?"
+              />
             </div>
 
             {/* Desktop: sort bar */}
