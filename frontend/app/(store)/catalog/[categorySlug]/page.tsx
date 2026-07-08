@@ -139,7 +139,7 @@ export default async function CatalogPage({ params, searchParams }: Props) {
                   currentMaxPrice={maxPrice}
                 />
               </Suspense>
-              <div className="flex-1">
+              <div className="flex-1 min-w-0">
                 <SortBar
                   total={products.total}
                   currentSort={sortBy}
