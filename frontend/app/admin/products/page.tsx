@@ -15,6 +15,15 @@ import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
 import AdminPageHint from '@/components/admin/AdminPageHint';
 
+/** For the admin list thumbnail only: pick whichever variant actually has a photo,
+ * falling back to the usual "first available" variant. Unlike the storefront (where
+ * each variant gets its own card and must show ITS OWN photo or none), this row
+ * summarizes the whole product, so any real photo beats a placeholder. */
+function getListThumbnailVariant(product: Product) {
+  const withPhoto = product.variants?.find((v) => (v.images?.length ?? 0) > 0);
+  return withPhoto ?? getFirstAvailableVariant(product);
+}
+
 interface CategoryOption {
   category: Category;
   depth: number;
@@ -414,7 +423,7 @@ export default function AdminProductsPage() {
                   </td>
                   <td className="px-4 py-3">
                     <div className="relative h-12 w-12 overflow-hidden rounded-lg bg-gray-100">
-                      <Image src={getMainImage(product, getFirstAvailableVariant(product))} alt={product.name} fill className="object-contain p-1" />
+                      <Image src={getMainImage(product, getListThumbnailVariant(product))} alt={product.name} fill className="object-contain p-1" />
                     </div>
                   </td>
                   <td className="px-4 py-3">
