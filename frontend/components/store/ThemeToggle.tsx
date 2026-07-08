@@ -13,11 +13,11 @@ function applyTheme(theme: StoreTheme) {
 
 export default function ThemeToggle() {
   const [mounted, setMounted] = useState(false);
-  const [theme, setTheme] = useState<StoreTheme>('dark');
+  const [theme, setTheme] = useState<StoreTheme>('light');
 
   useEffect(() => {
     const savedTheme = window.localStorage.getItem(THEME_STORAGE_KEY);
-    const initialTheme = savedTheme === 'light' ? 'light' : 'dark';
+    const initialTheme = savedTheme === 'dark' ? 'dark' : 'light';
     applyTheme(initialTheme);
     queueMicrotask(() => {
       setTheme(initialTheme);
