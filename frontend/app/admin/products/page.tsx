@@ -10,7 +10,7 @@ import {
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { formatPrice, getProductPrice, getMainImage } from '@/lib/utils';
+import { formatPrice, getProductPrice, getMainImage, getFirstAvailableVariant } from '@/lib/utils';
 import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
 import AdminPageHint from '@/components/admin/AdminPageHint';
@@ -414,7 +414,7 @@ export default function AdminProductsPage() {
                   </td>
                   <td className="px-4 py-3">
                     <div className="relative h-12 w-12 overflow-hidden rounded-lg bg-gray-100">
-                      <Image src={getMainImage(product)} alt={product.name} fill className="object-contain p-1" />
+                      <Image src={getMainImage(product, getFirstAvailableVariant(product))} alt={product.name} fill className="object-contain p-1" />
                     </div>
                   </td>
                   <td className="px-4 py-3">

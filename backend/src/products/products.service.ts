@@ -563,7 +563,10 @@ export class ProductsService {
           category: true,
           attributes: true,
           images: { where: { isMain: true } },
-          variants: { where: { isActive: true, price: { gt: 0 } } },
+          variants: {
+            where: { isActive: true, price: { gt: 0 } },
+            include: { images: { orderBy: { sortOrder: 'asc' } } },
+          },
           promotions: {
             include: { promotion: true },
             where: {
