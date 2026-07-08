@@ -8,7 +8,7 @@ export default function StoreLayout({ children }: { children: React.ReactNode })
     <div className="sl-theme min-h-screen flex flex-col">
       <AnnouncementBar />
       <Header />
-      <main className="relative z-0 flex-1">{children}</main>
+      <main className="relative flex-1">{children}</main>
       <Footer />
       <ScrollRevealInit />
     </div>
