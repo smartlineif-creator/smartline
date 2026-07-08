@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import * as sharp from 'sharp';
+import heicConvert from 'heic-convert';
 import { randomUUID } from 'crypto';
 
 sharp.concurrency(1);
@@ -31,17 +32,35 @@ export class UploadService {
       throw new BadRequestException('File too large (max 5MB)');
     }
 
+    // iPhones shoot HEIC by default. sharp's prebuilt binary has no HEIF
+    // decoder (licensing), so convert to JPEG first with a pure-JS decoder —
+    // after that it's a real JPEG and benefits from the shrink-on-load path.
+    let sourceBuffer = buffer;
+    let effectiveMimeType = mimeType;
+    if (mimeType === 'image/heic' || mimeType === 'image/heif') {
+      try {
+        sourceBuffer = Buffer.from(
+          await heicConvert({ buffer, format: 'JPEG', quality: 0.9 }),
+        );
+        effectiveMimeType = 'image/jpeg';
+      } catch {
+        throw new BadRequestException(
+          'Не вдалося обробити HEIC-фото. Спробуйте зберегти його як JPEG перед завантаженням.',
+        );
+      }
+    }
+
     // .resize() right after decode lets libvips shrink-on-load JPEGs — the
     // decoder reads directly at a reduced scale instead of materializing the
     // full-resolution bitmap, so even a 60MP JPEG stays cheap in memory. Other
     // formats (PNG, etc.) don't get that optimization and decode the whole
     // bitmap up front, so cap those much lower to avoid OOM on this 512MB box.
     const limitInputPixels =
-      mimeType === 'image/jpeg' ? 60_000_000 : 20_000_000;
+      effectiveMimeType === 'image/jpeg' ? 60_000_000 : 20_000_000;
 
     let webp: Buffer;
     try {
-      webp = await sharp(buffer, { limitInputPixels })
+      webp = await sharp(sourceBuffer, { limitInputPixels })
         .rotate()
         .resize(2000, 2000, { fit: 'inside', withoutEnlargement: true })
         .webp({ quality: 82 })
@@ -140,6 +159,8 @@ export class UploadService {
       gif: 'image/gif',
       webp: 'image/webp',
       avif: 'image/avif',
+      heic: 'image/heic',
+      heif: 'image/heif',
     };
     return types[ext || ''] || null;
   }
