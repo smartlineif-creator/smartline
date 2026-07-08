@@ -47,9 +47,9 @@ export default function SortBar({ total, currentSort, baseHref, sep = '?' }: Pro
       </div>
 
       {/* Right: sort segmented control */}
-      <nav aria-label="Сортування">
+      <nav aria-label="Сортування" className="max-w-full">
         <div
-          className="flex items-center gap-1 rounded-xl p-1"
+          className="flex items-center gap-1 overflow-x-auto rounded-xl p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           style={{ background: 'var(--sl-bg-elevated)' }}
         >
           {SORT_OPTIONS.map(({ value, label, Icon }) => {
