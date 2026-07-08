@@ -2,6 +2,14 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   images: {
+    // The frontend service has the same tight memory ceiling as the backend.
+    // Next's built-in optimizer resizes images inside this same Node process,
+    // and a page rendering dozens of product photos at once (catalog grid)
+    // spikes concurrent sharp resizes enough to OOM-crash the whole service
+    // (confirmed: /_next/image requests started 502ing, then every page —
+    // not just images — went down with it). Serve R2 images as-is until
+    // resizing can be offloaded to Cloudflare's own image transformation.
+    unoptimized: true,
     remotePatterns: [
       { protocol: 'https', hostname: 'via.placeholder.com' },
       { protocol: 'https', hostname: 'placehold.co' },
