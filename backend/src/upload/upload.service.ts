@@ -31,14 +31,22 @@ export class UploadService {
       throw new BadRequestException('File too large (max 5MB)');
     }
 
-    // Decoding a very high-resolution source (some phone cameras shoot 40-100MP)
-    // can spike memory well past this 512MB instance's limit before the resize
-    // even runs — cap the ceiling well below that to avoid OOM restarts.
-    const webp = await sharp(buffer, { limitInputPixels: 24_000_000 })
-      .rotate()
-      .resize(2000, 2000, { fit: 'inside', withoutEnlargement: true })
-      .webp({ quality: 82 })
-      .toBuffer();
+    // .resize() right after decode lets libvips shrink JPEGs while decoding
+    // instead of materializing the full-resolution bitmap, so real photos stay
+    // cheap in memory — limitInputPixels below is just a safety ceiling against
+    // pathological inputs (e.g. huge scans), not the primary memory control.
+    let webp: Buffer;
+    try {
+      webp = await sharp(buffer, { limitInputPixels: 60_000_000 })
+        .rotate()
+        .resize(2000, 2000, { fit: 'inside', withoutEnlargement: true })
+        .webp({ quality: 82 })
+        .toBuffer();
+    } catch {
+      throw new BadRequestException(
+        'Не вдалося обробити фото. Спробуйте інший файл або зменшіть роздільність.',
+      );
+    }
 
     const key = `products/${randomUUID()}.webp`;
     const bucket = this.config.get<string>('R2_BUCKET');
@@ -64,7 +72,10 @@ export class UploadService {
       mov: 'video/quicktime',
     };
     const mimeType = videoTypes[ext || ''];
-    if (!mimeType) throw new BadRequestException('Unsupported video format (mp4, webm, mov)');
+    if (!mimeType)
+      throw new BadRequestException(
+        'Unsupported video format (mp4, webm, mov)',
+      );
 
     if (buffer.length > 200 * 1024 * 1024) {
       throw new BadRequestException('Video too large (max 200MB)');
@@ -86,7 +97,9 @@ export class UploadService {
     return `${publicUrl}/${key}`;
   }
 
-  async getVideoPresignedUrl(filename: string): Promise<{ uploadUrl: string; publicUrl: string }> {
+  async getVideoPresignedUrl(
+    filename: string,
+  ): Promise<{ uploadUrl: string; publicUrl: string }> {
     const ext = filename.split('.').pop()?.toLowerCase();
     const videoTypes: Record<string, string> = {
       mp4: 'video/mp4',
@@ -94,7 +107,10 @@ export class UploadService {
       mov: 'video/quicktime',
     };
     const contentType = videoTypes[ext || ''];
-    if (!contentType) throw new BadRequestException('Unsupported video format (mp4, webm, mov)');
+    if (!contentType)
+      throw new BadRequestException(
+        'Unsupported video format (mp4, webm, mov)',
+      );
 
     const key = `products/videos/${randomUUID()}.${ext}`;
     const bucket = this.config.get<string>('R2_BUCKET');
