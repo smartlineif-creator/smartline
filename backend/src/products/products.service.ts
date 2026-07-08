@@ -276,6 +276,7 @@ export class ProductsService {
                   optionValue: { include: { group: true } },
                 },
               },
+              images: { orderBy: { sortOrder: 'asc' } },
             },
           },
           promotions: {
