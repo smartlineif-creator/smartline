@@ -1169,6 +1169,28 @@ export default function ProductForm({ mode, productId }: Props) {
               </div>
             )}
           </div>
+          <div>
+            <Label>Статус</Label>
+            <div className="mt-2 inline-flex rounded-lg border bg-gray-50 p-1">
+              <button
+                type="button"
+                onClick={() => setIsActive(true)}
+                className={cn('rounded-md px-3 py-1.5 text-sm font-medium', isActive ? 'bg-white text-green-700 shadow-sm' : 'text-gray-600')}
+              >
+                Активний
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsActive(false)}
+                className={cn('rounded-md px-3 py-1.5 text-sm font-medium', !isActive ? 'bg-white text-gray-700 shadow-sm' : 'text-gray-600')}
+              >
+                Прихований
+              </button>
+            </div>
+            <p className="mt-1.5 text-xs text-muted-foreground">
+              Прихований товар не показується в каталозі й на сторінці товару, але лишається в адмінці.
+            </p>
+          </div>
         </div>
       </section>
 
