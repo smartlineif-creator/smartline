@@ -45,9 +45,6 @@ interface Props {
   allHref?: string;
 }
 
-const SCROLL_BUTTON_CLASS =
-  'z-20 hidden h-8 w-8 shrink-0 items-center justify-center rounded-full transition-all duration-200 active:scale-95 lg:flex';
-
 export default function CategoryTabs({
   categories,
   activeSlug,
@@ -68,15 +65,18 @@ export default function CategoryTabs({
     setCanScrollNext(track.scrollLeft + track.clientWidth < track.scrollWidth - 4);
   }, []);
 
+  // ResizeObserver (not just a window resize listener) catches web-font swaps
+  // and content-length changes too, not only viewport resizes.
   useEffect(() => {
-    updateScrollState();
     const track = trackRef.current;
     if (!track) return undefined;
+    updateScrollState();
     track.addEventListener('scroll', updateScrollState, { passive: true });
-    window.addEventListener('resize', updateScrollState);
+    const observer = new ResizeObserver(updateScrollState);
+    observer.observe(track);
     return () => {
       track.removeEventListener('scroll', updateScrollState);
-      window.removeEventListener('resize', updateScrollState);
+      observer.disconnect();
     };
   }, [updateScrollState]);
 
@@ -87,43 +87,48 @@ export default function CategoryTabs({
     track.scrollBy({ left: direction === 'next' ? amount : -amount, behavior: 'smooth' });
   }, []);
 
+  const renderScrollButton = (direction: 'prev' | 'next') => {
+    const enabled = direction === 'prev' ? canScrollPrev : canScrollNext;
+    return (
+      <button
+        type="button"
+        onClick={() => scroll(direction)}
+        disabled={!enabled}
+        // Always occupies its slot in the flex row (even when disabled) so the
+        // scrollable track's width never changes as canScroll* toggles —
+        // that reflow was what made the row jump/skip while scrolling.
+        className={`z-20 hidden h-8 w-8 shrink-0 items-center justify-center rounded-full transition-all duration-200 active:scale-95 lg:flex ${enabled ? '' : 'pointer-events-none opacity-0'}`}
+        style={{ background: 'var(--sl-bg-elevated)', border: '1px solid var(--sl-border)', color: 'var(--sl-text-secondary)' }}
+        onMouseEnter={(e) => {
+          (e.currentTarget as HTMLButtonElement).style.background = 'var(--sl-accent)';
+          (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--sl-accent)';
+          (e.currentTarget as HTMLButtonElement).style.color = '#fff';
+        }}
+        onMouseLeave={(e) => {
+          (e.currentTarget as HTMLButtonElement).style.background = 'var(--sl-bg-elevated)';
+          (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--sl-border)';
+          (e.currentTarget as HTMLButtonElement).style.color = 'var(--sl-text-secondary)';
+        }}
+        aria-label={direction === 'prev' ? 'Прокрутити категорії назад' : 'Прокрутити категорії далі'}
+      >
+        {direction === 'prev' ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+      </button>
+    );
+  };
+
   return (
     <nav aria-label="Категорії" className="flex items-center gap-1">
-      {canScrollPrev && (
-        <button
-          type="button"
-          onClick={() => scroll('prev')}
-          className={SCROLL_BUTTON_CLASS}
-          style={{ background: 'var(--sl-bg-elevated)', border: '1px solid var(--sl-border)', color: 'var(--sl-text-secondary)' }}
-          onMouseEnter={(e) => {
-            (e.currentTarget as HTMLButtonElement).style.background = 'var(--sl-accent)';
-            (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--sl-accent)';
-            (e.currentTarget as HTMLButtonElement).style.color = '#fff';
-          }}
-          onMouseLeave={(e) => {
-            (e.currentTarget as HTMLButtonElement).style.background = 'var(--sl-bg-elevated)';
-            (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--sl-border)';
-            (e.currentTarget as HTMLButtonElement).style.color = 'var(--sl-text-secondary)';
-          }}
-          aria-label="Прокрутити категорії назад"
-        >
-          <ChevronLeft className="h-4 w-4" />
-        </button>
-      )}
+      {renderScrollButton('prev')}
 
       <div className="relative min-w-0 flex-1">
-        {canScrollPrev && (
-          <div
-            className="pointer-events-none absolute left-0 top-0 z-10 h-full w-8"
-            style={{ background: 'linear-gradient(to left, transparent, var(--sl-bg-primary))' }}
-          />
-        )}
-        {canScrollNext && (
-          <div
-            className="pointer-events-none absolute right-0 top-0 z-10 h-full w-12"
-            style={{ background: 'linear-gradient(to right, transparent, var(--sl-bg-primary))' }}
-          />
-        )}
+        <div
+          className="pointer-events-none absolute left-0 top-0 z-10 h-full w-8 transition-opacity duration-200"
+          style={{ background: 'linear-gradient(to left, transparent, var(--sl-bg-primary))', opacity: canScrollPrev ? 1 : 0 }}
+        />
+        <div
+          className="pointer-events-none absolute right-0 top-0 z-10 h-full w-12 transition-opacity duration-200"
+          style={{ background: 'linear-gradient(to right, transparent, var(--sl-bg-primary))', opacity: canScrollNext ? 1 : 0 }}
+        />
         <div
           ref={trackRef}
           className="flex gap-2 overflow-x-auto pb-1"
@@ -170,27 +175,7 @@ export default function CategoryTabs({
         </div>
       </div>
 
-      {canScrollNext && (
-        <button
-          type="button"
-          onClick={() => scroll('next')}
-          className={SCROLL_BUTTON_CLASS}
-          style={{ background: 'var(--sl-bg-elevated)', border: '1px solid var(--sl-border)', color: 'var(--sl-text-secondary)' }}
-          onMouseEnter={(e) => {
-            (e.currentTarget as HTMLButtonElement).style.background = 'var(--sl-accent)';
-            (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--sl-accent)';
-            (e.currentTarget as HTMLButtonElement).style.color = '#fff';
-          }}
-          onMouseLeave={(e) => {
-            (e.currentTarget as HTMLButtonElement).style.background = 'var(--sl-bg-elevated)';
-            (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--sl-border)';
-            (e.currentTarget as HTMLButtonElement).style.color = 'var(--sl-text-secondary)';
-          }}
-          aria-label="Прокрутити категорії далі"
-        >
-          <ChevronRight className="h-4 w-4" />
-        </button>
-      )}
+      {renderScrollButton('next')}
     </nav>
   );
 }
