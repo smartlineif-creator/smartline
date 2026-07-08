@@ -32,8 +32,12 @@ export const useRecentlyViewedStore = create<RecentlyViewedStore>()(
           };
         }),
 
+      // Entries cached before a product had a real photo (or from before we
+      // fixed variant-photo fallback) store the placeholder as `image` — skip
+      // those instead of showing a broken-looking card; they self-heal the
+      // next time that product is actually revisited.
       getOthers: (currentId: string) =>
-        get().products.filter((p) => p.id !== currentId),
+        get().products.filter((p) => p.id !== currentId && !p.image?.includes('/placeholder')),
     }),
     { name: 'smartline-recently-viewed' },
   ),
