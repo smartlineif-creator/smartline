@@ -31,13 +31,17 @@ export class UploadService {
       throw new BadRequestException('File too large (max 5MB)');
     }
 
-    // .resize() right after decode lets libvips shrink JPEGs while decoding
-    // instead of materializing the full-resolution bitmap, so real photos stay
-    // cheap in memory — limitInputPixels below is just a safety ceiling against
-    // pathological inputs (e.g. huge scans), not the primary memory control.
+    // .resize() right after decode lets libvips shrink-on-load JPEGs — the
+    // decoder reads directly at a reduced scale instead of materializing the
+    // full-resolution bitmap, so even a 60MP JPEG stays cheap in memory. Other
+    // formats (PNG, etc.) don't get that optimization and decode the whole
+    // bitmap up front, so cap those much lower to avoid OOM on this 512MB box.
+    const limitInputPixels =
+      mimeType === 'image/jpeg' ? 60_000_000 : 20_000_000;
+
     let webp: Buffer;
     try {
-      webp = await sharp(buffer, { limitInputPixels: 60_000_000 })
+      webp = await sharp(buffer, { limitInputPixels })
         .rotate()
         .resize(2000, 2000, { fit: 'inside', withoutEnlargement: true })
         .webp({ quality: 82 })
