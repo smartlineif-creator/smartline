@@ -86,12 +86,21 @@ export default function CategoryTabs({
   // row horizontally, and the row can be click-dragged like a carousel —
   // the two ways every major storefront (Amazon, Rozetka, AliExpress) lets
   // a mouse user work a horizontal chip list.
-  const handleWheel = useCallback((e: React.WheelEvent<HTMLDivElement>) => {
+  //
+  // Attached as a native, non-passive listener rather than React's onWheel:
+  // some browsers treat React's synthetic wheel handler as passive, which
+  // silently ignores preventDefault() — the page would then scroll AND the
+  // row would scroll at the same time.
+  useEffect(() => {
     const track = trackRef.current;
-    if (!track) return;
-    if (Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return; // already horizontal input (trackpad) — let it pass through natively
-    e.preventDefault();
-    track.scrollLeft += e.deltaY;
+    if (!track) return undefined;
+    const onWheel = (e: WheelEvent) => {
+      if (Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return; // already horizontal input (trackpad) — let it pass through natively
+      e.preventDefault();
+      track.scrollLeft += e.deltaY;
+    };
+    track.addEventListener('wheel', onWheel, { passive: false });
+    return () => track.removeEventListener('wheel', onWheel);
   }, []);
 
   const handlePointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
@@ -139,12 +148,12 @@ export default function CategoryTabs({
       />
       <div
         ref={trackRef}
-        onWheel={handleWheel}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerUp}
         onClickCapture={handleClickCapture}
+        onDragStart={(e) => e.preventDefault()}
         className="flex select-none gap-2 overflow-x-auto pb-1 cursor-grab active:cursor-grabbing"
         style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
       >
