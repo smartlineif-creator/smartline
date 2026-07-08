@@ -10,7 +10,7 @@ import AdminPageHint from '@/components/admin/AdminPageHint';
 import { Plus, Pencil, Trash2, Search, X, Tag, Package, AlertTriangle, ChevronDown } from 'lucide-react';
 import { toast } from 'sonner';
 import Image from 'next/image';
-import { getMainImage, formatPrice, getProductPrice } from '@/lib/utils';
+import { getRepresentativeImage, formatPrice, getProductPrice } from '@/lib/utils';
 
 type TargetMode = 'products' | 'category';
 
@@ -383,7 +383,7 @@ export default function AdminPromotionsPage() {
                         {form.selectedProducts.map((p) => (
                           <div key={p.id} className="flex items-center gap-2.5 rounded-md px-2 py-1.5 hover:bg-gray-50">
                             <div className="relative h-8 w-8 shrink-0 overflow-hidden rounded bg-gray-100">
-                              <Image src={getMainImage(p)} alt={p.name} fill className="object-contain p-0.5" />
+                              <Image src={getRepresentativeImage(p)} alt={p.name} fill className="object-contain p-0.5" />
                             </div>
                             <div className="flex-1 min-w-0">
                               <p className="truncate text-sm font-medium leading-none">{p.name}</p>
@@ -420,7 +420,7 @@ export default function AdminPromotionsPage() {
                               className="flex w-full items-center gap-2.5 px-3 py-2 text-left hover:bg-gray-50"
                             >
                               <div className="relative h-8 w-8 shrink-0 overflow-hidden rounded bg-gray-100">
-                                <Image src={getMainImage(p)} alt={p.name} fill className="object-contain p-0.5" />
+                                <Image src={getRepresentativeImage(p)} alt={p.name} fill className="object-contain p-0.5" />
                               </div>
                               <div className="flex-1 min-w-0">
                                 <p className="truncate text-sm font-medium">{p.name}</p>

@@ -6,7 +6,7 @@ import { ImageOff, ShoppingCart } from 'lucide-react';
 import { Product } from '@/types';
 import { useState } from 'react';
 import {
-  formatPrice, getMainImage, getProductDisplayPrices, getProductHref,
+  formatPrice, getMainImage, getRepresentativeImage, getProductDisplayPrices, getProductHref,
   getFirstAvailableVariant, getProductMinPrice, pickCardHighlights, getBadgeStyle,
 } from '@/lib/utils';
 import { useCartStore } from '@/store/cart';
@@ -89,7 +89,12 @@ export default function ProductCard({ product, selectedVariant }: Props) {
       ? product.variants.every((v) => (v.stock ?? 0) === 0)
       : (product.stock ?? 0) === 0;
   const { hasMultiple } = selectedVariant ? { hasMultiple: false } : getProductMinPrice(product);
-  const mainImage = getMainImage(product, firstVariant);
+  // Locked to a specific variant (catalog's per-variant cards) → show exactly
+  // that variant's photo or none. Otherwise (carousels, homepage, etc.) prefer
+  // any photo the product actually has over a placeholder.
+  const mainImage = selectedVariant
+    ? getMainImage(product, selectedVariant)
+    : getRepresentativeImage(product);
   const variantHighlights = selectedVariant?.selections?.length
     ? selectedVariant.selections
         .sort((a, b) => (a.optionValue.group.sortOrder ?? 0) - (b.optionValue.group.sortOrder ?? 0))

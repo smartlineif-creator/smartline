@@ -22,7 +22,7 @@ import { useCartStore } from '@/store/cart';
 import { useWishlistStore } from '@/store/wishlist';
 import { getCategories, getProducts } from '@/lib/api';
 import { Category, Product } from '@/types';
-import { formatPrice, getMainImage, getProductHref } from '@/lib/utils';
+import { formatPrice, getRepresentativeImage, getProductHref } from '@/lib/utils';
 import ThemeToggle from '@/components/store/ThemeToggle';
 
 function getCategoryPreviewText(category: Category, childrenCount: number) {
@@ -473,7 +473,7 @@ export default function Header() {
                               style={{ background: 'var(--sl-bg-elevated)' }}
                             >
                               <Image
-                                src={getMainImage(product)}
+                                src={getRepresentativeImage(product)}
                                 alt={product.name}
                                 fill
                                 className="object-contain p-1"

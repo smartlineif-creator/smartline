@@ -33,6 +33,7 @@ import {
   getProductHref,
   getProductStock,
   getMainImage,
+  getRepresentativeImage,
   pickCardHighlights,
   getBadgeStyle,
 } from '@/lib/utils';
@@ -234,7 +235,7 @@ function ProductShelfCard({ item }: { item: Product }) {
         <div className="absolute inset-0 p-5">
           <div className="relative h-full w-full overflow-hidden rounded-lg">
             <Image
-              src={getMainImage(item)}
+              src={getRepresentativeImage(item)}
               alt={item.name}
               fill
               className="object-cover transition-transform duration-500 group-hover/shelf:scale-105"

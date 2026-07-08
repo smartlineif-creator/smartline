@@ -30,7 +30,7 @@ import ReviewCarousel from '@/components/store/ReviewCarousel';
 import { Category, Product, Promotion, Review } from '@/types';
 import {
   formatPrice,
-  getMainImage,
+  getRepresentativeImage,
   getProductDisplayPrices,
   getProductHref,
 } from '@/lib/utils';
@@ -66,9 +66,8 @@ function getPromoProducts(promotions: Promotion[]) {
 
 function hasRealProductImage(product?: Product) {
   if (!product) return false;
-  const image = getMainImage(product);
-  if (!image || image.startsWith('/placeholder')) return false;
-  return Boolean(product.images?.length);
+  if (product.images?.length) return true;
+  return Boolean(product.variants?.some((v) => (v.images?.length ?? 0) > 0));
 }
 
 function getCategorySubcopy(category: Category) {
@@ -192,7 +191,7 @@ function HeroSpotlight({ product, title, subtitle }: { product: Product; title?:
             <div className="absolute inset-0 p-6">
               <div className="relative h-full w-full overflow-hidden rounded-xl">
                 <Image
-                  src={getMainImage(product)}
+                  src={getRepresentativeImage(product)}
                   alt={product.name}
                   fill
                   priority

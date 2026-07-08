@@ -1,3 +1,6 @@
+'use client';
+
+import { useCallback, useRef } from 'react';
 import Link from 'next/link';
 import {
   LayoutGrid,
@@ -9,6 +12,7 @@ import {
   Tv,
   Camera,
   Package,
+  ChevronRight,
   type LucideIcon,
 } from 'lucide-react';
 import { Category } from '@/types';
@@ -49,6 +53,13 @@ export default function CategoryTabs({
 }: Props) {
   const resolvedAllHref = allHref ?? basePath;
   const allActive = !activeSlug;
+  const trackRef = useRef<HTMLDivElement | null>(null);
+
+  const scrollNext = useCallback(() => {
+    const track = trackRef.current;
+    if (!track) return;
+    track.scrollBy({ left: track.clientWidth * 0.7, behavior: 'smooth' });
+  }, []);
 
   return (
     <nav
@@ -62,7 +73,28 @@ export default function CategoryTabs({
           background: 'linear-gradient(to right, transparent, var(--sl-bg-primary))',
         }}
       />
+      {/* Scroll button — mouse users on desktop otherwise have no cue this row scrolls */}
+      <button
+        type="button"
+        onClick={scrollNext}
+        className="absolute right-1 top-1/2 z-20 hidden h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full transition-all duration-200 active:scale-95 lg:flex"
+        style={{ background: 'var(--sl-bg-elevated)', border: '1px solid var(--sl-border)', color: 'var(--sl-text-secondary)' }}
+        onMouseEnter={(e) => {
+          (e.currentTarget as HTMLButtonElement).style.background = 'var(--sl-accent)';
+          (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--sl-accent)';
+          (e.currentTarget as HTMLButtonElement).style.color = '#fff';
+        }}
+        onMouseLeave={(e) => {
+          (e.currentTarget as HTMLButtonElement).style.background = 'var(--sl-bg-elevated)';
+          (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--sl-border)';
+          (e.currentTarget as HTMLButtonElement).style.color = 'var(--sl-text-secondary)';
+        }}
+        aria-label="Прокрутити категорії далі"
+      >
+        <ChevronRight className="h-4 w-4" />
+      </button>
       <div
+        ref={trackRef}
         className="flex gap-2 overflow-x-auto pb-1"
         style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
       >

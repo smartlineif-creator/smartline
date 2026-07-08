@@ -108,7 +108,7 @@ export default function ProductCarousel({ products }: Props) {
       <button
         type="button"
         onClick={() => scrollOne('prev')}
-        className="absolute -left-6 top-1/2 z-20 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full transition-all duration-200 active:scale-95 xl:flex"
+        className="absolute -left-6 top-1/2 z-20 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full transition-all duration-200 active:scale-95 lg:flex"
         style={{
           background: 'var(--sl-bg-elevated)',
           border: '1px solid var(--sl-border)',
@@ -150,7 +150,7 @@ export default function ProductCarousel({ products }: Props) {
       <button
         type="button"
         onClick={() => scrollOne('next')}
-        className="absolute -right-6 top-1/2 z-20 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full transition-all duration-200 active:scale-95 xl:flex"
+        className="absolute -right-6 top-1/2 z-20 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full transition-all duration-200 active:scale-95 lg:flex"
         style={{
           background: 'var(--sl-bg-elevated)',
           border: '1px solid var(--sl-border)',

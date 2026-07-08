@@ -4,7 +4,7 @@ import ProductDetail from '@/components/store/ProductDetail';
 import RecentlyViewedTracker from '@/components/store/RecentlyViewedTracker';
 import RecentlyViewed from '@/components/store/RecentlyViewed';
 import { Metadata } from 'next';
-import { getProductPrice, getMainImage, getProductDisplayName } from '@/lib/utils';
+import { getProductPrice, getMainImage, getRepresentativeImage, getProductDisplayName } from '@/lib/utils';
 
 export const revalidate = 300;
 
@@ -17,7 +17,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   try {
     const product = await getProduct(slug);
     const selectedVariant = product.variants?.find((v) => v.id === product.selectedVariantId);
-    const mainImage = product.images?.find((i) => i.isMain)?.url;
+    const mainImage = selectedVariant
+      ? getMainImage(product, selectedVariant)
+      : getRepresentativeImage(product);
 
     // Use variant-specific SEO if available, otherwise fall back to product
     const title = product.variantSeo?.title ?? getProductDisplayName(product, selectedVariant);
@@ -54,7 +56,9 @@ export default async function ProductPage({ params }: Props) {
   const selectedVariant = product.variants?.find((v) => v.id === product.selectedVariantId);
   const price = getProductPrice(product, selectedVariant);
   const displayName = product.variantSeo?.title ?? getProductDisplayName(product, selectedVariant);
-  const mainImage = getMainImage(product);
+  const mainImage = selectedVariant
+    ? getMainImage(product, selectedVariant)
+    : getRepresentativeImage(product);
   const avgRating = product.reviews?.length
     ? product.reviews.reduce((s: number, r: any) => s + r.rating, 0) / product.reviews.length
     : null;

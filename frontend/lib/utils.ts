@@ -118,6 +118,21 @@ export function getMainImage(product: Product, variant?: Variant): string {
   return main?.url || product.images?.[0]?.url || '/placeholder.svg';
 }
 
+/**
+ * For contexts that represent a product generically — not committed to one
+ * specific variant (carousels, search results, homepage, cross-sells) — prefer
+ * the product's own default photo, else any variant that happens to have one,
+ * rather than falling straight to the placeholder just because the picked
+ * variant itself has none. Do NOT use this where a specific variant is being
+ * shown to the user (e.g. catalog cards split per variant, cart line items) —
+ * substituting a different variant's photo there would misrepresent it.
+ */
+export function getRepresentativeImage(product: Product): string {
+  if (product.images?.length) return getMainImage(product);
+  const variantWithPhoto = product.variants?.find((v) => (v.images?.length ?? 0) > 0);
+  return getMainImage(product, variantWithPhoto);
+}
+
 const BADGE_COLORS: Record<string, string> = {
   'ХІТ': '#0055CC',
   'НОВИНКА': '#2563EB',

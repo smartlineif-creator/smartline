@@ -162,7 +162,7 @@ export default function CartPage() {
                       <div className="h-full w-full animate-pulse" style={{ background: 'var(--sl-bg-elevated)' }} />
                     ) : product ? (
                       <Image
-                        src={getMainImage(product)}
+                        src={getMainImage(product, variant)}
                         alt={product.name}
                         fill
                         className="object-contain p-2 transition-transform duration-300 group-hover/row:scale-105"
