@@ -164,6 +164,21 @@ export function pickCardHighlights(product: Product): Array<{ label: string; val
     if (highlights.length === 4) break;
   }
 
+  // Fill remaining slots with the product's own real attributes (whatever
+  // they're named) — products outside the laptop-tuned rules above (mice,
+  // mousepads, etc.) still get actual specs instead of just "Категорія".
+  if (highlights.length < 4) {
+    for (const attribute of attributes) {
+      if (used.has(attribute.id)) continue;
+      highlights.push({
+        label: attribute.name,
+        value: `${attribute.value}${attribute.unit ? ` ${attribute.unit}` : ''}`,
+      });
+      used.add(attribute.id);
+      if (highlights.length === 4) break;
+    }
+  }
+
   if (highlights.length < 4 && product.category?.name) {
     highlights.push({ label: 'Категорія', value: product.category.name });
   }
