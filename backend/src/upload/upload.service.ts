@@ -31,7 +31,10 @@ export class UploadService {
       throw new BadRequestException('File too large (max 5MB)');
     }
 
-    const webp = await sharp(buffer, { limitInputPixels: 50_000_000 })
+    // Decoding a very high-resolution source (some phone cameras shoot 40-100MP)
+    // can spike memory well past this 512MB instance's limit before the resize
+    // even runs — cap the ceiling well below that to avoid OOM restarts.
+    const webp = await sharp(buffer, { limitInputPixels: 24_000_000 })
       .rotate()
       .resize(2000, 2000, { fit: 'inside', withoutEnlargement: true })
       .webp({ quality: 82 })
