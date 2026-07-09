@@ -61,7 +61,9 @@ export default function BannerSlider({ banners }: Props) {
       {banners.length > 1 && (
         <>
           <button
+            type="button"
             onClick={prev}
+            aria-label="Попередній банер"
             className="absolute left-4 top-1/2 z-30 -translate-y-1/2 rounded-full p-2 transition-all"
             style={{
               background: 'var(--sl-bg-elevated)',
@@ -80,7 +82,9 @@ export default function BannerSlider({ banners }: Props) {
             <ChevronLeft className="h-5 w-5" />
           </button>
           <button
+            type="button"
             onClick={next}
+            aria-label="Наступний банер"
             className="absolute right-4 top-1/2 z-30 -translate-y-1/2 rounded-full p-2 transition-all"
             style={{
               background: 'var(--sl-bg-elevated)',
@@ -107,7 +111,10 @@ export default function BannerSlider({ banners }: Props) {
             {banners.map((_, i) => (
               <button
                 key={i}
+                type="button"
                 onClick={() => setCurrent(i)}
+                aria-label={`Слайд ${i + 1}`}
+                aria-current={i === current ? 'true' : undefined}
                 className={cn('h-2 rounded-full transition-all', i === current ? 'w-6' : 'w-2')}
                 style={{
                   background: i === current ? 'var(--sl-accent)' : 'var(--sl-text-muted)',

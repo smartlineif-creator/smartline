@@ -370,9 +370,11 @@ export async function uploadVideo(file: File): Promise<string> {
   const { uploadUrl, publicUrl } = await presignRes.json();
 
   // Step 2: upload directly to R2 (no backend in the middle)
+  // Cache-Control must match what the backend signed the URL with (see
+  // getVideoPresignedUrl() in backend/src/upload/upload.service.ts).
   const uploadRes = await fetch(uploadUrl, {
     method: 'PUT',
-    headers: { 'Content-Type': file.type },
+    headers: { 'Content-Type': file.type, 'Cache-Control': 'public, max-age=31536000, immutable' },
     body: file,
   });
   if (!uploadRes.ok) throw new Error('Video upload to storage failed');

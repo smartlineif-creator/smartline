@@ -162,7 +162,7 @@ function HeroSpotlight({ product, title, subtitle }: { product: Product; title?:
                 className="rounded-full px-3 py-1 text-xs"
                 style={{
                   background: 'var(--sl-bg-elevated)',
-                  color: 'var(--sl-text-muted)',
+                  color: 'var(--sl-text-secondary)',
                   border: '1px solid var(--sl-border)',
                   fontFamily: 'var(--sl-font-mono)',
                 }}

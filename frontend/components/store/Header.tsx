@@ -538,7 +538,7 @@ export default function Header() {
 
               <Link
                 href="/wishlist"
-                aria-label="Вибране"
+                aria-label={visibleWishlistCount > 0 ? `Вибране, ${visibleWishlistCount} товар(ів)` : 'Вибране'}
                 onClick={closeMenus}
                 className="relative flex h-10 w-10 items-center justify-center rounded-lg transition-all"
                 style={{ color: 'var(--sl-text-secondary)' }}
@@ -564,7 +564,7 @@ export default function Header() {
 
               <Link
                 href="/cart"
-                aria-label="Кошик"
+                aria-label={visibleTotalItems > 0 ? `Кошик, ${visibleTotalItems} товар(ів)` : 'Кошик'}
                 onClick={closeMenus}
                 className="relative flex h-10 w-10 items-center justify-center rounded-lg transition-all"
                 style={{ color: 'var(--sl-text-secondary)' }}

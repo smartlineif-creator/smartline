@@ -80,6 +80,9 @@ export class UploadService {
         Key: key,
         Body: webp,
         ContentType: 'image/webp',
+        // Content is a randomUUID key — it never changes once uploaded, so it's
+        // safe to cache indefinitely (Lighthouse flagged these as uncached).
+        CacheControl: 'public, max-age=31536000, immutable',
       }),
     );
 
@@ -113,6 +116,7 @@ export class UploadService {
         Key: key,
         Body: buffer,
         ContentType: mimeType,
+        CacheControl: 'public, max-age=31536000, immutable',
       }),
     );
 
@@ -142,6 +146,9 @@ export class UploadService {
       Bucket: bucket,
       Key: key,
       ContentType: contentType,
+      // Signed into the URL — the client's PUT must send the same header
+      // (see uploadVideo() in frontend/lib/api.ts) or the signature won't match.
+      CacheControl: 'public, max-age=31536000, immutable',
     });
 
     const uploadUrl = await getSignedUrl(this.s3, command, { expiresIn: 3600 });
