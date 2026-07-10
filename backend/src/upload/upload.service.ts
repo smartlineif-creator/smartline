@@ -142,13 +142,14 @@ export class UploadService {
     const key = `products/videos/${randomUUID()}.${ext}`;
     const bucket = this.config.get<string>('R2_BUCKET');
 
+    // No CacheControl here: it's a non-safelisted CORS header, so adding it
+    // forces a preflight OPTIONS request that R2's bucket CORS policy (only
+    // allows content-type) rejects with 403 — the PUT never even gets sent.
+    // Reverted after this broke all video uploads in production.
     const command = new PutObjectCommand({
       Bucket: bucket,
       Key: key,
       ContentType: contentType,
-      // Signed into the URL — the client's PUT must send the same header
-      // (see uploadVideo() in frontend/lib/api.ts) or the signature won't match.
-      CacheControl: 'public, max-age=31536000, immutable',
     });
 
     const uploadUrl = await getSignedUrl(this.s3, command, { expiresIn: 3600 });

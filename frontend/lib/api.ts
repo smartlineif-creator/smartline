@@ -369,12 +369,13 @@ export async function uploadVideo(file: File): Promise<string> {
   if (!presignRes.ok) throw new Error('Failed to get upload URL');
   const { uploadUrl, publicUrl } = await presignRes.json();
 
-  // Step 2: upload directly to R2 (no backend in the middle)
-  // Cache-Control must match what the backend signed the URL with (see
-  // getVideoPresignedUrl() in backend/src/upload/upload.service.ts).
+  // Step 2: upload directly to R2 (no backend in the middle).
+  // Only Content-Type here — Cache-Control is a non-safelisted CORS header
+  // that R2's bucket CORS policy doesn't allow, which blocks the preflight
+  // and the PUT never gets sent (broke all video uploads when added).
   const uploadRes = await fetch(uploadUrl, {
     method: 'PUT',
-    headers: { 'Content-Type': file.type, 'Cache-Control': 'public, max-age=31536000, immutable' },
+    headers: { 'Content-Type': file.type },
     body: file,
   });
   if (!uploadRes.ok) throw new Error('Video upload to storage failed');
