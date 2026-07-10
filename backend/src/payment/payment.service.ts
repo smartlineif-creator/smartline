@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
+import { getPrimaryFrontendUrl } from '../common/frontend-url';
 import axios from 'axios';
 import { createHmac } from 'crypto';
 import { Role, User } from '@prisma/client';
@@ -34,8 +35,7 @@ export class PaymentService {
     }
 
     const token = this.config.get<string>('MONOBANK_TOKEN');
-    const frontendUrl =
-      this.config.get<string>('FRONTEND_URL') || 'http://localhost:3000';
+    const frontendUrl = getPrimaryFrontendUrl(this.config.get<string>('FRONTEND_URL'));
     const redirectUrl = `${frontendUrl}/checkout/success?orderId=${order.id}`;
 
     if (!token || token === 'placeholder') {

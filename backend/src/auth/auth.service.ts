@@ -17,6 +17,7 @@ import {
   ChangePasswordDto,
 } from './dto/auth.dto';
 import { MailService } from '../mail/mail.service';
+import { getPrimaryFrontendUrl } from '../common/frontend-url';
 import * as bcrypt from 'bcrypt';
 import { randomBytes } from 'crypto';
 import { addDays, addMinutes, addHours } from 'date-fns';
@@ -101,8 +102,7 @@ export class AuthService {
       data: { email: dto.email, token, expiresAt: addHours(new Date(), 1) },
     });
 
-    const frontendUrl =
-      this.config.get<string>('FRONTEND_URL') || 'http://localhost:3000';
+    const frontendUrl = getPrimaryFrontendUrl(this.config.get<string>('FRONTEND_URL'));
     this.mail.sendPasswordReset(dto.email, token, frontendUrl).catch(() => {});
   }
 

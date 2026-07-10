@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { getPrimaryFrontendUrl } from '../common/frontend-url';
 import axios from 'axios';
 
 @Injectable()
@@ -49,14 +50,20 @@ export class TelegramService {
 
     const delivery = order.delivery ?? {};
     const cityLine = delivery.cityName || delivery.city || '';
-    const branchLine = delivery.warehouseName || delivery.warehouse || delivery.address || '';
+    const branchLine =
+      delivery.warehouseName || delivery.warehouse || delivery.address || '';
     const deliveryLine = [cityLine, branchLine].filter(Boolean).join(', ');
 
-    const paymentMethod = order.payment?.method || order.payment?.paymentMethod || '';
+    const paymentMethod =
+      order.payment?.method || order.payment?.paymentMethod || '';
     const paymentLine = PAYMENT_LABELS[paymentMethod] || paymentMethod;
 
-    const adminUrl = process.env.FRONTEND_URL
-      ? `${process.env.FRONTEND_URL}/admin/orders/${order.id}`
+    const primaryFrontendUrl = getPrimaryFrontendUrl(
+      process.env.FRONTEND_URL,
+      '',
+    );
+    const adminUrl = primaryFrontendUrl
+      ? `${primaryFrontendUrl}/admin/orders/${order.id}`
       : '';
 
     const lines = [
@@ -73,7 +80,9 @@ export class TelegramService {
       `💳 Оплата: ${paymentLine}`,
       deliveryLine ? `🚚 Доставка: ${deliveryLine}` : null,
       adminUrl ? `\n🔗 <a href="${adminUrl}">Відкрити в адмінці</a>` : null,
-    ].filter((l) => l !== null).join('\n');
+    ]
+      .filter((l) => l !== null)
+      .join('\n');
 
     await this.sendMessage(lines);
   }
