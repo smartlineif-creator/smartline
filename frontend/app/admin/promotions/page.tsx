@@ -10,7 +10,7 @@ import AdminPageHint from '@/components/admin/AdminPageHint';
 import { Plus, Pencil, Trash2, Search, X, Tag, Package, AlertTriangle, ChevronDown } from 'lucide-react';
 import { toast } from 'sonner';
 import Image from 'next/image';
-import { getRepresentativeImage, formatPrice, getProductPrice } from '@/lib/utils';
+import { getRepresentativeImage, formatPrice, getProductPrice, stripNegative } from '@/lib/utils';
 
 type TargetMode = 'products' | 'category';
 
@@ -327,7 +327,7 @@ export default function AdminPromotionsPage() {
                     min="1"
                     max="99"
                     value={form.discount}
-                    onChange={(e) => setField('discount', e.target.value)}
+                    onChange={(e) => setField('discount', stripNegative(e.target.value))}
                   />
                 </div>
               </div>

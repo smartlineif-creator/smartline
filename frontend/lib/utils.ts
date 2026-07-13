@@ -6,6 +6,10 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+export function stripNegative(value: string): string {
+  return value.replace(/-/g, '');
+}
+
 export function formatPrice(price: number | string | null | undefined): string {
   if (price == null) return '—';
   const n = typeof price === 'string' ? parseFloat(price) : price;

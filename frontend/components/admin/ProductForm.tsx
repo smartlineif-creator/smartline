@@ -24,7 +24,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { cn, toSlug } from '@/lib/utils';
+import { cn, toSlug, stripNegative } from '@/lib/utils';
 import {
   ChevronDown, ChevronLeft, ChevronRight, Loader2, Plus, Trash2, Upload, X,
 } from 'lucide-react';
@@ -1289,15 +1289,15 @@ export default function ProductForm({ mode, productId }: Props) {
           <div className="grid gap-4 md:grid-cols-3">
             <div>
               <Label>Поточна ціна, грн *</Label>
-              <Input type="number" value={basePrice} onChange={(e) => setBasePrice(e.target.value)} className="mt-2 h-11" />
+              <Input type="number" min="0" value={basePrice} onChange={(e) => setBasePrice(stripNegative(e.target.value))} className="mt-2 h-11" />
             </div>
             <div>
               <Label>Стара ціна, грн</Label>
-              <Input type="number" value={baseCompareAtPrice} onChange={(e) => setBaseCompareAtPrice(e.target.value)} className="mt-2 h-11" placeholder="Необов'язково" />
+              <Input type="number" min="0" value={baseCompareAtPrice} onChange={(e) => setBaseCompareAtPrice(stripNegative(e.target.value))} className="mt-2 h-11" placeholder="Необов'язково" />
             </div>
             <div>
               <Label>Кількість, шт.</Label>
-              <Input type="number" value={baseStock} onChange={(e) => setBaseStock(e.target.value)} className="mt-2 h-11" placeholder="0" />
+              <Input type="number" min="0" value={baseStock} onChange={(e) => setBaseStock(stripNegative(e.target.value))} className="mt-2 h-11" placeholder="0" />
             </div>
           </div>
         ) : (
@@ -1560,9 +1560,9 @@ export default function ProductForm({ mode, productId }: Props) {
                               {variant.selections.map((s) => `${s.groupName}: ${s.value}`).join(' · ')}
                             </div>
                           </div>
-                          <Input type="number" placeholder="Ціна" value={variant.price} onChange={(e) => updateVariant(variant.key, 'price', e.target.value)} disabled={!variant.isEnabled} />
-                          <Input type="number" placeholder="Стара ціна" value={variant.compareAtPrice} onChange={(e) => updateVariant(variant.key, 'compareAtPrice', e.target.value)} disabled={!variant.isEnabled} />
-                          <Input type="number" placeholder="0" value={variant.stock} onChange={(e) => updateVariant(variant.key, 'stock', e.target.value)} disabled={!variant.isEnabled} />
+                          <Input type="number" min="0" placeholder="Ціна" value={variant.price} onChange={(e) => updateVariant(variant.key, 'price', stripNegative(e.target.value))} disabled={!variant.isEnabled} />
+                          <Input type="number" min="0" placeholder="Стара ціна" value={variant.compareAtPrice} onChange={(e) => updateVariant(variant.key, 'compareAtPrice', stripNegative(e.target.value))} disabled={!variant.isEnabled} />
+                          <Input type="number" min="0" placeholder="0" value={variant.stock} onChange={(e) => updateVariant(variant.key, 'stock', stripNegative(e.target.value))} disabled={!variant.isEnabled} />
                           <Input placeholder="Артикул" value={variant.sku} onChange={(e) => updateVariant(variant.key, 'sku', e.target.value)} disabled={!variant.isEnabled} />
                           <button
                             type="button"

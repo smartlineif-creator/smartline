@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { adminGetUsers, adminUpdateUser } from '@/lib/api';
+import { stripNegative } from '@/lib/utils';
 import { User } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -143,7 +144,7 @@ export default function AdminUsersPage() {
             </div>
             <div className="space-y-1.5">
               <Label>Знижка % <span className="text-muted-foreground">(0–100)</span></Label>
-              <Input type="number" min="0" max="100" value={discount} onChange={(e) => setDiscount(e.target.value)} />
+              <Input type="number" min="0" max="100" value={discount} onChange={(e) => setDiscount(stripNegative(e.target.value))} />
             </div>
             <div className="space-y-1.5">
               <Label>Нотатка адміна</Label>
