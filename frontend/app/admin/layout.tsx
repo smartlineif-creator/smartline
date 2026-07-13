@@ -35,6 +35,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     await logout();
     toast.success('Ви вийшли');
     router.push('/admin/login');
+    router.refresh();
   };
 
   return (
@@ -42,7 +43,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       {/* Sidebar */}
       <aside className="w-56 bg-gray-900 text-gray-300 flex flex-col shrink-0">
         <div className="p-4 border-b border-gray-700">
-          <Link href="/admin" className="text-white font-bold text-lg">
+          <Link href="/admin" prefetch={false} className="text-white font-bold text-lg">
             SmartLine Admin
           </Link>
         </div>
@@ -86,6 +87,7 @@ function NavLink({
   return (
     <Link
       href={href}
+      prefetch={false}
       className={cn(
         'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors mb-0.5',
         isActive

@@ -34,6 +34,7 @@ export default function AdminLoginPage() {
     try {
       await login(email, password);
       router.push('/admin');
+      router.refresh();
     } catch (err: any) {
       setError(err.message || 'Invalid email or password. Please try again.');
     } finally {
