@@ -221,13 +221,15 @@ export class CreateProductDto {
   @IsString({ each: true })
   accessoryCategoryIds?: string[];
 
+  @IsArray()
   @IsOptional()
-  @IsString()
-  recommendedCategoryId?: string | null;
+  @IsString({ each: true })
+  recommendedCategoryIds?: string[];
 
+  @IsArray()
   @IsOptional()
-  @IsString()
-  withThisBuyCategoryId?: string | null;
+  @IsString({ each: true })
+  withThisBuyCategoryIds?: string[];
 }
 
 export class UpdateProductDto extends CreateProductDto {}

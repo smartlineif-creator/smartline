@@ -153,8 +153,8 @@ export interface Product {
   recommendedProducts?: Product[];
   withThisBuyProducts?: Product[];
   accessoryCategories?: Category[];
-  recommendedCategoryId?: string | null;
-  withThisBuyCategoryId?: string | null;
+  recommendedCategoryIds?: string[];
+  withThisBuyCategoryIds?: string[];
   accessoryProducts?: Product[];
   similarProducts?: Product[];
   _count?: { reviews: number };

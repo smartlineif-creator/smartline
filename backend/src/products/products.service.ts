@@ -715,8 +715,8 @@ export class ProductsService {
       recommendedProductIds,
       withThisBuyProductIds,
       accessoryCategoryIds,
-      recommendedCategoryId,
-      withThisBuyCategoryId,
+      recommendedCategoryIds,
+      withThisBuyCategoryIds,
       ...rest
     } = dto as any;
     const normalizedVariants = variants || [];
@@ -747,8 +747,8 @@ export class ProductsService {
         recommendedProductIds,
         withThisBuyProductIds,
         accessoryCategoryIds,
-        recommendedCategoryId,
-        withThisBuyCategoryId,
+        recommendedCategoryIds,
+        withThisBuyCategoryIds,
       });
 
       return tx.product.findUniqueOrThrow({
@@ -769,8 +769,8 @@ export class ProductsService {
       recommendedProductIds,
       withThisBuyProductIds,
       accessoryCategoryIds,
-      recommendedCategoryId,
-      withThisBuyCategoryId,
+      recommendedCategoryIds,
+      withThisBuyCategoryIds,
       ...rest
     } = dto as any;
     const normalizedVariants = variants || [];
@@ -806,8 +806,8 @@ export class ProductsService {
         recommendedProductIds,
         withThisBuyProductIds,
         accessoryCategoryIds,
-        recommendedCategoryId,
-        withThisBuyCategoryId,
+        recommendedCategoryIds,
+        withThisBuyCategoryIds,
       });
 
       return tx.product.findUniqueOrThrow({
@@ -902,12 +902,12 @@ export class ProductsService {
       accessoryCategoryIds: (source.categoryLinks || [])
         .filter((link: any) => link.type === PRODUCT_CATEGORY_LINK_ACCESSORY)
         .map((link: any) => link.categoryId),
-      recommendedCategoryId: ((source.categoryLinks || []) as any[])
-        .find((link) => link.type === PRODUCT_CATEGORY_LINK_RECOMMENDED_CAT)
-        ?.categoryId ?? null,
-      withThisBuyCategoryId: ((source.categoryLinks || []) as any[])
-        .find((link) => link.type === PRODUCT_CATEGORY_LINK_WITH_THIS_BUY_CAT)
-        ?.categoryId ?? null,
+      recommendedCategoryIds: (source.categoryLinks || [])
+        .filter((link: any) => link.type === PRODUCT_CATEGORY_LINK_RECOMMENDED_CAT)
+        .map((link: any) => link.categoryId),
+      withThisBuyCategoryIds: (source.categoryLinks || [])
+        .filter((link: any) => link.type === PRODUCT_CATEGORY_LINK_WITH_THIS_BUY_CAT)
+        .map((link: any) => link.categoryId),
     });
   }
 
@@ -987,8 +987,8 @@ export class ProductsService {
       recommendedProductIds?: string[];
       withThisBuyProductIds?: string[];
       accessoryCategoryIds?: string[];
-      recommendedCategoryId?: string | null;
-      withThisBuyCategoryId?: string | null;
+      recommendedCategoryIds?: string[];
+      withThisBuyCategoryIds?: string[];
     },
   ) {
     await tx.variant.deleteMany({ where: { productId } });
@@ -1122,6 +1122,12 @@ export class ProductsService {
     const accessoryIds = Array.from(
       new Set((data.accessoryCategoryIds || []).filter(Boolean)),
     );
+    const recommendedCategoryIds = Array.from(
+      new Set((data.recommendedCategoryIds || []).filter(Boolean)),
+    );
+    const withThisBuyCategoryIds = Array.from(
+      new Set((data.withThisBuyCategoryIds || []).filter(Boolean)),
+    );
 
     if (recommendedIds.length > 0) {
       await tx.productRelation.createMany({
@@ -1158,15 +1164,25 @@ export class ProductsService {
       });
     }
 
-    if (data.recommendedCategoryId) {
-      await tx.productCategoryLink.create({
-        data: { productId, categoryId: data.recommendedCategoryId, type: PRODUCT_CATEGORY_LINK_RECOMMENDED_CAT },
+    if (recommendedCategoryIds.length > 0) {
+      await tx.productCategoryLink.createMany({
+        data: recommendedCategoryIds.map((categoryId) => ({
+          productId,
+          categoryId,
+          type: PRODUCT_CATEGORY_LINK_RECOMMENDED_CAT,
+        })),
+        skipDuplicates: true,
       });
     }
 
-    if (data.withThisBuyCategoryId) {
-      await tx.productCategoryLink.create({
-        data: { productId, categoryId: data.withThisBuyCategoryId, type: PRODUCT_CATEGORY_LINK_WITH_THIS_BUY_CAT },
+    if (withThisBuyCategoryIds.length > 0) {
+      await tx.productCategoryLink.createMany({
+        data: withThisBuyCategoryIds.map((categoryId) => ({
+          productId,
+          categoryId,
+          type: PRODUCT_CATEGORY_LINK_WITH_THIS_BUY_CAT,
+        })),
+        skipDuplicates: true,
       });
     }
   }
@@ -1259,9 +1275,31 @@ export class ProductsService {
     const relations = product.relationsFrom || [];
     const categoryLinks = product.categoryLinks || [];
 
-    const recommendedProducts = relations
-      .filter((relation: any) => relation.type === PRODUCT_RELATION_RECOMMENDED)
-      .map((relation: any) => relation.related);
+    const recommendedCategoryIds = categoryLinks
+      .filter((link: any) => link.type === PRODUCT_CATEGORY_LINK_RECOMMENDED_CAT)
+      .map((link: any) => link.categoryId);
+    const withThisBuyCategoryIds = categoryLinks
+      .filter((link: any) => link.type === PRODUCT_CATEGORY_LINK_WITH_THIS_BUY_CAT)
+      .map((link: any) => link.categoryId);
+
+    const recommendedCategoryProducts =
+      recommendedCategoryIds.length > 0
+        ? await this.pickAccessoryProducts(product.id, recommendedCategoryIds)
+        : [];
+    const withThisBuyCategoryProducts =
+      withThisBuyCategoryIds.length > 0
+        ? await this.pickAccessoryProducts(product.id, withThisBuyCategoryIds)
+        : [];
+
+    const recommendedProducts = [
+      ...relations
+        .filter((relation: any) => relation.type === PRODUCT_RELATION_RECOMMENDED)
+        .map((relation: any) => relation.related),
+      ...recommendedCategoryProducts,
+    ].filter(
+      (related: any, index: number, array: any[]) =>
+        array.findIndex((item) => item.id === related.id) === index,
+    );
 
     const withThisBuyProducts = [
       ...relations
@@ -1272,6 +1310,7 @@ export class ProductsService {
       ...(product.crossSellsFrom || []).map(
         (relation: any) => relation.related,
       ),
+      ...withThisBuyCategoryProducts,
     ].filter(
       (related: any, index: number, array: any[]) =>
         array.findIndex((item) => item.id === related.id) === index,
@@ -1298,6 +1337,8 @@ export class ProductsService {
       accessoryCategories,
       accessoryProducts,
       similarProducts,
+      recommendedCategoryIds,
+      withThisBuyCategoryIds,
     };
   }
 

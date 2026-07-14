@@ -316,8 +316,8 @@ export default function ProductForm({ mode, productId }: Props) {
   const [withThisBuyProductIds, setWithThisBuyProductIds] = useState<string[]>([]);
   const [recommendedMode, setRecommendedMode] = useState<'products' | 'category'>('products');
   const [withThisBuyMode, setWithThisBuyMode] = useState<'products' | 'category'>('products');
-  const [recommendedCategoryId, setRecommendedCategoryId] = useState<string>('');
-  const [withThisBuyCategoryId, setWithThisBuyCategoryId] = useState<string>('');
+  const [recommendedCategoryIds, setRecommendedCategoryIds] = useState<string[]>([]);
+  const [withThisBuyCategoryIds, setWithThisBuyCategoryIds] = useState<string[]>([]);
   const [categoryPickerQuery, setCategoryPickerQuery] = useState('');
 
   const [name, setName] = useState('');
@@ -509,19 +509,19 @@ export default function ProductForm({ mode, productId }: Props) {
     );
     setRecommendedProductIds(product.recommendedProducts?.map((item) => item.id) || []);
     setWithThisBuyProductIds(product.withThisBuyProducts?.map((item) => item.id) || []);
-    if (product.recommendedCategoryId) {
+    if (product.recommendedCategoryIds && product.recommendedCategoryIds.length > 0) {
       setRecommendedMode('category');
-      setRecommendedCategoryId(product.recommendedCategoryId);
+      setRecommendedCategoryIds(product.recommendedCategoryIds);
     } else {
       setRecommendedMode('products');
-      setRecommendedCategoryId('');
+      setRecommendedCategoryIds([]);
     }
-    if (product.withThisBuyCategoryId) {
+    if (product.withThisBuyCategoryIds && product.withThisBuyCategoryIds.length > 0) {
       setWithThisBuyMode('category');
-      setWithThisBuyCategoryId(product.withThisBuyCategoryId);
+      setWithThisBuyCategoryIds(product.withThisBuyCategoryIds);
     } else {
       setWithThisBuyMode('products');
-      setWithThisBuyCategoryId('');
+      setWithThisBuyCategoryIds([]);
     }
   }
 
@@ -1087,8 +1087,8 @@ export default function ProductForm({ mode, productId }: Props) {
         recommendedProductIds: recommendedMode === 'products' ? recommendedProductIds : [],
         withThisBuyProductIds: withThisBuyMode === 'products' ? withThisBuyProductIds : [],
         accessoryCategoryIds: [],
-        recommendedCategoryId: recommendedMode === 'category' ? recommendedCategoryId || null : null,
-        withThisBuyCategoryId: withThisBuyMode === 'category' ? withThisBuyCategoryId || null : null,
+        recommendedCategoryIds: recommendedMode === 'category' ? recommendedCategoryIds : [],
+        withThisBuyCategoryIds: withThisBuyMode === 'category' ? withThisBuyCategoryIds : [],
       };
 
       if (mode === 'edit' && productId) {
@@ -1616,7 +1616,7 @@ export default function ProductForm({ mode, productId }: Props) {
               title="Рекомендовані товари"
               description="Підсвічуємо на сторінці товару як «Також дивляться»."
               mode={recommendedMode}
-              onModeChange={(m) => { setRecommendedMode(m); setRecommendedProductIds([]); setRecommendedCategoryId(''); }}
+              onModeChange={(m) => { setRecommendedMode(m); setRecommendedProductIds([]); setRecommendedCategoryIds([]); }}
               productQuery={recommendedQuery}
               onProductQueryChange={setRecommendedQuery}
               productOptions={recommendedOptions}
@@ -1626,8 +1626,8 @@ export default function ProductForm({ mode, productId }: Props) {
               categoryPickerQuery={categoryPickerQuery}
               onCategoryPickerQueryChange={setCategoryPickerQuery}
               categoryOptions={filteredCategoryOptions}
-              selectedCategoryId={recommendedCategoryId}
-              onSelectCategory={setRecommendedCategoryId}
+              selectedCategoryIds={recommendedCategoryIds}
+              onToggleCategory={(id) => setRecommendedCategoryIds((cur) => toggleId(cur, id))}
               getCategoryPathLabel={getCategoryPathLabel}
             />
 
@@ -1636,7 +1636,7 @@ export default function ProductForm({ mode, productId }: Props) {
               title="З цим купують"
               description="Добірка для комплекту: що логічно додати до кошика разом."
               mode={withThisBuyMode}
-              onModeChange={(m) => { setWithThisBuyMode(m); setWithThisBuyProductIds([]); setWithThisBuyCategoryId(''); }}
+              onModeChange={(m) => { setWithThisBuyMode(m); setWithThisBuyProductIds([]); setWithThisBuyCategoryIds([]); }}
               productQuery={withThisBuyQuery}
               onProductQueryChange={setWithThisBuyQuery}
               productOptions={withThisBuyOptions}
@@ -1646,8 +1646,8 @@ export default function ProductForm({ mode, productId }: Props) {
               categoryPickerQuery={categoryPickerQuery}
               onCategoryPickerQueryChange={setCategoryPickerQuery}
               categoryOptions={filteredCategoryOptions}
-              selectedCategoryId={withThisBuyCategoryId}
-              onSelectCategory={setWithThisBuyCategoryId}
+              selectedCategoryIds={withThisBuyCategoryIds}
+              onToggleCategory={(id) => setWithThisBuyCategoryIds((cur) => toggleId(cur, id))}
               getCategoryPathLabel={getCategoryPathLabel}
             />
           </div>
@@ -2019,15 +2019,15 @@ interface MerchPanelProps {
   categoryPickerQuery: string;
   onCategoryPickerQueryChange: (q: string) => void;
   categoryOptions: CategoryOption[];
-  selectedCategoryId: string;
-  onSelectCategory: (id: string) => void;
+  selectedCategoryIds: string[];
+  onToggleCategory: (id: string) => void;
   getCategoryPathLabel: (cat: import('@/types').Category) => string;
 }
 
 function MerchPanel({
   title, description, mode, onModeChange,
   productQuery, onProductQueryChange, productOptions, selectedProductIds, onToggleProduct, selectedProducts,
-  categoryPickerQuery, onCategoryPickerQueryChange, categoryOptions, selectedCategoryId, onSelectCategory,
+  categoryPickerQuery, onCategoryPickerQueryChange, categoryOptions, selectedCategoryIds, onToggleCategory,
   getCategoryPathLabel,
 }: MerchPanelProps) {
   return (
@@ -2119,26 +2119,32 @@ function MerchPanel({
             placeholder="Пошук по категоріях"
             className="mb-2 h-10"
           />
-          {selectedCategoryId && (
-            <div className="mb-3">
-              <button
-                type="button"
-                onClick={() => onSelectCategory('')}
-                className="inline-flex items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700"
-              >
-                <span>{getCategoryPathLabel(categoryOptions.find((o) => o.category.id === selectedCategoryId)?.category as any) || selectedCategoryId}</span>
-                <X className="h-3 w-3" />
-              </button>
+          {selectedCategoryIds.length > 0 && (
+            <div className="mb-3 flex flex-wrap gap-1.5">
+              {selectedCategoryIds.map((id) => {
+                const label = getCategoryPathLabel(categoryOptions.find((o) => o.category.id === id)?.category as any) || id;
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => onToggleCategory(id)}
+                    className="inline-flex items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700 hover:bg-blue-100"
+                  >
+                    <span className="max-w-[220px] truncate">{label}</span>
+                    <X className="h-3 w-3 shrink-0" />
+                  </button>
+                );
+              })}
             </div>
           )}
           <div className="max-h-64 overflow-y-auto rounded-lg border border-gray-200">
             {categoryOptions.map(({ category, depth }) => {
-              const isSelected = selectedCategoryId === category.id;
+              const isSelected = selectedCategoryIds.includes(category.id);
               return (
                 <button
                   key={category.id}
                   type="button"
-                  onClick={() => onSelectCategory(isSelected ? '' : category.id)}
+                  onClick={() => onToggleCategory(category.id)}
                   className={cn(
                     'flex w-full items-center px-3 py-2 text-left text-sm transition-colors',
                     isSelected ? 'bg-blue-50 font-medium text-blue-700' : 'text-gray-700 hover:bg-gray-50',
