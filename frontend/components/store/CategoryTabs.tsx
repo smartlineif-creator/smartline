@@ -55,7 +55,7 @@ export default function CategoryTabs({
   const trackRef = useRef<HTMLDivElement | null>(null);
   const [canScrollPrev, setCanScrollPrev] = useState(false);
   const [canScrollNext, setCanScrollNext] = useState(false);
-  const dragRef = useRef<{ startX: number; startScrollLeft: number } | null>(null);
+  const dragRef = useRef<{ startX: number; startScrollLeft: number; pointerId: number } | null>(null);
   const justDraggedRef = useRef(false);
 
   const updateScrollState = useCallback(() => {
@@ -106,8 +106,7 @@ export default function CategoryTabs({
   const handlePointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
     const track = trackRef.current;
     if (!track || e.pointerType !== 'mouse') return;
-    dragRef.current = { startX: e.clientX, startScrollLeft: track.scrollLeft };
-    track.setPointerCapture(e.pointerId);
+    dragRef.current = { startX: e.clientX, startScrollLeft: track.scrollLeft, pointerId: e.pointerId };
   }, []);
 
   const handlePointerMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
@@ -115,12 +114,18 @@ export default function CategoryTabs({
     const drag = dragRef.current;
     if (!track || !drag) return;
     const delta = e.clientX - drag.startX;
-    if (Math.abs(delta) > 8) justDraggedRef.current = true;
+    // Capture only once an actual drag is confirmed — capturing eagerly on every
+    // mousedown breaks the native click-to-navigate behavior of the Link chips below.
+    if (Math.abs(delta) > 8 && !justDraggedRef.current) {
+      justDraggedRef.current = true;
+      track.setPointerCapture(drag.pointerId);
+    }
     track.scrollLeft = drag.startScrollLeft - delta;
   }, []);
 
   const handlePointerUp = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
-    trackRef.current?.releasePointerCapture(e.pointerId);
+    const track = trackRef.current;
+    if (track?.hasPointerCapture(e.pointerId)) track.releasePointerCapture(e.pointerId);
     dragRef.current = null;
     // Clear next tick — the click event (which would otherwise navigate the
     // Link under the cursor) fires synchronously right after pointerup.
