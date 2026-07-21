@@ -115,7 +115,7 @@ export default function CategoryTabs({
     const drag = dragRef.current;
     if (!track || !drag) return;
     const delta = e.clientX - drag.startX;
-    if (Math.abs(delta) > 3) justDraggedRef.current = true;
+    if (Math.abs(delta) > 8) justDraggedRef.current = true;
     track.scrollLeft = drag.startScrollLeft - delta;
   }, []);
 
