@@ -28,8 +28,8 @@ export class UploadService {
     const mimeType = this.getMimeType(originalName);
     if (!mimeType) throw new BadRequestException('Unsupported file type');
 
-    if (buffer.length > 5 * 1024 * 1024) {
-      throw new BadRequestException('File too large (max 5MB)');
+    if (buffer.length > 10 * 1024 * 1024) {
+      throw new BadRequestException('File too large (max 10MB)');
     }
 
     // iPhones shoot HEIC by default. sharp's prebuilt binary has no HEIF

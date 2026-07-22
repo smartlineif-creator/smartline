@@ -337,13 +337,21 @@ export async function searchStreets(cityRef: string, query: string) {
 
 // ─── Upload ──────────────────────────────────────────────────────────────────
 
+const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
+
 async function convertHeicIfNeeded(file: File): Promise<File> {
   const looksHeic =
     /\.(heic|heif)$/i.test(file.name) || /image\/(heic|heif)/i.test(file.type);
   if (!looksHeic || typeof window === 'undefined') return file;
   const { heicTo } = await import('heic-to/next');
-  const blob = await heicTo({ blob: file, type: 'image/jpeg', quality: 0.9 });
   const name = file.name.replace(/\.(heic|heif)$/i, '.jpg');
+  // HEIC compresses far more efficiently than JPEG, so a high-quality re-encode
+  // can end up larger than the original — step quality down until it fits.
+  for (const quality of [0.9, 0.75, 0.6, 0.45]) {
+    const blob = await heicTo({ blob: file, type: 'image/jpeg', quality });
+    if (blob.size <= MAX_UPLOAD_BYTES) return new File([blob], name, { type: 'image/jpeg' });
+  }
+  const blob = await heicTo({ blob: file, type: 'image/jpeg', quality: 0.3 });
   return new File([blob], name, { type: 'image/jpeg' });
 }
 
