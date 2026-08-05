@@ -5,6 +5,7 @@ import Analytics from "@/components/Analytics";
 import { Providers } from "./providers";
 
 export const metadata: Metadata = {
+  metadataBase: new URL('https://smartlineif.com'),
   title: {
     template: "%s — SmartLine",
     default: "SmartLine — інтернет-магазин електроніки",
@@ -17,7 +18,9 @@ export const metadata: Metadata = {
     apple: '/favicon.png',
   },
   openGraph: {
-    images: [{ url: '/logo-light.png', width: 200, height: 200 }],
+    type: 'website',
+    url: 'https://smartlineif.com',
+    images: [{ url: '/logo-light.png', width: 200, height: 200, alt: 'SmartLine' }],
   },
   twitter: {
     card: 'summary',
