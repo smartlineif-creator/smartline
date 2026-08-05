@@ -16,6 +16,13 @@ export const metadata: Metadata = {
     ],
     apple: '/favicon.png',
   },
+  openGraph: {
+    images: [{ url: '/logo-light.png', width: 200, height: 200 }],
+  },
+  twitter: {
+    card: 'summary',
+    images: ['/logo-light.png'],
+  },
 };
 
 export default function RootLayout({
