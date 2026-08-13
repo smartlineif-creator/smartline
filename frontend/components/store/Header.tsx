@@ -404,8 +404,8 @@ export default function Header() {
                   }
                   <input
                     type="search"
-                    placeholder="Пошук товарів..."
-                    className="h-10 w-full rounded-lg pl-9 pr-4 text-sm outline-none transition-all"
+                    placeholder="Пошук товарів або артикул..."
+                    className="sl-search-input h-10 w-full rounded-lg pl-9 pr-10 text-sm outline-none transition-all"
                     style={{
                       background: 'var(--sl-bg-elevated)',
                       border: `1px solid ${searchOpen ? 'var(--sl-accent)' : 'var(--sl-border)'}`,

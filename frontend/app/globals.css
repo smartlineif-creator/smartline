@@ -536,6 +536,15 @@ html.light {
 .sl-hover-text-primary { transition: color var(--sl-transition); }
 .sl-hover-text-primary:hover { color: var(--sl-text-primary) !important; }
 
+/* Hide the native WebKit clear button — this input renders its own X, and
+   showing both looked like a duplicate control. Scoped to the class so the
+   mobile drawer search (which has no custom button) keeps the native one. */
+.sl-search-input::-webkit-search-cancel-button,
+.sl-search-input::-webkit-search-decoration {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
 /* Ghost accent button (fills on hover) */
 .sl-hover-ghost { transition: background var(--sl-transition), box-shadow var(--sl-transition); }
 .sl-hover-ghost:hover {
