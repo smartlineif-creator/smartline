@@ -300,6 +300,10 @@ model OrderItem {
   product     Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
   variantId   String?
   variant     Variant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
+  serviceId   String?
+  service     Service? @relation(fields: [serviceId], references: [id], onDelete: SetNull)
+  tierId      String?
+  tier        ServiceTier? @relation(fields: [tierId], references: [id], onDelete: SetNull)
   name        String
   variantName String?
   price       Decimal  @db.Decimal(10, 2)
@@ -348,6 +352,41 @@ model ProductPromotion {
   @@unique([promotionId, productId])
 }
 
+// ─── Service ────────────────────────────────────────────────────────────────
+
+model Service {
+  id          String        @id @default(cuid())
+  name        String
+  slug        String        @unique
+  description String?
+  price       Decimal       @db.Decimal(10, 2)
+  priceLabel  String?
+  coverImage  String?
+  isActive    Boolean       @default(true)
+  sortOrder   Int           @default(0)
+  blocks      Json          @default("[]")
+  tiers       ServiceTier[]
+  orderItems  OrderItem[]
+  reviews     Review[]
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+}
+
+model ServiceTier {
+  id         String      @id @default(cuid())
+  serviceId  String
+  service    Service     @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  label      String
+  price      Decimal     @db.Decimal(10, 2)
+  note       String?
+  sortOrder  Int         @default(0)
+  orderItems OrderItem[]
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+
+  @@index([serviceId])
+}
+
 // ─── Banner ─────────────────────────────────────────────────────────────────
 
 model Banner {
@@ -378,8 +417,10 @@ model HomepageSection {
 
 model Review {
   id         String   @id @default(cuid())
-  productId  String
-  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  productId  String?
+  product    Product? @relation(fields: [productId], references: [id], onDelete: Cascade)
+  serviceId  String?
+  service    Service? @relation(fields: [serviceId], references: [id], onDelete: Cascade)
   userId     String?
   user       User?    @relation(fields: [userId], references: [id])
   authorName String
@@ -387,4 +428,7 @@ model Review {
   text       String?
   isApproved Boolean  @default(false)
   createdAt  DateTime @default(now())
+
+  @@index([productId])
+  @@index([serviceId])
 }

@@ -102,7 +102,9 @@ export class AuthService {
       data: { email: dto.email, token, expiresAt: addHours(new Date(), 1) },
     });
 
-    const frontendUrl = getPrimaryFrontendUrl(this.config.get<string>('FRONTEND_URL'));
+    const frontendUrl = getPrimaryFrontendUrl(
+      this.config.get<string>('FRONTEND_URL'),
+    );
     this.mail.sendPasswordReset(dto.email, token, frontendUrl).catch(() => {});
   }
 
@@ -127,7 +129,10 @@ export class AuthService {
   async updateProfile(userId: string, dto: UpdateProfileDto) {
     const updated = await this.prisma.user.update({
       where: { id: userId },
-      data: { ...(dto.name !== undefined && { name: dto.name }), ...(dto.phone !== undefined && { phone: dto.phone }) },
+      data: {
+        ...(dto.name !== undefined && { name: dto.name }),
+        ...(dto.phone !== undefined && { phone: dto.phone }),
+      },
     });
     const { password, ...safe } = updated;
     return safe;
@@ -139,7 +144,10 @@ export class AuthService {
     const valid = await bcrypt.compare(dto.currentPassword, user.password);
     if (!valid) throw new BadRequestException('Невірний поточний пароль');
     const hashed = await bcrypt.hash(dto.newPassword, 10);
-    await this.prisma.user.update({ where: { id: userId }, data: { password: hashed } });
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { password: hashed },
+    });
   }
 
   private async issueTokens(userId: string, email: string, role: string) {

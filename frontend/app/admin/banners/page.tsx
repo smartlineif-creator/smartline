@@ -51,7 +51,7 @@ export default function AdminBannersPage() {
       else { await adminCreateBanner(data); toast.success('Створено'); }
       setShowForm(false);
       load();
-    } catch { toast.error('Помилка'); }
+    } catch (err) { toast.error(err instanceof Error ? err.message : 'Помилка'); }
     finally { setSaving(false); }
   };
 
@@ -74,7 +74,7 @@ export default function AdminBannersPage() {
         tips={[
           { text: 'Банери відображаються на головній сторінці магазину. Сортування визначає порядок показу.' },
           { text: 'Для hero-банера рекомендований розмір зображення — не менше 1400×500 px.' },
-          { text: 'Поле "Посилання" — URL, на який переходить покупець при кліку. Можна залишити порожнім.' },
+          { text: 'Поле "Посилання" — внутрішній шлях, на який переходить покупець при кліку (напр. /catalog/slug). Перевіряється при збереженні, щоб не вело на неіснуючу сторінку. Можна залишити порожнім.' },
           { text: 'Зображення завантажується на Cloudflare R2 і оптимізується до WebP автоматично.' },
         ]}
       />
@@ -173,7 +173,10 @@ export default function AdminBannersPage() {
             </div>
             <div>
               <Label>Посилання</Label>
-              <Input value={link} onChange={(e) => setLink(e.target.value)} placeholder="/product/slug" />
+              <Input value={link} onChange={(e) => setLink(e.target.value)} placeholder="/catalog/slug" />
+              <p className="mt-1 text-xs text-muted-foreground">
+                Внутрішній шлях, напр. <code>/catalog/slug</code>, <code>/product/slug</code> або <code>/services/slug</code>. Перевіряється при збереженні. Можна лишити порожнім.
+              </p>
             </div>
             <div className="flex gap-2">
               <Button variant="outline" className="flex-1" onClick={() => setShowForm(false)} disabled={saving}>Скасувати</Button>

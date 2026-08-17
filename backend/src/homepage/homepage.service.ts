@@ -44,7 +44,8 @@ const DEFAULT_SECTIONS = [
     isActive: true,
     config: {
       title: 'Популярні напрямки',
-      subtitle: 'Швидкий вхід у ключові категорії, щоб не шукати потрібний розділ вручну.',
+      subtitle:
+        'Швидкий вхід у ключові категорії, щоб не шукати потрібний розділ вручну.',
       categoryIds: [],
     },
   },
@@ -55,7 +56,8 @@ const DEFAULT_SECTIONS = [
     config: {
       eyebrow: 'Почніть із сильних моделей',
       title: 'Хіти, з яких починають вибір',
-      subtitle: 'Популярні позиції з хорошим балансом ціни, стану та характеристик.',
+      subtitle:
+        'Популярні позиції з хорошим балансом ціни, стану та характеристик.',
       href: '/catalog',
       hrefLabel: 'Дивитись усі товари',
       source: 'featured',
@@ -127,7 +129,9 @@ export class HomepageService {
       await this.prisma.homepageSection.createMany({
         data: DEFAULT_SECTIONS,
       });
-      return this.prisma.homepageSection.findMany({ orderBy: { order: 'asc' } });
+      return this.prisma.homepageSection.findMany({
+        orderBy: { order: 'asc' },
+      });
     }
 
     return sections;

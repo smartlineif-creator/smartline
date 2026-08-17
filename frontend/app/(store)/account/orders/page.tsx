@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { ArrowLeft, ArrowRight, Clock3, PackageCheck, ShoppingBag } from 'lucide-react';
 import { getOrders } from '@/lib/api';
 import { Order } from '@/types';
-import { formatPrice, ORDER_STATUS_LABELS } from '@/lib/utils';
+import { formatPrice, ORDER_STATUS_LABELS, pluralUk } from '@/lib/utils';
 
 function formatOrderDate(value: string) {
   return new Date(value).toLocaleDateString('uk-UA', { day: '2-digit', month: 'long', year: 'numeric' });
@@ -29,7 +29,11 @@ export default function OrdersPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  const totalSpent = orders.reduce((sum, order) => sum + Number(order.totalAmount || 0), 0);
+  // Cancelled orders are not money spent
+  const totalSpent = orders.reduce(
+    (sum, order) => (order.status === 'CANCELLED' ? sum : sum + Number(order.totalAmount || 0)),
+    0,
+  );
 
   if (loading) return (
     <div
@@ -160,7 +164,7 @@ export default function OrdersPage() {
                         </span>
                         <span className="inline-flex items-center gap-1.5">
                           <PackageCheck className="h-4 w-4" />
-                          {itemsCount ? `${itemsCount} товарів` : 'Деталі замовлення'}
+                          {itemsCount ? `${itemsCount} ${pluralUk(itemsCount, 'товар', 'товари', 'товарів')}` : 'Деталі замовлення'}
                         </span>
                       </div>
                     </div>

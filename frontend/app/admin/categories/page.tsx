@@ -37,6 +37,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import AdminPageHint from '@/components/admin/AdminPageHint';
+import { pluralUk } from '@/lib/utils';
 
 export default function AdminCategoriesPage() {
   const [categories, setCategories] = useState<Category[]>([]);
@@ -246,12 +247,12 @@ export default function AdminCategoriesPage() {
                   <div className="mt-3 flex flex-wrap gap-2">
                     {deleteTarget._count.products > 0 && (
                       <span className="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700">
-                        {deleteTarget._count.products} товарів у категорії
+                        {deleteTarget._count.products} {pluralUk(deleteTarget._count.products, 'товар', 'товари', 'товарів')} у категорії
                       </span>
                     )}
                     {deleteTarget._count.children > 0 && (
                       <span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700">
-                        {deleteTarget._count.children} підкатегорій
+                        {deleteTarget._count.children} {pluralUk(deleteTarget._count.children, 'підкатегорія', 'підкатегорії', 'підкатегорій')}
                       </span>
                     )}
                   </div>
@@ -385,12 +386,12 @@ function CategoryRow({
           <div className="mt-1 flex flex-wrap gap-2">
             {!!cat._count?.products && (
               <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-600">
-                {cat._count.products} товарів
+                {cat._count.products} {pluralUk(cat._count.products, 'товар', 'товари', 'товарів')}
               </span>
             )}
             {!!cat._count?.children && (
               <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium transition-colors ${isCollapsed ? 'bg-blue-50 text-blue-600' : 'bg-gray-100 text-gray-600'}`}>
-                {cat._count.children} підкатегорій
+                {cat._count.children} {pluralUk(cat._count.children, 'підкатегорія', 'підкатегорії', 'підкатегорій')}
               </span>
             )}
           </div>

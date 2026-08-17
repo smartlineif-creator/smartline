@@ -6,19 +6,8 @@ import Link from 'next/link';
 import { ArrowLeft, Eye, EyeOff, Loader2, TriangleAlert } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/store/auth';
+import { formatPhone, isValidUAPhone } from '@/lib/validation';
 import { updateProfile, changePassword } from '@/lib/api';
-
-function formatPhone(raw: string): string {
-  const digits = raw.replace(/\D/g, '');
-  const local = digits.startsWith('380') ? digits.slice(3) : digits.startsWith('0') ? digits.slice(1) : digits;
-  const d = local.slice(0, 9);
-  let out = '+380';
-  if (d.length > 0) out += ' ' + d.slice(0, 2);
-  if (d.length > 2) out += ' ' + d.slice(2, 5);
-  if (d.length > 5) out += ' ' + d.slice(5, 7);
-  if (d.length > 7) out += ' ' + d.slice(7, 9);
-  return out === '+380' && raw === '' ? '' : out;
-}
 
 const inputCls = 'h-11 w-full rounded-xl px-4 text-sm outline-none transition-all';
 const inputStyle = {
@@ -67,6 +56,10 @@ export default function AccountSettingsPage() {
 
   const handleProfileSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (phone.trim() && !isValidUAPhone(phone)) {
+      toast.error('Невірний формат телефону — очікуємо +380XXXXXXXXX');
+      return;
+    }
     setProfileLoading(true);
     try {
       const updated = await updateProfile({ name, phone });

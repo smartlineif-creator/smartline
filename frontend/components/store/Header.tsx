@@ -16,6 +16,7 @@ import {
   Search,
   ShoppingCart,
   User,
+  Wrench,
   X,
 } from 'lucide-react';
 import { useCartStore } from '@/store/cart';
@@ -389,10 +390,58 @@ export default function Header() {
                         )}
                       </div>
                     </div>
+
+                    {/* Services promo strip */}
+                    <Link
+                      href="/services"
+                      onClick={closeMenus}
+                      className="sl-hover-accent flex items-center gap-3 px-5 py-3.5"
+                      style={{ borderTop: '1px solid var(--sl-border)' }}
+                    >
+                      <div
+                        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg"
+                        style={{ background: 'var(--sl-accent-muted)', color: 'var(--sl-accent)' }}
+                      >
+                        <Wrench className="h-5 w-5" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p
+                          className="text-sm font-semibold"
+                          style={{ color: 'var(--sl-text-primary)', fontFamily: 'var(--sl-font-body)' }}
+                        >
+                          Ремонт і обслуговування
+                        </p>
+                        <p className="text-xs" style={{ color: 'var(--sl-text-muted)', fontFamily: 'var(--sl-font-body)' }}>
+                          Професійний сервіс для вашої техніки
+                        </p>
+                      </div>
+                      <div
+                        className="flex shrink-0 items-center gap-1.5 text-sm font-medium"
+                        style={{ color: 'var(--sl-accent)', fontFamily: 'var(--sl-font-mono)' }}
+                      >
+                        Переглянути послуги
+                        <ArrowRight className="h-4 w-4" />
+                      </div>
+                    </Link>
                   </div>
                 </div>
               )}
             </div>
+
+            {/* Services link — desktop */}
+            <Link
+              href="/services"
+              onClick={closeMenus}
+              className="sl-hover-border hidden h-10 shrink-0 items-center gap-2 rounded-lg px-4 text-sm font-medium md:flex"
+              style={{
+                background: 'var(--sl-bg-elevated)',
+                border: '1px solid var(--sl-border)',
+                color: 'var(--sl-text-secondary)',
+              }}
+            >
+              <Wrench className="h-4 w-4" />
+              Послуги
+            </Link>
 
             {/* Search — desktop */}
             <div ref={searchWrapperRef} className="relative hidden flex-1 sm:flex">
@@ -664,7 +713,7 @@ export default function Header() {
               <input
                 type="search"
                 placeholder="Пошук товарів..."
-                className="h-10 w-full rounded-lg pl-9 pr-4 text-sm outline-none"
+                className="h-10 w-full rounded-lg pl-9 pr-12 text-sm outline-none"
                 style={{
                   background: 'var(--sl-bg-elevated)',
                   border: '1px solid var(--sl-border)',
@@ -675,6 +724,16 @@ export default function Header() {
                 onFocus={(e) => (e.target.style.borderColor = 'var(--sl-accent)')}
                 onBlur={(e) => (e.target.style.borderColor = 'var(--sl-border)')}
               />
+              {/* Explicit submit — on mobile there is no visible way to run the
+                  search otherwise; the keyboard's return key is easy to miss. */}
+              <button
+                type="submit"
+                aria-label="Шукати"
+                className="absolute right-1 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-lg"
+                style={{ background: 'var(--sl-accent)', color: '#fff' }}
+              >
+                <ArrowRight className="h-4 w-4" />
+              </button>
             </div>
           </form>
         </div>
@@ -761,21 +820,25 @@ export default function Header() {
           </div>
         </div>
 
+        {/* Services link */}
+        <div className="px-4 mt-2">
+          <Link
+            href="/services"
+            onClick={closeMenus}
+            className="flex h-11 items-center gap-3 rounded-xl px-4 text-sm font-medium"
+            style={{ color: 'var(--sl-text-secondary)', background: 'var(--sl-bg-elevated)' }}
+          >
+            <Wrench className="h-4 w-4" style={{ color: 'var(--sl-accent)' }} />
+            Послуги
+          </Link>
+        </div>
+
         {/* Bottom actions */}
         <div
           className="mt-4 px-4 pb-6"
           style={{ borderTop: '1px solid var(--sl-border)', paddingTop: '1rem' }}
         >
-          <div
-            className="flex items-center justify-between rounded-xl px-4"
-            style={{ background: 'var(--sl-bg-elevated)', height: '44px' }}
-          >
-            <span className="flex items-center gap-3 text-sm font-medium" style={{ color: 'var(--sl-text-secondary)' }}>
-              <span style={{ fontSize: '16px' }}>🌗</span>
-              Тема
-            </span>
-            <ThemeToggle />
-          </div>
+          <ThemeToggle variant="row" />
           <Link
             href="/account"
             onClick={closeMenus}

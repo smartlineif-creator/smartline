@@ -23,7 +23,9 @@ export class NovaPoshtaService {
       });
 
       if (!response.data?.success) {
-        this.logger.warn(`Nova Poshta searchCities failed: ${JSON.stringify(response.data?.errors)}`);
+        this.logger.warn(
+          `Nova Poshta searchCities failed: ${JSON.stringify(response.data?.errors)}`,
+        );
         return [];
       }
 
@@ -44,7 +46,9 @@ export class NovaPoshtaService {
       });
 
       if (!response.data?.success) {
-        this.logger.warn(`Nova Poshta getWarehouses failed: ${JSON.stringify(response.data?.errors)}`);
+        this.logger.warn(
+          `Nova Poshta getWarehouses failed: ${JSON.stringify(response.data?.errors)}`,
+        );
         return [];
       }
 
@@ -71,7 +75,9 @@ export class NovaPoshtaService {
       });
 
       if (!response.data?.success) {
-        this.logger.warn(`Nova Poshta searchStreets failed: ${JSON.stringify(response.data?.errors)}`);
+        this.logger.warn(
+          `Nova Poshta searchStreets failed: ${JSON.stringify(response.data?.errors)}`,
+        );
         return [];
       }
 

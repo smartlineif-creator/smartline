@@ -1,6 +1,7 @@
 import { Suspense } from 'react';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
+import Breadcrumbs from '@/components/store/Breadcrumbs';
 import { getCategoryBySlug, getProducts } from '@/lib/api';
 import ProductCard from '@/components/store/ProductCard';
 import CatalogFilters from '@/components/store/CatalogFilters';
@@ -61,25 +62,14 @@ export default async function CatalogPage({ params, searchParams }: Props) {
     ...(minPrice ? { minPrice: Number(minPrice) } : {}),
     ...(maxPrice ? { maxPrice: Number(maxPrice) } : {}),
     ...(Object.keys(activeOptions).length > 0 ? { options: activeOptions } : {}),
-  }).catch(() => ({ data: [], total: 0, page: 1, limit: 24, totalPages: 0, availableFilters: [] }));
+  }).catch(() => ({ data: [], total: 0, page: 1, limit: 24, totalPages: 0, availableFilters: [], priceRange: null }));
 
   const activeOptionCount = Object.values(activeOptions).flat().length;
 
   return (
     <div className="min-h-screen" style={{ background: 'var(--sl-bg-primary)' }}>
       <div className="mx-auto max-w-7xl px-4 py-6">
-        {/* Breadcrumbs */}
-        <nav
-          className="mb-6 flex items-center gap-1.5 text-xs font-medium"
-          style={{ fontFamily: 'var(--sl-font-mono)', color: 'var(--sl-text-muted)' }}
-          aria-label="Навігація"
-        >
-          <Link href="/" className="sl-hover-accent transition-colors">Головна</Link>
-          <span style={{ opacity: 0.4 }}>/</span>
-          <Link href="/catalog" className="sl-hover-accent transition-colors">Каталог</Link>
-          <span style={{ opacity: 0.4 }}>/</span>
-          <span style={{ color: 'var(--sl-text-secondary)' }}>{category.name}</span>
-        </nav>
+        <Breadcrumbs items={[{ label: 'Каталог', href: '/catalog' }, { label: category.name }]} />
 
         {/* Page header */}
         <div className="mb-6 flex items-start gap-4">
@@ -122,6 +112,7 @@ export default async function CatalogPage({ params, searchParams }: Props) {
                 activeOptions={activeOptions}
                 currentMinPrice={minPrice}
                 currentMaxPrice={maxPrice}
+                priceRange={products.priceRange}
               />
             </Suspense>
           </aside>
@@ -137,24 +128,16 @@ export default async function CatalogPage({ params, searchParams }: Props) {
                   activeOptions={activeOptions}
                   currentMinPrice={minPrice}
                   currentMaxPrice={maxPrice}
+                  total={products.total}
+                  priceRange={products.priceRange}
                 />
               </Suspense>
-              <SortBar
-                total={products.total}
-                currentSort={sortBy}
-                baseHref={`/catalog/${categorySlug}`}
-                sep="?"
-              />
+              <SortBar total={products.total} />
             </div>
 
             {/* Desktop: sort bar */}
             <div className="mb-4 hidden lg:block">
-              <SortBar
-                total={products.total}
-                currentSort={sortBy}
-                baseHref={`/catalog/${categorySlug}`}
-                sep="?"
-              />
+              <SortBar total={products.total} />
             </div>
 
             {/* Active filter chips */}

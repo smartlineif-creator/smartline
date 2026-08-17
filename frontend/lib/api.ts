@@ -1,6 +1,7 @@
 import {
   Product, Category, Banner, Promotion, Order, CartItem,
-  Review, User, PaginatedResponse,
+  Review, User, PaginatedResponse, Service, ServiceInput,
+  DashboardAttention, DashboardStats,
 } from '@/types';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
@@ -310,13 +311,25 @@ export async function getReviews(productId: string) {
   return apiFetch<Review[]>(`/reviews?productId=${productId}`);
 }
 
+export async function getServiceReviews(serviceId: string) {
+  return apiFetch<Review[]>(`/reviews?serviceId=${serviceId}`);
+}
+
 export async function getStoreReviews(page = 1) {
   return apiFetch<PaginatedResponse<Review>>(`/reviews?page=${page}`, {
     next: { revalidate: 300 },
   });
 }
 
-export async function createReview(data: any) {
+export interface CreateReviewInput {
+  productId?: string;
+  serviceId?: string;
+  authorName: string;
+  rating: number;
+  text?: string;
+}
+
+export async function createReview(data: CreateReviewInput) {
   return apiFetch<Review>('/reviews', { method: 'POST', body: JSON.stringify(data) });
 }
 
@@ -414,12 +427,12 @@ export async function adminUpdateUser(id: string, data: any) {
   return apiFetch<User>(`/users/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
 }
 
-export async function adminGetOrderStats() {
-  return apiFetch<{ todayOrders: number; newOrders: number; todayRevenue: number }>('/orders/stats');
+export async function adminGetDashboardAttention() {
+  return apiFetch<DashboardAttention>('/dashboard/attention');
 }
 
-export async function adminGetProductCount() {
-  return apiFetch<{ count: number }>('/products/count');
+export async function adminGetDashboardStats(period: string) {
+  return apiFetch<DashboardStats>(`/dashboard/stats?period=${period}`);
 }
 
 export async function adminGetProducts(params: Record<string, string | number | undefined> = {}) {
@@ -544,8 +557,10 @@ export async function adminDeleteBanner(id: string) {
 }
 
 export async function adminGetReviews(approved?: boolean) {
-  const q = approved !== undefined ? `?approved=${approved}` : '';
-  return apiFetch<PaginatedResponse<Review>>(`/reviews${q}`);
+  // `GET /reviews` only ever returns approved reviews (public-safe default).
+  // Unapproved reviews live behind the ADMIN-guarded /reviews/pending.
+  if (approved === false) return apiFetch<PaginatedResponse<Review>>('/reviews/pending');
+  return apiFetch<PaginatedResponse<Review>>('/reviews');
 }
 
 export async function adminApproveReview(id: string) {
@@ -604,4 +619,43 @@ export async function createPayment(orderId: string) {
     method: 'POST',
     body: JSON.stringify({ orderId }),
   });
+}
+
+// ─── Services ────────────────────────────────────────────────────────────────
+
+export async function getServices() {
+  return apiFetch<Service[]>('/services', { next: { revalidate: 60 } });
+}
+
+export async function getService(slug: string) {
+  return apiFetch<Service>(`/services/${slug}`, { cache: 'no-store' });
+}
+
+export async function adminGetServices() {
+  return apiFetch<Service[]>('/services/admin/list');
+}
+
+export async function adminGetService(id: string) {
+  const all = await apiFetch<Service[]>(`/services/admin/list`);
+  const found = all.find((s: Service) => s.id === id);
+  if (!found) throw new Error('Service not found');
+  return found;
+}
+
+export async function adminCreateService(data: ServiceInput) {
+  return apiFetch<Service>('/services', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function adminUpdateService(id: string, data: ServiceInput) {
+  return apiFetch<Service>(`/services/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function adminDeleteService(id: string) {
+  return apiFetch<void>(`/services/${id}`, { method: 'DELETE' });
 }

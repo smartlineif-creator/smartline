@@ -11,6 +11,7 @@ import {
   PackageCheck,
   ShieldCheck,
   Truck,
+  Wrench,
 } from 'lucide-react';
 import {
   getActivePromotions,
@@ -19,6 +20,7 @@ import {
   getFeaturedProducts,
   getHomepageSections,
   getProducts,
+  getServices,
   getStoreReviews,
   HomepageSectionData,
 } from '@/lib/api';
@@ -27,13 +29,26 @@ import CountdownTimer from '@/components/store/CountdownTimer';
 import HomeMarquee from '@/components/store/HomeMarquee';
 import ProductCarousel from '@/components/store/ProductCarousel';
 import ReviewCarousel from '@/components/store/ReviewCarousel';
-import { Category, Product, Promotion, Review } from '@/types';
+import ServicesSection from '@/components/store/ServicesSection';
+import { Category, Product, Promotion, Review, Service } from '@/types';
 import {
   formatPrice,
   getRepresentativeImage,
   getProductDisplayPrices,
   getProductHref,
 } from '@/lib/utils';
+
+interface ServicesSectionConfig {
+  eyebrow?: string;
+  title: string;
+  subtitle?: string;
+  mode: 'all' | 'manual';
+  serviceIds: string[];
+  layout: 'grid' | 'carousel';
+  limit: number;
+  href: string;
+  hrefLabel: string;
+}
 
 export const revalidate = 60;
 
@@ -260,7 +275,9 @@ function HeroSpotlight({ product, title, subtitle }: { product: Product; title?:
 }
 
 /* ─── Categories ─────────────────────────────────────────────────────── */
-function CategoryQuickGrid({ categories, title, subtitle }: { categories: Category[]; title?: string; subtitle?: string }) {
+function CategoryQuickGrid({
+  categories, title, subtitle, showServicesTile,
+}: { categories: Category[]; title?: string; subtitle?: string; showServicesTile?: boolean }) {
   return (
     <section className="reveal space-y-6">
       <div className="flex items-end justify-between gap-4">
@@ -318,6 +335,34 @@ function CategoryQuickGrid({ categories, title, subtitle }: { categories: Catego
             </Link>
           );
         })}
+        {showServicesTile && (
+          <Link
+            href="/services"
+            className="sl-hover-card group rounded-2xl p-5"
+            style={{
+              background: 'var(--sl-bg-surface)',
+              border: '1px solid var(--sl-border)',
+            }}
+          >
+            <div
+              className="flex h-12 w-12 items-center justify-center rounded-xl"
+              style={{ background: 'var(--sl-accent-muted)', color: 'var(--sl-accent)' }}
+            >
+              <Wrench className="h-6 w-6" />
+            </div>
+            <div className="mt-5">
+              <h3
+                className="text-base font-semibold transition-colors"
+                style={{ color: 'var(--sl-text-primary)', fontFamily: 'var(--sl-font-body)' }}
+              >
+                Послуги
+              </h3>
+              <p className="mt-2 text-sm leading-6" style={{ color: 'var(--sl-text-muted)' }}>
+                Ремонт, чистка та обслуговування техніки
+              </p>
+            </div>
+          </Link>
+        )}
       </div>
     </section>
   );
@@ -628,7 +673,7 @@ async function resolveCarouselProducts(cfg: any): Promise<Product[]> {
 
 export default async function HomePage() {
   // Fetch sections config + shared data in parallel
-  const [sections, banners, allCategories, featured, promotions, latest, reviews] = await Promise.all([
+  const [sections, banners, allCategories, featured, promotions, latest, reviews, services] = await Promise.all([
     getHomepageSections().catch(() => [] as HomepageSectionData[]),
     getBanners('home').catch(() => []),
     getCategories().catch(() => []),
@@ -636,6 +681,7 @@ export default async function HomePage() {
     getActivePromotions().catch(() => []),
     getProducts({ limit: 8 }).catch(() => ({ data: [] as Product[], total: 0, page: 1, limit: 8 })),
     getStoreReviews().catch(() => ({ data: [] as Review[], total: 0, page: 1, limit: 20 })),
+    getServices().catch(() => [] as Service[]),
   ]);
 
   // Resolve hero product
@@ -717,12 +763,14 @@ export default async function HomePage() {
         } else {
           cats = rootCategories.slice(0, 8);
         }
+        const showTile = cfg.showServicesTile !== false;
         return cats.length > 0 ? (
           <CategoryQuickGrid
             key={s.id}
-            categories={cats.slice(0, 8)}
+            categories={cats.slice(0, showTile ? 7 : 8)}
             title={cfg.title}
             subtitle={cfg.subtitle}
+            showServicesTile={showTile}
           />
         ) : null;
       }
@@ -775,6 +823,27 @@ export default async function HomePage() {
             cards={cfg.cards}
           />
         );
+
+      case 'services': {
+        const servicesCfg = s.config as unknown as ServicesSectionConfig;
+        const list = servicesCfg.mode === 'manual'
+          ? (servicesCfg.serviceIds ?? [])
+              .map((id) => services.find((sv) => sv.id === id))
+              .filter((sv): sv is Service => Boolean(sv))
+          : services.slice(0, servicesCfg.limit ?? 8);
+        return (
+          <ServicesSection
+            key={s.id}
+            services={list}
+            eyebrow={servicesCfg.eyebrow}
+            title={servicesCfg.title}
+            subtitle={servicesCfg.subtitle}
+            layout={servicesCfg.layout}
+            href={servicesCfg.href}
+            hrefLabel={servicesCfg.hrefLabel}
+          />
+        );
+      }
 
       default:
         return null;

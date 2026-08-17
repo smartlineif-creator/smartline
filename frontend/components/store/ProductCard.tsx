@@ -8,73 +8,17 @@ import { useState } from 'react';
 import {
   formatPrice, getMainImage, getRepresentativeImage, getProductDisplayPrices, getProductHref,
   getFirstAvailableVariant, getProductMinPrice, pickCardHighlights, getBadgeStyle,
+  getProductStock,
 } from '@/lib/utils';
 import { useCartStore } from '@/store/cart';
 import { toast } from 'sonner';
 import { Variant } from '@/types';
 import WishlistButton from './WishlistButton';
+import Rating from './Rating';
 
 interface Props {
   product: Product;
   selectedVariant?: Variant;
-}
-
-/** Compact star rating row for product cards */
-function ProductRating({
-  reviews,
-  count,
-}: {
-  reviews?: Array<{ rating: number }>;
-  count?: number;
-}) {
-  if (!reviews || reviews.length === 0 || count === 0) return null;
-
-  const avg = reviews.reduce((sum: number, r) => sum + r.rating, 0) / reviews.length;
-  const rounded = Math.round(avg * 2) / 2; // nearest 0.5
-
-  return (
-    <div className="mt-1 flex items-center gap-1">
-      <div className="flex items-center gap-0.5" aria-label={`Рейтинг ${avg.toFixed(1)} з 5`}>
-        {[1, 2, 3, 4, 5].map((star) => {
-          const filled = star <= Math.floor(rounded);
-          const half = !filled && star - 0.5 === rounded;
-          return (
-            <svg key={star} width="11" height="11" viewBox="0 0 12 12" fill="none">
-              {half ? (
-                <>
-                  <defs>
-                    <linearGradient id={`h-${star}`} x1="0" x2="1" y1="0" y2="0">
-                      <stop offset="50%" stopColor="var(--sl-status-warning)" />
-                      <stop offset="50%" stopColor="var(--sl-bg-elevated)" />
-                    </linearGradient>
-                  </defs>
-                  <path
-                    d="M6 1l1.3 2.6 2.9.4-2.1 2 .5 2.9L6 7.4 3.4 8.9l.5-2.9-2.1-2 2.9-.4L6 1z"
-                    fill={`url(#h-${star})`}
-                    stroke="var(--sl-status-warning)"
-                    strokeWidth="0.5"
-                  />
-                </>
-              ) : (
-                <path
-                  d="M6 1l1.3 2.6 2.9.4-2.1 2 .5 2.9L6 7.4 3.4 8.9l.5-2.9-2.1-2 2.9-.4L6 1z"
-                  fill={filled ? 'var(--sl-status-warning)' : 'var(--sl-bg-elevated)'}
-                  stroke={filled ? 'var(--sl-status-warning)' : 'var(--sl-border-hover)'}
-                  strokeWidth="0.5"
-                />
-              )}
-            </svg>
-          );
-        })}
-      </div>
-      <span
-        className="text-[10px] leading-none"
-        style={{ color: 'var(--sl-text-muted)', fontFamily: 'var(--sl-font-mono)' }}
-      >
-        {avg.toFixed(1)} ({count ?? reviews.length})
-      </span>
-    </div>
-  );
 }
 
 export default function ProductCard({ product, selectedVariant }: Props) {
@@ -129,10 +73,12 @@ export default function ProductCard({ product, selectedVariant }: Props) {
 
   const handleAddToCart = () => {
     addItem({
+      itemType: 'product',
       productId: product.id,
       variantId: firstVariant?.id,
       slug: selectedVariant?.slug ?? firstVariant?.slug ?? product.slug,
       quantity: 1,
+      maxQuantity: getProductStock(product, firstVariant),
     });
     toast.success(`${product.name} додано в кошик`);
   };
@@ -263,7 +209,7 @@ export default function ProductCard({ product, selectedVariant }: Props) {
         </Link>
 
         {/* Star rating */}
-        <ProductRating reviews={product.reviews?.map((r) => ({ rating: r.rating }))} count={product._count?.reviews} />
+        <Rating ratings={product.reviews?.map((r) => r.rating) ?? []} count={product._count?.reviews} />
 
         <div className="mt-auto flex flex-col gap-2 pt-2">
           {/* Price row — price only; stock status never shares this row */}

@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Breadcrumbs from '@/components/store/Breadcrumbs';
 import { getCategories, getProducts } from '@/lib/api';
 import ProductCard from '@/components/store/ProductCard';
 import CategoryTabs from '@/components/store/CategoryTabs';
@@ -31,16 +32,7 @@ export default async function CatalogIndexPage({ searchParams }: Props) {
     <div className="min-h-screen" style={{ background: 'var(--sl-bg-primary)' }}>
       <div className="mx-auto max-w-7xl px-4 py-8">
 
-        {/* Breadcrumbs */}
-        <nav
-          className="mb-6 flex items-center gap-1.5 text-xs font-medium"
-          style={{ fontFamily: 'var(--sl-font-mono)', color: 'var(--sl-text-muted)' }}
-          aria-label="Навігація"
-        >
-          <Link href="/" className="sl-hover-accent transition-colors">Головна</Link>
-          <span style={{ opacity: 0.4 }}>/</span>
-          <span style={{ color: 'var(--sl-text-secondary)' }}>Каталог</span>
-        </nav>
+        <Breadcrumbs items={[{ label: 'Каталог' }]} />
 
         {/* Page header */}
         <div className="mb-7 flex items-start gap-4">
@@ -82,12 +74,7 @@ export default async function CatalogIndexPage({ searchParams }: Props) {
 
         {/* Sort + count bar */}
         <div className="mb-6">
-          <SortBar
-            total={products.total}
-            currentSort={sortBy}
-            baseHref="/catalog"
-            sep="?"
-          />
+          <SortBar total={products.total} currentSort={sortBy} baseHref="/catalog" sep="?" />
         </div>
 
         {/* Products grid */}

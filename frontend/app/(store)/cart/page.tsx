@@ -1,49 +1,114 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Minus, Plus, Trash2, ShoppingBag, ArrowRight, ShoppingCart, Tag } from 'lucide-react';
-import { useCartStore } from '@/store/cart';
-import { getProducts } from '@/lib/api';
-import { Product } from '@/types';
-import { formatPrice, getProductPrice, getMainImage, getProductHref } from '@/lib/utils';
+import { Minus, Plus, Trash2, ShoppingBag, ArrowRight, ShoppingCart, Tag, Wrench } from 'lucide-react';
+import { cartProductKey, useCartStore } from '@/store/cart';
+import { getProducts, getService } from '@/lib/api';
+import { CartLocalItem, Product, Service } from '@/types';
+import { formatPrice, getProductDisplayPrices, getMainImage, getProductHref } from '@/lib/utils';
 
 export default function CartPage() {
-  const { items, updateQuantity, removeItem, clearCart } = useCartStore();
+  const { items, updateQuantity, removeItem, updateServiceQuantity, removeServiceItem, syncStockLimits, clearCart } = useCartStore();
   const [products, setProducts] = useState<Record<string, Product>>({});
+  const [services, setServices] = useState<Record<string, Service>>({});
   const [loading, setLoading] = useState(true);
 
+  // Which products the page needs, as a plain string. Changing a quantity
+  // rewrites the `items` array, so an effect keyed on `items` refetched — and
+  // flashed every row's skeleton — on every +/- click. The signature only
+  // changes when a line is actually added or removed.
+  const fetchSignature = useMemo(() => {
+    const seen = new Set<string>();
+    return items
+      .filter((i) => i.itemType !== 'service' && !!i.productId)
+      .filter((i) => { if (seen.has(i.productId!)) return false; seen.add(i.productId!); return true; })
+      // Backend route is GET /products/:slug — fall back to the id for legacy lines.
+      .map((i) => i.slug ?? i.productId!)
+      .join('|');
+  }, [items]);
+
   useEffect(() => {
-    if (items.length === 0) { setLoading(false); return; }
+    const keys = fetchSignature ? fetchSignature.split('|') : [];
+    if (keys.length === 0) { setProducts({}); setLoading(false); return; }
+
+    let cancelled = false;
     setLoading(true);
 
-    // Deduplicate by productId; fetch using slug when available (backend route is GET /products/:slug)
-    const seen = new Set<string>();
-    const fetchTargets = items
-      .filter((i) => { if (seen.has(i.productId)) return false; seen.add(i.productId); return true; })
-      .map((i) => ({ productId: i.productId, key: i.slug ?? i.productId }));
-
     Promise.all(
-      fetchTargets.map(({ key }) =>
+      keys.map((key) =>
         fetch(`${process.env.NEXT_PUBLIC_API_URL}/products/${key}`, { credentials: 'include' })
           .then((r) => r.ok ? r.json() : null)
           .catch(() => null),
       ),
-    ).then((data) => {
+    ).then((data: (Product | null)[]) => {
+      if (cancelled) return;
       const map: Record<string, Product> = {};
       data.forEach((p) => { if (p && p.id) map[p.id] = p; });
       setProducts(map);
       setLoading(false);
+
+      // Live stock wins over whatever the line was written with — it may have
+      // been added before this cap existed, or sold down since.
+      const limits: Record<string, number> = {};
+      // Mirror exactly what the order endpoint decrements: a line without a
+      // variant is checked against `product.stock`, never the variant sum.
+      for (const product of Object.values(map)) {
+        limits[cartProductKey(product.id, undefined)] = product.stock ?? 0;
+        for (const variant of product.variants ?? []) {
+          limits[cartProductKey(product.id, variant.id)] = variant.stock ?? 0;
+        }
+      }
+      syncStockLimits(limits);
     });
+
+    return () => { cancelled = true; };
+  }, [fetchSignature, syncStockLimits]);
+
+  // Services the page needs — same idea as fetchSignature above.
+  const serviceSignature = useMemo(() => {
+    const seen = new Set<string>();
+    return items
+      .filter((i) => i.itemType === 'service' && !!i.serviceId)
+      .filter((i) => { if (seen.has(i.serviceId!)) return false; seen.add(i.serviceId!); return true; })
+      .map((i) => i.serviceSlug ?? i.serviceId!)
+      .join('|');
   }, [items]);
+
+  useEffect(() => {
+    const slugs = serviceSignature ? serviceSignature.split('|') : [];
+    if (slugs.length === 0) { setServices({}); return; }
+
+    let cancelled = false;
+    Promise.all(slugs.map((slug) => getService(slug).catch(() => null))).then((data) => {
+      if (cancelled) return;
+      const map: Record<string, Service> = {};
+      data.forEach((s) => { if (s && s.id) map[s.id] = s; });
+      setServices(map);
+    });
+
+    return () => { cancelled = true; };
+  }, [serviceSignature]);
+
+  // Live price wins over the snapshot stored when the line was added — the
+  // order endpoint prices from the DB, so the cart must show the same number.
+  const getServiceLinePrice = (item: CartLocalItem): number => {
+    const service = item.serviceId ? services[item.serviceId] : undefined;
+    if (!service) return item.servicePrice ?? 0;
+    const tier = item.tierId ? service.tiers?.find((t) => t.id === item.tierId) : undefined;
+    return Number(tier?.price ?? service.price);
+  };
 
   const totalQty = items.reduce((s, i) => s + i.quantity, 0);
   const total = items.reduce((sum, item) => {
-    const product = products[item.productId];
+    if (item.itemType === 'service') {
+      return sum + getServiceLinePrice(item) * item.quantity;
+    }
+    const product = item.productId ? products[item.productId] : undefined;
     if (!product) return sum;
     const variant = product.variants?.find((v) => v.id === item.variantId);
-    return sum + getProductPrice(product, variant) * item.quantity;
+    return sum + getProductDisplayPrices(product, variant).finalPrice * item.quantity;
   }, 0);
 
   /* ── Empty state ── */
@@ -109,8 +174,8 @@ export default function CartPage() {
           </span>
         </div>
 
-        {/* Banner for legacy items without slug (added before this update) */}
-        {items.some((i) => !i.slug) && !loading && Object.keys(products).length < items.length && (
+        {/* Banner for legacy product items without slug (added before this update) */}
+        {items.some((i) => i.itemType !== 'service' && !i.slug) && !loading && Object.keys(products).length < items.filter((i) => i.itemType !== 'service').length && (
           <div
             className="mb-4 flex items-center justify-between gap-3 rounded-xl px-4 py-3 text-sm"
             style={{
@@ -136,13 +201,125 @@ export default function CartPage() {
           {/* ── Items list ── */}
           <div className="flex-1 space-y-3">
             {items.map((item) => {
-              const product = products[item.productId];
+              /* ── Service item ── */
+              if (item.itemType === 'service') {
+                const servicePrice = getServiceLinePrice(item);
+                return (
+                  <div
+                    key={`service-${item.serviceId}-${item.tierId ?? ''}`}
+                    className="group/row flex gap-4 rounded-2xl p-4 transition-all"
+                    style={{ background: 'var(--sl-bg-surface)', border: '1px solid var(--sl-border)' }}
+                    onMouseEnter={(e) => ((e.currentTarget as HTMLDivElement).style.borderColor = 'var(--sl-border-hover)')}
+                    onMouseLeave={(e) => ((e.currentTarget as HTMLDivElement).style.borderColor = 'var(--sl-border)')}
+                  >
+                    {/* Service icon placeholder */}
+                    <Link
+                      href={item.serviceSlug ? `/services/${item.serviceSlug}` : '/services'}
+                      className="relative h-24 w-24 shrink-0 overflow-hidden rounded-xl sm:h-28 sm:w-28 flex items-center justify-center"
+                      style={{ background: 'var(--sl-bg-elevated)', border: '1px solid var(--sl-border)' }}
+                    >
+                      <Wrench className="h-10 w-10" style={{ color: 'var(--sl-accent)' }} />
+                    </Link>
+
+                    {/* Info */}
+                    <div className="flex min-w-0 flex-1 flex-col justify-between gap-2">
+                      <div>
+                        <span
+                          className="mb-1 inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
+                          style={{ background: 'color-mix(in srgb, var(--sl-accent) 12%, transparent)', color: 'var(--sl-accent)', fontFamily: 'var(--sl-font-mono)' }}
+                        >
+                          Послуга
+                        </span>
+                        <Link
+                          href={item.serviceSlug ? `/services/${item.serviceSlug}` : '/services'}
+                          className="block line-clamp-2 text-sm font-medium leading-snug transition-colors sm:text-base"
+                          style={{ color: 'var(--sl-text-primary)', fontFamily: 'var(--sl-font-body)' }}
+                          onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.color = 'var(--sl-accent)')}
+                          onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.color = 'var(--sl-text-primary)')}
+                        >
+                          {item.serviceName ?? '—'}
+                        </Link>
+                        {item.tierLabel && (
+                          <p
+                            className="mt-0.5 text-xs"
+                            style={{ color: 'var(--sl-text-muted)', fontFamily: 'var(--sl-font-mono)' }}
+                          >
+                            {item.tierLabel}
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Price + controls row */}
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <p
+                            className="text-base font-bold sm:text-lg"
+                            style={{ color: 'var(--sl-text-primary)', fontFamily: 'var(--sl-font-mono)' }}
+                          >
+                            {formatPrice(servicePrice * item.quantity)}
+                          </p>
+                          {item.quantity > 1 && (
+                            <p className="text-xs" style={{ color: 'var(--sl-text-muted)', fontFamily: 'var(--sl-font-mono)' }}>
+                              {formatPrice(servicePrice)} × {item.quantity}
+                            </p>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <div
+                            className="flex items-center gap-1 rounded-xl p-1"
+                            style={{ background: 'var(--sl-bg-elevated)', border: '1px solid var(--sl-border)' }}
+                          >
+                            <button
+                              onClick={() => updateServiceQuantity(item.serviceId!, item.tierId, item.quantity - 1)}
+                              className="flex h-7 w-7 items-center justify-center rounded-lg transition-all"
+                              style={{ color: 'var(--sl-text-secondary)' }}
+                              onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--sl-bg-surface)'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--sl-text-primary)'; }}
+                              onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--sl-text-secondary)'; }}
+                            >
+                              <Minus className="h-3.5 w-3.5" />
+                            </button>
+                            <span className="w-8 text-center text-sm font-semibold" style={{ color: 'var(--sl-text-primary)', fontFamily: 'var(--sl-font-mono)' }}>
+                              {item.quantity}
+                            </span>
+                            <button
+                              onClick={() => updateServiceQuantity(item.serviceId!, item.tierId, item.quantity + 1)}
+                              className="flex h-7 w-7 items-center justify-center rounded-lg transition-all"
+                              style={{ color: 'var(--sl-text-secondary)' }}
+                              onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--sl-bg-surface)'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--sl-text-primary)'; }}
+                              onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--sl-text-secondary)'; }}
+                            >
+                              <Plus className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                          <button
+                            onClick={() => removeServiceItem(item.serviceId!, item.tierId)}
+                            aria-label="Видалити товар"
+                            className="flex h-9 w-9 items-center justify-center rounded-xl transition-all"
+                            style={{ border: '1px solid var(--sl-border)', color: 'var(--sl-text-muted)', background: 'transparent' }}
+                            onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'color-mix(in srgb, var(--sl-status-error) 40%, transparent)'; (e.currentTarget as HTMLButtonElement).style.background = 'color-mix(in srgb, var(--sl-status-error) 8%, transparent)'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--sl-status-error)'; }}
+                            onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--sl-border)'; (e.currentTarget as HTMLButtonElement).style.background = 'transparent'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--sl-text-muted)'; }}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
+
+              /* ── Product item ── */
+              const product = item.productId ? products[item.productId] : undefined;
               const variant = product?.variants?.find((v) => v.id === item.variantId);
-              const price = product ? getProductPrice(product, variant) : 0;
+              const price = product ? getProductDisplayPrices(product, variant).finalPrice : 0;
               const productHref = product ? getProductHref(product, variant) : '#';
               const inStock = variant
                 ? (variant.stock ?? 0) > 0
                 : (product?.stock ?? 0) > 0;
+              // 0 / undefined means "stock unknown" — never a hard zero ceiling.
+              const maxQty = item.maxQuantity ?? 0;
+              const atMax = maxQty > 0 && item.quantity >= maxQty;
 
               return (
                 <div
@@ -158,9 +335,7 @@ export default function CartPage() {
                     className="relative h-24 w-24 shrink-0 overflow-hidden rounded-xl sm:h-28 sm:w-28"
                     style={{ background: 'var(--sl-bg-elevated)' }}
                   >
-                    {loading ? (
-                      <div className="h-full w-full animate-pulse" style={{ background: 'var(--sl-bg-elevated)' }} />
-                    ) : product ? (
+                    {product ? (
                       <Image
                         src={getMainImage(product, variant)}
                         alt={product.name}
@@ -176,7 +351,7 @@ export default function CartPage() {
                   {/* Info */}
                   <div className="flex min-w-0 flex-1 flex-col justify-between gap-2">
                     <div>
-                      {loading ? (
+                      {!product ? (
                         <div className="h-4 w-3/4 animate-pulse rounded" style={{ background: 'var(--sl-bg-elevated)' }} />
                       ) : (
                         <Link
@@ -204,13 +379,18 @@ export default function CartPage() {
                           {inStock ? '● В наявності' : '● Наявність уточнюється'}
                         </p>
                       )}
+                      {atMax && (
+                        <p className="mt-1 text-xs" style={{ color: 'var(--sl-status-warning)', fontFamily: 'var(--sl-font-mono)' }}>
+                          Це вся доступна кількість — {maxQty} шт.
+                        </p>
+                      )}
                     </div>
 
                     {/* Price + controls row */}
                     <div className="flex items-center justify-between gap-3">
                       {/* Price */}
                       <div>
-                        {loading ? (
+                        {!product ? (
                           <div className="h-5 w-20 animate-pulse rounded" style={{ background: 'var(--sl-bg-elevated)' }} />
                         ) : (
                           <>
@@ -236,7 +416,7 @@ export default function CartPage() {
                           style={{ background: 'var(--sl-bg-elevated)', border: '1px solid var(--sl-border)' }}
                         >
                           <button
-                            onClick={() => updateQuantity(item.productId, item.variantId, item.quantity - 1)}
+                            onClick={() => updateQuantity(item.productId!, item.variantId, item.quantity - 1)}
                             className="flex h-7 w-7 items-center justify-center rounded-lg transition-all"
                             style={{ color: 'var(--sl-text-secondary)' }}
                             onMouseEnter={(e) => {
@@ -257,16 +437,22 @@ export default function CartPage() {
                             {item.quantity}
                           </span>
                           <button
-                            onClick={() => updateQuantity(item.productId, item.variantId, item.quantity + 1)}
+                            onClick={() => updateQuantity(item.productId!, item.variantId, item.quantity + 1)}
+                            disabled={atMax}
+                            aria-label={atMax ? `Доступно лише ${maxQty} шт.` : 'Збільшити кількість'}
                             className="flex h-7 w-7 items-center justify-center rounded-lg transition-all"
-                            style={{ color: 'var(--sl-text-secondary)' }}
+                            style={{
+                              color: atMax ? 'var(--sl-text-muted)' : 'var(--sl-text-secondary)',
+                              cursor: atMax ? 'not-allowed' : 'pointer',
+                            }}
                             onMouseEnter={(e) => {
+                              if (atMax) return;
                               (e.currentTarget as HTMLButtonElement).style.background = 'var(--sl-bg-surface)';
                               (e.currentTarget as HTMLButtonElement).style.color = 'var(--sl-text-primary)';
                             }}
                             onMouseLeave={(e) => {
                               (e.currentTarget as HTMLButtonElement).style.background = 'transparent';
-                              (e.currentTarget as HTMLButtonElement).style.color = 'var(--sl-text-secondary)';
+                              (e.currentTarget as HTMLButtonElement).style.color = atMax ? 'var(--sl-text-muted)' : 'var(--sl-text-secondary)';
                             }}
                           >
                             <Plus className="h-3.5 w-3.5" />
@@ -274,7 +460,7 @@ export default function CartPage() {
                         </div>
 
                         <button
-                          onClick={() => removeItem(item.productId, item.variantId)}
+                          onClick={() => removeItem(item.productId!, item.variantId)}
                           aria-label="Видалити товар"
                           className="flex h-9 w-9 items-center justify-center rounded-xl transition-all"
                           style={{ border: '1px solid var(--sl-border)', color: 'var(--sl-text-muted)', background: 'transparent' }}

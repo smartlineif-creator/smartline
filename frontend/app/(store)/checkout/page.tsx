@@ -21,6 +21,7 @@ import {
 import { toast } from 'sonner';
 
 import { createOrder, getMe, getWarehouses, searchCities, searchStreets } from '@/lib/api';
+import { formatPhone, isValidEmail, isValidUAPhone } from '@/lib/validation';
 import { useCartStore } from '@/store/cart';
 import { User as UserType } from '@/types';
 
@@ -68,6 +69,9 @@ const popularCities = ['Івано-Франківськ', 'Київ', 'Льві�
 export default function CheckoutPage() {
   const router = useRouter();
   const { items, clearCart, totalItems } = useCartStore();
+  // Cart lives in localStorage (Zustand persist), so the server always renders
+  // an empty cart. Gate cart-derived UI on `mounted` to avoid hydration mismatch.
+  const [mounted, setMounted] = useState(false);
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [profile, setProfile] = useState<UserType | null>(null);
@@ -75,6 +79,7 @@ export default function CheckoutPage() {
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
+  const [contactErrors, setContactErrors] = useState<{ name?: string; phone?: string; email?: string }>({});
 
   const [deliveryProvider, setDeliveryProvider] = useState<DeliveryProvider>('nova_poshta');
   const [npMode, setNpMode] = useState<NovaPoshtaMode>('warehouse');
@@ -102,6 +107,10 @@ export default function CheckoutPage() {
   const [citySearchError, setCitySearchError] = useState<string | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cod');
   const citySearchIdRef = useRef(0);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -224,11 +233,14 @@ export default function CheckoutPage() {
   };
 
   const validateContacts = () => {
-    if (!name.trim() || !phone.trim()) {
-      toast.error("Заповніть ім'я та телефон");
-      return false;
-    }
-    return true;
+    const errors: typeof contactErrors = {};
+    if (!name.trim()) errors.name = "Вкажіть ім'я та прізвище";
+    else if (name.trim().length < 2) errors.name = "Ім'я закоротке";
+    if (!phone.trim()) errors.phone = 'Вкажіть телефон';
+    else if (!isValidUAPhone(phone)) errors.phone = 'Введіть повний номер: +380 XX XXX XX XX';
+    if (email.trim() && !isValidEmail(email)) errors.email = 'Невірний формат email';
+    setContactErrors(errors);
+    return Object.keys(errors).length === 0;
   };
 
   const validateDelivery = () => {
@@ -339,8 +351,9 @@ export default function CheckoutPage() {
         customerPhone: phone.trim(),
         customerEmail: email.trim() || undefined,
         items: items.map((item) => ({
-          productId: item.productId,
-          variantId: item.variantId,
+          ...(item.itemType === 'service'
+            ? { serviceId: item.serviceId, tierId: item.tierId }
+            : { productId: item.productId, variantId: item.variantId }),
           quantity: item.quantity,
         })),
         delivery: buildDeliveryPayload(),
@@ -348,7 +361,7 @@ export default function CheckoutPage() {
       });
 
       clearCart();
-      router.push(`/checkout/success?orderId=${order.id}`);
+      router.push(`/checkout/success?orderId=${order.id}&orderNumber=${order.orderNumber}`);
     } catch (err: any) {
       toast.error(err.message || 'Помилка оформлення замовлення');
     } finally {
@@ -358,7 +371,7 @@ export default function CheckoutPage() {
 
   const inputClass = 'h-12 w-full rounded-xl border px-4 text-sm outline-none transition focus:border-blue-600 focus:ring-4 focus:ring-blue-600/10';
   const cardStyle = { borderColor: 'var(--sl-border)', background: 'var(--sl-bg-surface)' };
-  const orderItemsCount = totalItems();
+  const orderItemsCount = mounted ? totalItems() : 0;
 
   return (
     <div className="min-h-screen" style={{ background: 'var(--sl-bg-primary)' }}>
@@ -381,7 +394,7 @@ export default function CheckoutPage() {
             return (
               <div
                 key={label}
-                className="flex items-center gap-3 rounded-xl border p-3"
+                className="flex min-w-0 items-center gap-3 rounded-xl border p-3"
                 style={{
                   borderColor: active ? 'color-mix(in srgb, var(--sl-accent) 35%, var(--sl-border))' : 'var(--sl-border)',
                   background: active ? 'color-mix(in srgb, var(--sl-accent) 8%, var(--sl-bg-surface))' : 'var(--sl-bg-surface)',
@@ -396,7 +409,7 @@ export default function CheckoutPage() {
                 >
                   {index + 1}
                 </span>
-                <span className="text-sm font-semibold" style={{ color: active ? 'var(--sl-text-primary)' : 'var(--sl-text-muted)' }}>
+                <span className="min-w-0 break-words text-sm font-semibold leading-tight" style={{ color: active ? 'var(--sl-text-primary)' : 'var(--sl-text-muted)' }}>
                   {label}
                 </span>
               </div>
@@ -415,14 +428,36 @@ export default function CheckoutPage() {
                 />
 
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <Field label="Ім'я та прізвище" required>
-                    <input className={inputClass} value={name} onChange={(e) => setName(e.target.value)} placeholder="Ім'я та прізвище" />
+                  <Field label="Ім'я та прізвище" required error={contactErrors.name}>
+                    <input
+                      className={inputClass}
+                      style={contactErrors.name ? { borderColor: 'var(--sl-status-error)' } : undefined}
+                      value={name}
+                      onChange={(e) => { setName(e.target.value); setContactErrors((p) => ({ ...p, name: undefined })); }}
+                      placeholder="Ім'я та прізвище"
+                    />
                   </Field>
-                  <Field label="Телефон" required>
-                    <input className={inputClass} value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+380501234567" type="tel" />
+                  <Field label="Телефон" required error={contactErrors.phone}>
+                    {/* formatPhone is an input mask — letters never make it into the field */}
+                    <input
+                      className={inputClass}
+                      style={contactErrors.phone ? { borderColor: 'var(--sl-status-error)' } : undefined}
+                      value={phone}
+                      onChange={(e) => { setPhone(formatPhone(e.target.value)); setContactErrors((p) => ({ ...p, phone: undefined })); }}
+                      placeholder="+380 50 123 45 67"
+                      type="tel"
+                      inputMode="tel"
+                    />
                   </Field>
-                  <Field label="Email" className="sm:col-span-2">
-                    <input className={inputClass} value={email} onChange={(e) => setEmail(e.target.value)} placeholder="email@example.com" type="email" />
+                  <Field label="Email" className="sm:col-span-2" error={contactErrors.email}>
+                    <input
+                      className={inputClass}
+                      style={contactErrors.email ? { borderColor: 'var(--sl-status-error)' } : undefined}
+                      value={email}
+                      onChange={(e) => { setEmail(e.target.value); setContactErrors((p) => ({ ...p, email: undefined })); }}
+                      placeholder="email@example.com"
+                      type="email"
+                    />
                   </Field>
                 </div>
 
@@ -833,13 +868,18 @@ function SectionHeader({ icon, title, description }: { icon: React.ReactNode; ti
   );
 }
 
-function Field({ label, required, className = '', children }: { label: string; required?: boolean; className?: string; children: React.ReactNode }) {
+function Field({ label, required, className = '', error, children }: { label: string; required?: boolean; className?: string; error?: string; children: React.ReactNode }) {
   return (
     <label className={className}>
       <span className="mb-2 block text-sm font-semibold" style={{ color: 'var(--sl-text-secondary)' }}>
         {label}{required ? ' *' : ''}
       </span>
       {children}
+      {error && (
+        <span className="mt-1.5 block text-xs" style={{ color: 'var(--sl-status-error)' }} role="alert">
+          {error}
+        </span>
+      )}
     </label>
   );
 }

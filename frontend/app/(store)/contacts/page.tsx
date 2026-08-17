@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { formatPhone, isValidUAPhone } from '@/lib/validation';
 import { MapPin, Phone, Mail, Clock } from 'lucide-react';
 
 export default function ContactsPage() {
@@ -14,6 +15,10 @@ export default function ContactsPage() {
     e.preventDefault();
     if (!name.trim() || !phone.trim() || !message.trim()) {
       toast.error('Заповніть всі поля');
+      return;
+    }
+    if (!isValidUAPhone(phone)) {
+      toast.error('Невірний формат телефону — очікуємо +380XXXXXXXXX');
       return;
     }
     setSending(true);
@@ -136,7 +141,7 @@ export default function ContactsPage() {
             <form onSubmit={handleSubmit} className="space-y-4">
               {[
                 { label: "Ваше ім'я *", value: name, onChange: setName, placeholder: "Ім'я та прізвище", type: 'text' },
-                { label: 'Телефон *', value: phone, onChange: setPhone, placeholder: '+380XXXXXXXXX', type: 'tel' },
+                { label: 'Телефон *', value: phone, onChange: (v: string) => setPhone(formatPhone(v)), placeholder: '+380 50 123 45 67', type: 'tel' },
               ].map((field) => (
                 <div key={field.label}>
                   <label

@@ -4,17 +4,33 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
 export interface WishlistItem {
-  /** Unique key: variantSlug when on a variant card, otherwise productId */
+  /** Unique key: variantSlug when on a variant card, otherwise product/service id */
   key: string;
-  /** Always the real product UUID — used when adding to cart */
+  /**
+   * What this row points at. Absent on rows saved before services could be
+   * favourited — treat a missing value as 'product'.
+   */
+  kind?: 'product' | 'service';
+  /** Product UUID — used when adding to cart. Empty for service rows. */
   productId: string;
   /** Optional variantId for cart line-item */
   variantId?: string;
-  /** Slug for /product/:slug navigation */
+  /** Service UUID, set only when kind is 'service' */
+  serviceId?: string;
+  /** Slug for /product/:slug or /services/:slug navigation */
   slug: string;
   name: string;
   image: string;
   price: number;
+}
+
+/** Rows persisted before services existed carry no `kind`. */
+export function wishlistItemKind(item: WishlistItem): 'product' | 'service' {
+  return item.kind ?? 'product';
+}
+
+export function wishlistItemHref(item: WishlistItem): string {
+  return wishlistItemKind(item) === 'service' ? `/services/${item.slug}` : `/product/${item.slug}`;
 }
 
 interface WishlistStore {

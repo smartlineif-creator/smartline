@@ -6,6 +6,8 @@ import {
   IsArray,
   ValidateNested,
   Min,
+  Max,
+  MaxLength,
   IsNotEmpty,
 } from 'class-validator';
 import { Type, Transform } from 'class-transformer';
@@ -31,6 +33,7 @@ export class VariantDto {
 
   @IsString()
   @IsOptional()
+  @MaxLength(120)
   sku?: string;
 
   @IsString()
@@ -53,6 +56,7 @@ export class VariantDto {
 
   @IsString()
   @IsOptional()
+  @MaxLength(20000)
   description?: string | null;
 
   @IsArray()
@@ -134,6 +138,7 @@ export class ProductImageDto {
 
 export class CreateProductDto {
   @IsString()
+  @MaxLength(300)
   name: string;
 
   @IsString()
@@ -142,10 +147,12 @@ export class CreateProductDto {
 
   @IsString()
   @IsOptional()
+  @MaxLength(20000)
   description?: string;
 
   @IsString()
   @IsOptional()
+  @MaxLength(120)
   sku?: string;
 
   @IsNumber()
@@ -269,11 +276,14 @@ export class ProductQueryDto {
   @IsOptional()
   @Transform(({ value }) => Number(value))
   @IsNumber()
+  @Min(1)
   page?: number;
 
   @IsOptional()
   @Transform(({ value }) => Number(value))
   @IsNumber()
+  @Min(1)
+  @Max(100)
   limit?: number;
 
   @IsOptional()

@@ -20,18 +20,22 @@ import { Role } from '@prisma/client';
 export class ReviewsController {
   constructor(private reviewsService: ReviewsService) {}
 
+  @Get('pending')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
+  findPending(@Query('page') page?: string) {
+    return this.reviewsService.findPending(Number(page) || 1);
+  }
+
   @Get()
   findAll(
     @Query('productId') productId?: string,
+    @Query('serviceId') serviceId?: string,
     @Query('page') page?: string,
-    @Query('approved') approved?: string,
   ) {
     if (productId) return this.reviewsService.findByProduct(productId);
-    return this.reviewsService.findAll(
-      Number(page) || 1,
-      20,
-      approved === 'false' ? false : undefined,
-    );
+    if (serviceId) return this.reviewsService.findByService(serviceId);
+    return this.reviewsService.findAll(Number(page) || 1);
   }
 
   @Post()

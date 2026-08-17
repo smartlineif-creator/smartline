@@ -10,7 +10,7 @@ import AdminPageHint from '@/components/admin/AdminPageHint';
 import { Plus, Pencil, Trash2, Search, X, Tag, Package, AlertTriangle, ChevronDown } from 'lucide-react';
 import { toast } from 'sonner';
 import Image from 'next/image';
-import { getRepresentativeImage, formatPrice, getProductPrice, stripNegative } from '@/lib/utils';
+import { getRepresentativeImage, formatPrice, getProductPrice, stripNegative, STATE_BADGE, pluralUk } from '@/lib/utils';
 
 type TargetMode = 'products' | 'category';
 
@@ -45,10 +45,10 @@ function getStatus(p: Promotion): 'active' | 'scheduled' | 'expired' | 'disabled
 }
 
 const STATUS_LABELS = {
-  active: { label: 'Активна', cls: 'bg-green-100 text-green-700' },
+  active: { label: 'Активна', cls: `ring-1 ${STATE_BADGE.on}` },
   scheduled: { label: 'Запланована', cls: 'bg-blue-100 text-blue-700' },
   expired: { label: 'Завершена', cls: 'bg-gray-100 text-gray-500' },
-  disabled: { label: 'Вимкнена', cls: 'bg-yellow-100 text-yellow-700' },
+  disabled: { label: 'Вимкнена', cls: `ring-1 ${STATE_BADGE.off}` },
 };
 
 export default function AdminPromotionsPage() {
@@ -69,7 +69,7 @@ export default function AdminPromotionsPage() {
   useEffect(() => {
     load();
     getCategories().then((cats) => setCategories(cats));
-    getProducts({ limit: 200 }).then((r: any) => setAllProducts(r.data || []));
+    getProducts({ limit: 100 }).then((r: any) => setAllProducts(r.data || [])).catch(() => {});
   }, [load]);
 
   // Close category dropdown on outside click
@@ -244,7 +244,7 @@ export default function AdminPromotionsPage() {
             const { label, cls } = STATUS_LABELS[status];
             const targetLabel = p.categoryId
               ? `Категорія: ${p.category?.name ?? '—'}`
-              : `${p.products?.length ?? 0} товарів`;
+              : `${p.products?.length ?? 0} ${pluralUk(p.products?.length ?? 0, 'товар', 'товари', 'товарів')}`;
 
             return (
               <div key={p.id} className="flex items-center gap-4 px-4 py-3 hover:bg-gray-50 transition-colors">

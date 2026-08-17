@@ -4,9 +4,9 @@
     {
       "name": "Frontend (Next.js)",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
+      "runtimeArgs": ["run", "dev", "--", "-p", "3005"],
       "cwd": "frontend",
-      "port": 3003
+      "port": 3005
     },
     {
       "name": "Backend (NestJS)",

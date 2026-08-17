@@ -2,11 +2,14 @@ import Link from 'next/link';
 import { CheckCircle } from 'lucide-react';
 
 interface Props {
-  searchParams: Promise<{ orderId?: string }>;
+  searchParams: Promise<{ orderId?: string; orderNumber?: string }>;
 }
 
 export default async function CheckoutSuccessPage({ searchParams }: Props) {
-  const { orderId } = await searchParams;
+  const { orderId, orderNumber } = await searchParams;
+  // The visible order number must match what emails, Telegram and the admin
+  // show (#66) — the cuid tail is only a fallback for legacy links.
+  const displayNumber = orderNumber ? `№${orderNumber}` : orderId ? orderId.slice(-8).toUpperCase() : null;
 
   return (
     <div
@@ -39,7 +42,7 @@ export default async function CheckoutSuccessPage({ searchParams }: Props) {
           Дякуємо за покупку. Ми зв&apos;яжемося з вами найближчим часом.
         </p>
 
-        {orderId && (
+        {displayNumber && (
           <p
             className="mb-8 text-sm"
             style={{ color: 'var(--sl-text-muted)', fontFamily: 'var(--sl-font-mono)' }}
@@ -49,7 +52,7 @@ export default async function CheckoutSuccessPage({ searchParams }: Props) {
               className="font-semibold"
               style={{ color: 'var(--sl-accent)' }}
             >
-              {orderId.slice(-8).toUpperCase()}
+              {displayNumber}
             </span>
           </p>
         )}

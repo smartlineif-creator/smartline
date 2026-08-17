@@ -2,22 +2,18 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import {
-  ArrowRight,
-  CalendarDays,
-  CheckCircle2,
-  Clock3,
-  Package,
-  Search,
-  ShoppingCart,
-  Truck,
-} from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { ArrowRight, CalendarDays, Package, Search } from 'lucide-react';
 import { adminGetAllOrders } from '@/lib/api';
 import { Order, OrderStatus } from '@/types';
-import { formatPrice, ORDER_STATUS_LABELS } from '@/lib/utils';
+import { formatPrice, ORDER_STATUS_COLORS, ORDER_STATUS_LABELS, pluralUk } from '@/lib/utils';
+import { MultiSelect } from '@/components/ui/multi-select';
+import SortableTh from '@/components/admin/SortableTh';
+import { useTableSort, compareText, compareNumber, compareDate, type SortComparators } from '@/lib/useTableSort';
 import AdminPageHint from '@/components/admin/AdminPageHint';
+import StatStrip from '@/components/admin/StatStrip';
 
-const STATUSES: Array<'ALL' | OrderStatus> = ['ALL', 'NEW', 'CONFIRMED', 'SHIPPED', 'DELIVERED', 'CANCELLED'];
+const STATUSES: OrderStatus[] = ['NEW', 'CONFIRMED', 'SHIPPED', 'DELIVERED', 'CANCELLED'];
 
 function formatDate(value: string) {
   return new Date(value).toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit', year: 'numeric' });
@@ -27,19 +23,23 @@ function getItemsCount(order: Order) {
   return order.items?.reduce((sum, item) => sum + item.quantity, 0) || 0;
 }
 
-function getStatusTone(status: OrderStatus) {
-  if (status === 'NEW') return 'bg-blue-50 text-blue-700 ring-blue-200';
-  if (status === 'CONFIRMED') return 'bg-amber-50 text-amber-700 ring-amber-200';
-  if (status === 'SHIPPED') return 'bg-orange-50 text-orange-700 ring-orange-200';
-  if (status === 'DELIVERED') return 'bg-emerald-50 text-emerald-700 ring-emerald-200';
-  return 'bg-red-50 text-red-700 ring-red-200';
-}
+type OrderSortColumn = 'number' | 'customer' | 'items' | 'total' | 'status' | 'date';
+
+const ORDER_COMPARATORS: SortComparators<OrderSortColumn, Order> = {
+  number: (a, b) => compareNumber(a.orderNumber, b.orderNumber),
+  customer: (a, b) => compareText(a.customerName, b.customerName),
+  items: (a, b) => compareNumber(getItemsCount(a), getItemsCount(b)),
+  total: (a, b) => compareNumber(Number(a.totalAmount), Number(b.totalAmount)),
+  status: (a, b) => compareText(ORDER_STATUS_LABELS[a.status], ORDER_STATUS_LABELS[b.status]),
+  date: (a, b) => compareDate(a.createdAt, b.createdAt),
+};
 
 export default function AdminOrdersPage() {
+  const router = useRouter();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
-  const [status, setStatus] = useState<'ALL' | OrderStatus>('ALL');
+  const [statuses, setStatuses] = useState<OrderStatus[]>([]);
 
   useEffect(() => {
     adminGetAllOrders({ page: '1', limit: '100' })
@@ -61,7 +61,7 @@ export default function AdminOrdersPage() {
   const filteredOrders = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
     return orders.filter((order) => {
-      const matchesStatus = status === 'ALL' || order.status === status;
+      const matchesStatus = statuses.length === 0 || statuses.includes(order.status);
       const matchesQuery = !normalizedQuery || [
         String(order.orderNumber),
         order.customerName,
@@ -71,7 +71,9 @@ export default function AdminOrdersPage() {
       ].some((value) => value.toLowerCase().includes(normalizedQuery));
       return matchesStatus && matchesQuery;
     });
-  }, [orders, query, status]);
+  }, [orders, query, statuses]);
+
+  const { sorted, column, direction, onSort } = useTableSort(filteredOrders, ORDER_COMPARATORS);
 
   return (
     <div className="space-y-6">
@@ -93,26 +95,14 @@ export default function AdminOrdersPage() {
         </div>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        {[
-          { label: 'Всього', value: stats.total, icon: ShoppingCart, tone: 'bg-blue-50 text-blue-700' },
-          { label: 'Нові', value: stats.newOrders, icon: Clock3, tone: 'bg-amber-50 text-amber-700' },
-          { label: 'В роботі', value: stats.inProgress, icon: Truck, tone: 'bg-orange-50 text-orange-700' },
-          { label: 'Сума', value: formatPrice(stats.revenue), icon: CheckCircle2, tone: 'bg-emerald-50 text-emerald-700' },
-        ].map((item) => (
-          <div key={item.label} className="rounded-2xl border bg-white p-4 shadow-sm">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="text-sm text-gray-500">{item.label}</p>
-                <p className="mt-1 text-2xl font-semibold text-gray-950">{item.value}</p>
-              </div>
-              <div className={`flex h-11 w-11 items-center justify-center rounded-2xl ${item.tone}`}>
-                <item.icon className="h-5 w-5" />
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
+      <StatStrip
+        items={[
+          { label: 'Всього', value: stats.total },
+          { label: 'Нові', value: stats.newOrders, needsAction: true },
+          { label: 'В роботі', value: stats.inProgress },
+          { label: 'Сума', value: formatPrice(stats.revenue) },
+        ]}
+      />
 
       <div className="rounded-2xl border bg-white p-4 shadow-sm">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
@@ -125,23 +115,13 @@ export default function AdminOrdersPage() {
               className="h-11 w-full rounded-xl border border-gray-200 bg-white pl-10 pr-3 text-sm outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-50"
             />
           </div>
-          <div className="flex flex-wrap gap-2">
-            {STATUSES.map((item) => {
-              const active = status === item;
-              return (
-                <button
-                  key={item}
-                  type="button"
-                  onClick={() => setStatus(item)}
-                  className={`h-10 rounded-xl px-4 text-sm font-medium transition ${
-                    active ? 'bg-blue-600 text-white shadow-sm' : 'border border-gray-200 bg-white text-gray-600 hover:border-blue-200 hover:text-blue-700'
-                  }`}
-                >
-                  {item === 'ALL' ? 'Усі' : ORDER_STATUS_LABELS[item]}
-                </button>
-              );
-            })}
-          </div>
+          <MultiSelect
+            className="w-full lg:w-64"
+            values={statuses}
+            onChange={(v) => setStatuses(v as OrderStatus[])}
+            placeholder="Усі статуси"
+            options={STATUSES.map((s) => ({ value: s, label: ORDER_STATUS_LABELS[s] }))}
+          />
         </div>
       </div>
 
@@ -150,12 +130,12 @@ export default function AdminOrdersPage() {
           <table className="w-full min-w-[980px] text-sm">
             <thead className="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
               <tr>
-                <th className="px-5 py-4 text-left font-semibold">Замовлення</th>
-                <th className="px-5 py-4 text-left font-semibold">Покупець</th>
-                <th className="px-5 py-4 text-left font-semibold">Товари</th>
-                <th className="px-5 py-4 text-left font-semibold">Сума</th>
-                <th className="px-5 py-4 text-left font-semibold">Статус</th>
-                <th className="px-5 py-4 text-left font-semibold">Дата</th>
+                <SortableTh column="number" active={column} direction={direction} onSort={onSort} className="px-5 py-4">Замовлення</SortableTh>
+                <SortableTh column="customer" active={column} direction={direction} onSort={onSort} className="px-5 py-4">Покупець</SortableTh>
+                <SortableTh column="items" active={column} direction={direction} onSort={onSort} className="px-5 py-4">Товари</SortableTh>
+                <SortableTh column="total" active={column} direction={direction} onSort={onSort} className="px-5 py-4">Сума</SortableTh>
+                <SortableTh column="status" active={column} direction={direction} onSort={onSort} className="px-5 py-4">Статус</SortableTh>
+                <SortableTh column="date" active={column} direction={direction} onSort={onSort} className="px-5 py-4">Дата</SortableTh>
                 <th className="px-5 py-4 text-right font-semibold">Дія</th>
               </tr>
             </thead>
@@ -168,30 +148,30 @@ export default function AdminOrdersPage() {
                 <tr>
                   <td colSpan={7} className="py-12 text-center text-gray-500">Замовлень за цими умовами немає</td>
                 </tr>
-              ) : filteredOrders.map((order) => (
-                <tr key={order.id} className="group transition hover:bg-blue-50/40">
+              ) : sorted.map((order) => (
+                <tr
+                  key={order.id}
+                  onClick={() => router.push(`/admin/orders/${order.id}`)}
+                  className="group cursor-pointer transition hover:bg-blue-50/40"
+                >
                   <td className="px-5 py-4">
-                    <Link href={`/admin/orders/${order.id}`} className="block">
-                      <p className="font-mono text-base font-semibold text-gray-950">#{order.orderNumber}</p>
-                      {order.ttn && <p className="mt-1 text-xs text-gray-500">ТТН {order.ttn}</p>}
-                    </Link>
+                    <p className="font-mono text-base font-semibold text-gray-950">#{order.orderNumber}</p>
+                    {order.ttn && <p className="mt-1 text-xs text-gray-500">ТТН {order.ttn}</p>}
                   </td>
                   <td className="px-5 py-4">
-                    <Link href={`/admin/orders/${order.id}`} className="block">
-                      <p className="font-medium text-gray-950">{order.customerName}</p>
-                      <p className="mt-1 font-mono text-xs text-gray-500">{order.customerPhone}</p>
-                      {order.customerEmail && <p className="mt-1 truncate text-xs text-gray-500">{order.customerEmail}</p>}
-                    </Link>
+                    <p className="font-medium text-gray-950">{order.customerName}</p>
+                    <p className="mt-1 font-mono text-xs text-gray-500">{order.customerPhone}</p>
+                    {order.customerEmail && <p className="mt-1 truncate text-xs text-gray-500">{order.customerEmail}</p>}
                   </td>
                   <td className="px-5 py-4">
-                    <Link href={`/admin/orders/${order.id}`} className="flex items-center gap-2 text-gray-700">
+                    <div className="flex items-center gap-2 text-gray-700">
                       <Package className="h-4 w-4 text-gray-400" />
-                      {getItemsCount(order)} товарів
-                    </Link>
+                      {getItemsCount(order)} {pluralUk(getItemsCount(order), 'товар', 'товари', 'товарів')}
+                    </div>
                   </td>
                   <td className="px-5 py-4 font-semibold text-gray-950">{formatPrice(order.totalAmount)}</td>
                   <td className="px-5 py-4">
-                    <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ring-1 ${getStatusTone(order.status)}`}>
+                    <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ring-1 ${ORDER_STATUS_COLORS[order.status]}`}>
                       {ORDER_STATUS_LABELS[order.status]}
                     </span>
                   </td>
@@ -201,13 +181,13 @@ export default function AdminOrdersPage() {
                       {formatDate(order.createdAt)}
                     </div>
                   </td>
-                  <td className="px-5 py-4 text-right">
+                  <td className="px-5 py-4 text-right" onClick={(e) => e.stopPropagation()}>
                     <Link
                       href={`/admin/orders/${order.id}`}
-                      className="inline-flex h-10 items-center gap-2 rounded-xl border border-gray-200 px-4 font-medium text-gray-700 transition hover:border-blue-200 hover:bg-white hover:text-blue-700"
+                      className="inline-flex items-center gap-1 whitespace-nowrap text-xs text-gray-400 transition-colors group-hover:text-blue-600 hover:text-blue-600"
                     >
                       Відкрити
-                      <ArrowRight className="h-4 w-4" />
+                      <ArrowRight className="h-3.5 w-3.5" />
                     </Link>
                   </td>
                 </tr>

@@ -3,8 +3,9 @@ import { PrismaService } from '../prisma/prisma.service';
 import {
   IsString,
   IsOptional,
-  IsNumber,
+  IsInt,
   Min,
+  Max,
   IsArray,
   ValidateNested,
 } from 'class-validator';
@@ -18,8 +19,9 @@ export class AddCartItemDto {
   @IsOptional()
   variantId?: string;
 
-  @IsNumber()
+  @IsInt()
   @Min(1)
+  @Max(999)
   quantity: number;
 }
 
@@ -31,8 +33,9 @@ export class MergeCartItemDto {
   @IsOptional()
   variantId?: string;
 
-  @IsNumber()
+  @IsInt()
   @Min(1)
+  @Max(999)
   quantity: number;
 }
 
@@ -109,7 +112,11 @@ export class CartService {
     await this.prisma.$transaction(async (tx) => {
       for (const item of dto.items) {
         const existing = await tx.cartItem.findFirst({
-          where: { userId, productId: item.productId, variantId: item.variantId ?? null },
+          where: {
+            userId,
+            productId: item.productId,
+            variantId: item.variantId ?? null,
+          },
         });
         if (existing) {
           await tx.cartItem.update({
@@ -118,7 +125,12 @@ export class CartService {
           });
         } else {
           await tx.cartItem.create({
-            data: { userId, productId: item.productId, variantId: item.variantId, quantity: item.quantity },
+            data: {
+              userId,
+              productId: item.productId,
+              variantId: item.variantId,
+              quantity: item.quantity,
+            },
           });
         }
       }

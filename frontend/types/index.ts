@@ -162,10 +162,13 @@ export interface Product {
 
 export interface OrderItem {
   id: string;
-  productId: string;
+  productId?: string;
   product?: Product;
   variantId?: string;
   variant?: Variant;
+  serviceId?: string;
+  service?: { id: string; name: string; slug: string; coverImage?: string; price?: number | string };
+  tierId?: string;
   name: string;
   variantName?: string;
   price: number | string;
@@ -210,7 +213,8 @@ export interface Banner {
 
 export interface Review {
   id: string;
-  productId: string;
+  productId?: string;
+  serviceId?: string;
   authorName: string;
   rating: number;
   text?: string;
@@ -218,6 +222,7 @@ export interface Review {
   createdAt: string;
   user?: { name?: string };
   product?: { name: string; slug: string };
+  service?: { name: string; slug: string };
 }
 
 export interface PaginatedResponse<T> {
@@ -227,12 +232,155 @@ export interface PaginatedResponse<T> {
   limit: number;
   totalPages?: number;
   availableFilters?: CatalogFilter[];
+  /** Real price bounds of the current selection — placeholders for the price filter. */
+  priceRange?: { min: number; max: number } | null;
+}
+
+// ─── Dashboard ──────────────────────────────────────────────────────────────
+
+export interface DashboardAttention {
+  newOrders: number;
+  serviceRequests: number;
+  pendingReviews: number;
+  outOfStock: number;
+  expiringPromotions: number;
+}
+
+export type DashboardPeriod = 'today' | '7d' | '30d' | 'all';
+export type DashboardBucket = 'hour' | 'day' | 'week';
+
+export interface DashboardMetric {
+  value: number;
+  deltaPercent: number | null;
+}
+
+export interface DashboardStatusBreakdownItem {
+  status: OrderStatus;
+  count: number;
+}
+
+export interface DashboardRevenueBucket {
+  bucket: string;
+  total: number;
+  orders: number;
+}
+
+export interface DashboardTopItem {
+  kind: 'product' | 'service';
+  id: string;
+  name: string;
+  quantity: number;
+  revenue: number;
+}
+
+export interface DashboardStats {
+  period: DashboardPeriod;
+  bucket: DashboardBucket;
+  metrics: {
+    orders: DashboardMetric;
+    revenue: DashboardMetric;
+    avgOrder: DashboardMetric;
+    products: DashboardMetric;
+  };
+  statusBreakdown: DashboardStatusBreakdownItem[];
+  revenueSeries: DashboardRevenueBucket[];
+  topItems: DashboardTopItem[];
 }
 
 export interface CartLocalItem {
-  productId: string;
+  itemType: 'product' | 'service';
+  productId?: string;
   variantId?: string;
-  /** Product slug — used to fetch product data on the cart page */
   slug?: string;
+  serviceId?: string;
+  serviceSlug?: string;
+  serviceName?: string;
+  servicePrice?: number;
+  tierId?: string;
+  tierLabel?: string;
   quantity: number;
+  /** Stock ceiling known at write time. Products only — the server re-checks it on order. */
+  maxQuantity?: number;
 }
+
+// ─── Service ────────────────────────────────────────────────────────────────
+
+export interface ServiceBlockHeading {
+  type: 'heading';
+  level?: 1 | 2 | 3;
+  text: string;
+}
+
+export interface ServiceBlockText {
+  type: 'text';
+  html: string;
+}
+
+export interface ServiceBlockImage {
+  type: 'image';
+  url: string;
+  alt?: string;
+  caption?: string;
+}
+
+export interface ServiceBlockList {
+  type: 'list';
+  title?: string;
+  items: string[];
+}
+
+export interface ServiceBlockFaq {
+  type: 'faq';
+  items: { question: string; answer: string }[];
+}
+
+export interface ServiceBlockPricing {
+  type: 'pricing';
+  items: { label: string; price: string; note?: string; featured?: boolean }[];
+}
+
+export type ServiceBlock =
+  | ServiceBlockHeading
+  | ServiceBlockText
+  | ServiceBlockImage
+  | ServiceBlockList
+  | ServiceBlockFaq
+  | ServiceBlockPricing;
+
+export interface ServiceTier {
+  id: string;
+  serviceId: string;
+  label: string;
+  price: number | string;
+  note?: string | null;
+  sortOrder: number;
+}
+
+/** What the admin form sends: `id` marks an existing row to update, its absence a row to create. */
+export interface ServiceTierInput {
+  id?: string;
+  label: string;
+  price: number;
+  note?: string;
+  sortOrder?: number;
+}
+
+export interface Service {
+  id: string;
+  name: string;
+  slug: string;
+  description?: string;
+  price: number | string;
+  priceLabel?: string;
+  coverImage?: string;
+  isActive: boolean;
+  sortOrder: number;
+  blocks: ServiceBlock[];
+  tiers?: ServiceTier[];
+  reviews?: { rating: number }[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Payload shape for create/update — tiers come in as drafts, not full rows. */
+export type ServiceInput = Omit<Partial<Service>, 'tiers'> & { tiers?: ServiceTierInput[] };

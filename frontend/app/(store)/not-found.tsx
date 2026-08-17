@@ -7,9 +7,19 @@ export default function NotFound() {
       className="flex min-h-[70vh] flex-col items-center justify-center px-4 text-center"
       style={{ background: 'var(--sl-bg-primary)' }}
     >
-      {/* Big 404 */}
+      {/* Icon */}
       <div
-        className="mb-2 text-[120px] font-bold leading-none tracking-tight"
+        className="mb-5 flex h-16 w-16 items-center justify-center rounded-2xl"
+        style={{ background: 'var(--sl-accent-muted)', border: '1px solid var(--sl-accent)' }}
+      >
+        <SearchX className="h-7 w-7" style={{ color: 'var(--sl-accent)' }} />
+      </div>
+
+      {/* Watermark 404. It used to sit above the icon, which was pulled back
+          over it with `-mt-8` — the two collided instead of layering. */}
+      <div
+        aria-hidden
+        className="mb-4 select-none text-[clamp(88px,20vw,128px)] font-bold leading-none tracking-tight"
         style={{
           fontFamily: 'var(--sl-font-display)',
           color: 'var(--sl-accent)',
@@ -17,14 +27,6 @@ export default function NotFound() {
         }}
       >
         404
-      </div>
-
-      {/* Icon */}
-      <div
-        className="-mt-8 mb-6 flex h-16 w-16 items-center justify-center rounded-2xl"
-        style={{ background: 'var(--sl-accent-muted)', border: '1px solid var(--sl-accent)' }}
-      >
-        <SearchX className="h-7 w-7" style={{ color: 'var(--sl-accent)' }} />
       </div>
 
       <h1

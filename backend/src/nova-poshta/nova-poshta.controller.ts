@@ -16,7 +16,10 @@ export class NovaPoshtaController {
   }
 
   @Get('streets')
-  searchStreets(@Query('cityRef') cityRef: string, @Query('query') query: string) {
+  searchStreets(
+    @Query('cityRef') cityRef: string,
+    @Query('query') query: string,
+  ) {
     return this.novaPoshtaService.searchStreets(cityRef, query || '');
   }
 }

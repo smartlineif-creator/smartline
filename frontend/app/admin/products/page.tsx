@@ -5,12 +5,14 @@ import { adminDeleteProduct, adminDuplicateProduct, adminGetProducts, getCategor
 import { Category, Product } from '@/types';
 import { Button } from '@/components/ui/button';
 import {
-  AlertTriangle, ArrowUpDown, ChevronDown, ChevronUp, Copy, Eye, Filter, Pencil, Plus, Search, Trash2, X,
+  AlertTriangle, ArrowRight, Copy, Eye, Filter, Plus, Search, Trash2, X,
 } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { formatPrice, getProductPrice, getMainImage, getFirstAvailableVariant } from '@/lib/utils';
+import { formatPrice, getProductPrice, getMainImage, getFirstAvailableVariant, STATE_BADGE, pluralUk } from '@/lib/utils';
+import SortableTh from '@/components/admin/SortableTh';
+import { useTableSort, compareText, compareNumber, type SortComparators } from '@/lib/useTableSort';
 import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
 import AdminPageHint from '@/components/admin/AdminPageHint';
@@ -29,8 +31,15 @@ interface CategoryOption {
   depth: number;
 }
 
-type SortColumn = 'name' | 'category' | 'price' | 'stock' | 'status' | null;
-type SortDir = 'asc' | 'desc';
+type SortColumn = 'name' | 'category' | 'price' | 'stock' | 'status';
+
+const PRODUCT_COMPARATORS: SortComparators<SortColumn, Product> = {
+  name: (a, b) => compareText(a.name, b.name),
+  category: (a, b) => compareText(a.category?.name, b.category?.name),
+  price: (a, b) => compareNumber(getProductPrice(a), getProductPrice(b)),
+  stock: (a, b) => compareNumber(getStockCount(a), getStockCount(b)),
+  status: (a, b) => compareNumber(Number(b.isActive), Number(a.isActive)),
+};
 
 function flattenCategories(categories: Category[], depth = 0): CategoryOption[] {
   return categories.flatMap((category) => [
@@ -60,8 +69,6 @@ export default function AdminProductsPage() {
   const [filterOpen, setFilterOpen] = useState(false);
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [sortColumn, setSortColumn] = useState<SortColumn>(null);
-  const [sortDir, setSortDir] = useState<SortDir>('asc');
   const loading = !hasLoadedOnce;
   const filterRef = useRef<HTMLDivElement | null>(null);
 
@@ -115,34 +122,7 @@ export default function AdminProductsPage() {
     [categoryOptions, categoryFilter],
   );
 
-  const sortedProducts = useMemo(() => {
-    if (!sortColumn) return products;
-    return [...products].sort((a, b) => {
-      let cmp = 0;
-      if (sortColumn === 'name') cmp = a.name.localeCompare(b.name, 'uk');
-      else if (sortColumn === 'category') cmp = (a.category?.name || '').localeCompare(b.category?.name || '', 'uk');
-      else if (sortColumn === 'price') cmp = getProductPrice(a) - getProductPrice(b);
-      else if (sortColumn === 'stock') cmp = getStockCount(a) - getStockCount(b);
-      else if (sortColumn === 'status') cmp = Number(b.isActive) - Number(a.isActive);
-      return sortDir === 'asc' ? cmp : -cmp;
-    });
-  }, [products, sortColumn, sortDir]);
-
-  const handleSort = (col: SortColumn) => {
-    if (sortColumn === col) {
-      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
-    } else {
-      setSortColumn(col);
-      setSortDir('asc');
-    }
-  };
-
-  const SortIcon = ({ col }: { col: SortColumn }) => {
-    if (sortColumn !== col) return <ArrowUpDown className="ml-1 inline h-3.5 w-3.5 opacity-35" />;
-    return sortDir === 'asc'
-      ? <ChevronUp className="ml-1 inline h-3.5 w-3.5 text-blue-600" />
-      : <ChevronDown className="ml-1 inline h-3.5 w-3.5 text-blue-600" />;
-  };
+  const { sorted: sortedProducts, column, direction, onSort } = useTableSort(products, PRODUCT_COMPARATORS);
 
   const handleDelete = async () => {
     if (!deleteTarget) return;
@@ -171,8 +151,8 @@ export default function AdminProductsPage() {
       const results = await Promise.allSettled(selectedIds.map((id) => adminDeleteProduct(id)));
       const ok = results.filter((r) => r.status === 'fulfilled').length;
       const fail = results.length - ok;
-      if (ok > 0) toast.success(`Видалено ${ok} товарів`);
-      if (fail > 0) toast.error(`Не вдалося видалити ${fail} товарів`);
+      if (ok > 0) toast.success(`Видалено ${ok} ${pluralUk(ok, 'товар', 'товари', 'товарів')}`);
+      if (fail > 0) toast.error(`Не вдалося видалити ${fail} ${pluralUk(fail, 'товар', 'товари', 'товарів')}`);
       setSelectedIds([]);
       load();
     } finally { setDeleting(false); }
@@ -184,8 +164,8 @@ export default function AdminProductsPage() {
       const results = await Promise.allSettled(selectedIds.map((id) => adminDuplicateProduct(id)));
       const ok = results.filter((r) => r.status === 'fulfilled').length;
       const fail = results.length - ok;
-      if (ok > 0) toast.success(`Скопійовано ${ok} товарів`);
-      if (fail > 0) toast.error(`Не вдалося скопіювати ${fail} товарів`);
+      if (ok > 0) toast.success(`Скопійовано ${ok} ${pluralUk(ok, 'товар', 'товари', 'товарів')}`);
+      if (fail > 0) toast.error(`Не вдалося скопіювати ${fail} ${pluralUk(fail, 'товар', 'товари', 'товарів')}`);
       setSelectedIds([]);
       load();
     } catch { toast.error('Не вдалося виконати масове копіювання'); }
@@ -209,8 +189,6 @@ export default function AdminProductsPage() {
     setSearchDraft(''); setSearch(''); setCategoryFilter(''); setStatusFilter('all'); setPage(1);
   };
 
-  const thClass = (col: SortColumn) =>
-    `text-left px-4 py-3 font-medium text-muted-foreground select-none whitespace-nowrap cursor-pointer hover:text-gray-900 transition-colors ${sortColumn === col ? 'text-blue-600' : ''}`;
 
   return (
     <div>
@@ -227,7 +205,7 @@ export default function AdminProductsPage() {
       <div className="mb-6 flex items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Товари</h1>
-          <p className="text-muted-foreground text-sm">{total} товарів</p>
+          <p className="text-muted-foreground text-sm">{total} {pluralUk(total, 'товар', 'товари', 'товарів')}</p>
         </div>
         <Button asChild>
           <Link href="/admin/products/new"><Plus className="h-4 w-4" />Додати</Link>
@@ -348,7 +326,7 @@ export default function AdminProductsPage() {
 
       {selectedIds.length > 0 && (
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-blue-200 bg-blue-50/70 px-4 py-3">
-          <div className="text-sm font-medium text-blue-900">Вибрано: {selectedIds.length} товарів</div>
+          <div className="text-sm font-medium text-blue-900">Вибрано: {selectedIds.length} {pluralUk(selectedIds.length, 'товар', 'товари', 'товарів')}</div>
           <div className="flex flex-wrap gap-2">
             <Button type="button" variant="outline" className="border-blue-200 bg-white" onClick={handleBulkDuplicate}>
               <Copy className="h-4 w-4" />Копіювати вибрані
@@ -375,41 +353,32 @@ export default function AdminProductsPage() {
                   />
                 </th>
                 <th className="px-4 py-3 text-left font-medium text-muted-foreground">Фото</th>
-                <th className={thClass('name')} onClick={() => handleSort('name')}>
-                  Назва <SortIcon col="name" />
-                </th>
-                <th className={thClass('category')} onClick={() => handleSort('category')}>
-                  Категорія <SortIcon col="category" />
-                </th>
-                <th className={thClass('price')} onClick={() => handleSort('price')}>
-                  Ціна <SortIcon col="price" />
-                </th>
-                <th className={thClass('stock')} onClick={() => handleSort('stock')}>
-                  Наявність <SortIcon col="stock" />
-                </th>
-                <th className={thClass('status')} onClick={() => handleSort('status')}>
-                  Статус <SortIcon col="status" />
-                </th>
+                <SortableTh column="name" active={column} direction={direction} onSort={onSort} className="text-muted-foreground">Назва</SortableTh>
+                <SortableTh column="category" active={column} direction={direction} onSort={onSort} className="text-muted-foreground">Категорія</SortableTh>
+                <SortableTh column="price" active={column} direction={direction} onSort={onSort} className="text-muted-foreground">Ціна</SortableTh>
+                <SortableTh column="stock" active={column} direction={direction} onSort={onSort} className="text-muted-foreground">Наявність</SortableTh>
+                <SortableTh column="status" active={column} direction={direction} onSort={onSort} className="text-muted-foreground">Статус</SortableTh>
+                <th className="px-4 py-3" />
                 <th className="px-4 py-3" />
               </tr>
             </thead>
             <tbody className="divide-y">
               {loading ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-10 text-center text-sm text-muted-foreground">
+                  <td colSpan={9} className="px-4 py-10 text-center text-sm text-muted-foreground">
                     Завантаження товарів...
                   </td>
                 </tr>
               ) : sortedProducts.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-10 text-center text-sm text-muted-foreground">
+                  <td colSpan={9} className="px-4 py-10 text-center text-sm text-muted-foreground">
                     Нічого не знайдено. Спробуй змінити пошук або фільтри.
                   </td>
                 </tr>
               ) : sortedProducts.map((product) => (
                 <tr
                   key={product.id}
-                  className="cursor-pointer hover:bg-gray-50"
+                  className="group cursor-pointer hover:bg-gray-50"
                   onClick={() => router.push(`/admin/products/${product.id}/edit`)}
                 >
                   <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
@@ -435,8 +404,8 @@ export default function AdminProductsPage() {
                   <td className="px-4 py-3 font-medium tabular-nums">{formatPrice(getProductPrice(product))}</td>
                   <td className="px-4 py-3 text-muted-foreground tabular-nums">{getStockLabel(product)}</td>
                   <td className="px-4 py-3">
-                    <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${
-                      product.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'
+                    <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ring-1 ${
+                      product.isActive ? STATE_BADGE.on : STATE_BADGE.off
                     }`}>
                       {product.isActive ? 'Активний' : 'Прихований'}
                     </span>
@@ -448,11 +417,6 @@ export default function AdminProductsPage() {
                           <Eye className="h-3.5 w-3.5" />
                         </Link>
                       </Button>
-                      <Button size="sm" variant="ghost" asChild>
-                        <Link href={`/admin/products/${product.id}/edit`} onClick={(e) => e.stopPropagation()}>
-                          <Pencil className="h-3.5 w-3.5" />
-                        </Link>
-                      </Button>
                       <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); handleDuplicate(product.id); }}>
                         <Copy className="h-3.5 w-3.5" />
                       </Button>
@@ -460,6 +424,14 @@ export default function AdminProductsPage() {
                         <Trash2 className="h-3.5 w-3.5" />
                       </Button>
                     </div>
+                  </td>
+                  <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
+                    <Link
+                      href={`/admin/products/${product.id}/edit`}
+                      className="inline-flex items-center gap-1 whitespace-nowrap text-xs text-gray-400 transition-colors group-hover:text-blue-600 hover:text-blue-600"
+                    >
+                      Відкрити <ArrowRight className="h-3.5 w-3.5" />
+                    </Link>
                   </td>
                 </tr>
               ))}

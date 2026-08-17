@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { ArrowUpDown, TrendingUp, Sparkles, ArrowUp, ArrowDown } from 'lucide-react';
+import { pluralUk } from '@/lib/utils';
 
 const SORT_OPTIONS = [
   { value: 'newest',     label: 'Нові',        Icon: Sparkles   },
@@ -10,9 +11,9 @@ const SORT_OPTIONS = [
 
 interface Props {
   total: number;
-  currentSort: string;
-  /** Base URL for sort links, e.g. "/catalog?page=1" or "/catalog/smartphones?page=1" */
-  baseHref: string;
+  currentSort?: string;
+  /** Base URL for sort links, e.g. "/catalog?page=1". Omit to hide the sort control (e.g. when the sidebar filters already provide sorting). */
+  baseHref?: string;
   /** Separator char to use between baseHref and sort param — "&" if baseHref already has "?" */
   sep?: '?' | '&';
 }
@@ -42,46 +43,48 @@ export default function SortBar({ total, currentSort, baseHref, sep = '?' }: Pro
           >
             {total.toLocaleString('uk-UA')}
           </span>
-          {' '}товарів
+          {' '}{pluralUk(total, 'товар', 'товари', 'товарів')}
         </span>
       </div>
 
-      {/* Right: sort segmented control */}
-      <nav aria-label="Сортування" className="max-w-full">
-        <div
-          className="flex items-center gap-1 overflow-x-auto rounded-xl p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-          style={{ background: 'var(--sl-bg-elevated)' }}
-        >
-          {SORT_OPTIONS.map(({ value, label, Icon }) => {
-            const isActive = currentSort === value;
-            return (
-              <Link
-                key={value}
-                href={`${baseHref}${sep}sort=${value}&page=1`}
-                aria-current={isActive ? 'true' : undefined}
-                className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all duration-150 whitespace-nowrap"
-                style={
-                  isActive
-                    ? {
-                        background: 'var(--sl-accent)',
-                        color: '#fff',
-                        fontWeight: 600,
-                        fontFamily: 'var(--sl-font-mono)',
-                        boxShadow: '0 2px 8px rgba(0,0,0,0.18)',
-                      }
-                    : {
-                        color: 'var(--sl-text-muted)',
-                        fontFamily: 'var(--sl-font-mono)',
-                      }
-                }
-              >
-                <Icon className="h-3 w-3 shrink-0" />
-                {label}
-              </Link>
-            );
-          })}
-        </div>
-      </nav>
+      {/* Right: sort segmented control — only when a baseHref is provided */}
+      {baseHref && (
+        <nav aria-label="Сортування" className="max-w-full">
+          <div
+            className="flex items-center gap-1 overflow-x-auto rounded-xl p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            style={{ background: 'var(--sl-bg-elevated)' }}
+          >
+            {SORT_OPTIONS.map(({ value, label, Icon }) => {
+              const isActive = currentSort === value;
+              return (
+                <Link
+                  key={value}
+                  href={`${baseHref}${sep}sort=${value}&page=1`}
+                  aria-current={isActive ? 'true' : undefined}
+                  className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all duration-150 whitespace-nowrap"
+                  style={
+                    isActive
+                      ? {
+                          background: 'var(--sl-accent)',
+                          color: '#fff',
+                          fontWeight: 600,
+                          fontFamily: 'var(--sl-font-mono)',
+                          boxShadow: '0 2px 8px rgba(0,0,0,0.18)',
+                        }
+                      : {
+                          color: 'var(--sl-text-muted)',
+                          fontFamily: 'var(--sl-font-mono)',
+                        }
+                  }
+                >
+                  <Icon className="h-3 w-3 shrink-0" />
+                  {label}
+                </Link>
+              );
+            })}
+          </div>
+        </nav>
+      )}
     </div>
   );
 }

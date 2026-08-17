@@ -22,9 +22,11 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:generate": "prisma generate",
     "prisma:backfill-variant-slugs": "ts-node prisma/backfill-variant-slugs.ts",
+    "prisma:migrate-pricing-tiers": "ts-node prisma/migrate-pricing-tiers.ts",
     "prisma:import-smartline-laptops": "ts-node prisma/import-smartline-laptops.ts",
     "prisma:seed": "ts-node prisma/seed.ts",
-    "prisma:studio": "prisma studio"
+    "prisma:studio": "prisma studio",
+    "prisma:seed-demo-orders": "ts-node prisma/seed-demo-orders.ts"
   },
   "prisma": {
     "seed": "ts-node prisma/seed.ts"

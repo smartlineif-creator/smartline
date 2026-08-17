@@ -33,20 +33,15 @@ export class OrdersController {
     const isAdmin = user.role === Role.ADMIN;
     const userId = isAdmin ? undefined : user.id;
     const userEmail = isAdmin ? undefined : user.email;
+    const clampedPage = Math.max(1, Number(page) || 1);
+    const clampedLimit = Math.min(100, Math.max(1, Number(limit) || 20));
     return this.ordersService.findAll(
       userId,
-      Number(page) || 1,
-      Number(limit) || 20,
+      clampedPage,
+      clampedLimit,
       today === 'true',
       userEmail,
     );
-  }
-
-  @Get('stats')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.ADMIN)
-  stats() {
-    return this.ordersService.stats();
   }
 
   @Get(':id')

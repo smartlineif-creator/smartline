@@ -1,6 +1,6 @@
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
-import { Product, Variant } from "@/types";
+import { Product, Service, Variant } from "@/types";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -8,6 +8,15 @@ export function cn(...inputs: ClassValue[]) {
 
 export function stripNegative(value: string): string {
   return value.replace(/-/g, '');
+}
+
+/** Ukrainian plural form: pluralUk(3, 'товар', 'товари', 'товарів') → 'товари' */
+export function pluralUk(n: number, one: string, few: string, many: string): string {
+  const mod10 = n % 10;
+  const mod100 = n % 100;
+  if (mod10 === 1 && mod100 !== 11) return one;
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return few;
+  return many;
 }
 
 export function formatPrice(price: number | string | null | undefined): string {
@@ -53,6 +62,18 @@ export function getProductDisplayPrices(product: Product, variant?: Variant) {
     crossedPrice,
     promo,
   };
+}
+
+export function getServiceDisplayPrice(service: Service): { amount: number; prefix?: string } {
+  const tiers = service.tiers ?? [];
+  if (tiers.length === 0) {
+    return { amount: Number(service.price), prefix: service.priceLabel ?? undefined };
+  }
+  if (tiers.length === 1) {
+    return { amount: Number(tiers[0].price) };
+  }
+  const min = Math.min(...tiers.map((t) => Number(t.price)));
+  return { amount: min, prefix: 'від' };
 }
 
 export function getProductDisplayName(product: Product, variant?: Variant): string {
@@ -239,10 +260,21 @@ export const ORDER_STATUS_LABELS: Record<string, string> = {
   CANCELLED: 'Скасовано',
 };
 
+/**
+ * The single definition of order-status colour. Every admin surface reads this
+ * one map, so a status looks identical on the dashboard, the list and the
+ * detail page. Pair it with `ring-1` on the badge.
+ */
 export const ORDER_STATUS_COLORS: Record<string, string> = {
-  NEW: 'bg-blue-100 text-blue-800',
-  CONFIRMED: 'bg-yellow-100 text-yellow-800',
-  SHIPPED: 'bg-orange-100 text-orange-800',
-  DELIVERED: 'bg-green-100 text-green-800',
-  CANCELLED: 'bg-red-100 text-red-800',
+  NEW: 'bg-blue-50 text-blue-700 ring-blue-200',
+  CONFIRMED: 'bg-amber-50 text-amber-700 ring-amber-200',
+  SHIPPED: 'bg-orange-50 text-orange-700 ring-orange-200',
+  DELIVERED: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
+  CANCELLED: 'bg-red-50 text-red-700 ring-red-200',
 };
+
+/** One rendering of the on/off state shared by products, services and promotions. */
+export const STATE_BADGE = {
+  on: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
+  off: 'bg-gray-50 text-gray-500 ring-gray-200',
+} as const;

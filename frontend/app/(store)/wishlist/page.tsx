@@ -3,10 +3,10 @@
 import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Heart, HeartOff, ShoppingCart, Trash2, ArrowRight, Sparkles } from 'lucide-react';
-import { useWishlistStore } from '@/store/wishlist';
+import { Heart, HeartOff, ShoppingCart, Trash2, ArrowRight, Sparkles, Wrench } from 'lucide-react';
+import { useWishlistStore, wishlistItemHref, wishlistItemKind, type WishlistItem } from '@/store/wishlist';
 import { useCartStore } from '@/store/cart';
-import { formatPrice } from '@/lib/utils';
+import { formatPrice, pluralUk } from '@/lib/utils';
 import { toast } from 'sonner';
 
 export default function WishlistPage() {
@@ -20,9 +20,28 @@ export default function WishlistPage() {
     [items],
   );
 
+  /** A favourite can now be a service, which becomes a different kind of cart line. */
+  const toCartItem = (item: WishlistItem) =>
+    wishlistItemKind(item) === 'service'
+      ? {
+          itemType: 'service' as const,
+          serviceId: item.serviceId,
+          serviceSlug: item.slug,
+          serviceName: item.name,
+          servicePrice: item.price,
+          quantity: 1,
+        }
+      : {
+          itemType: 'product' as const,
+          productId: item.productId,
+          variantId: item.variantId,
+          slug: item.slug,
+          quantity: 1,
+        };
+
   const handleAddAll = () => {
-    items.forEach((item) => addItem({ productId: item.productId, variantId: item.variantId, slug: item.slug, quantity: 1 }));
-    toast.success(`${items.length} товарів додано до кошика`);
+    items.forEach((item) => addItem(toCartItem(item)));
+    toast.success(`${items.length} ${pluralUk(items.length, 'позицію', 'позиції', 'позицій')} додано до кошика`);
   };
 
   if (!mounted) {
@@ -84,7 +103,7 @@ export default function WishlistPage() {
       <div className="mx-auto max-w-6xl px-4 py-8 lg:py-12">
 
         {/* ── Page header ── */}
-        <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
+        <div className="mb-8 flex flex-wrap items-end gap-4">
           <div className="flex items-center gap-3">
             <div
               className="flex h-10 w-10 items-center justify-center rounded-xl"
@@ -111,19 +130,6 @@ export default function WishlistPage() {
               {items.length}
             </span>
           </div>
-
-          {/* Desktop: add-all button */}
-          <button
-            type="button"
-            onClick={handleAddAll}
-            className="hidden h-10 items-center gap-2 rounded-xl px-4 text-sm font-semibold sm:flex"
-            style={{ background: 'var(--sl-accent)', color: '#fff', fontFamily: 'var(--sl-font-mono)' }}
-            onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.background = 'var(--sl-accent-hover)')}
-            onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.background = 'var(--sl-accent)')}
-          >
-            <ShoppingCart className="h-4 w-4" />
-            Додати все до кошика
-          </button>
         </div>
 
         {/* ── Two-column layout ── */}
@@ -160,23 +166,30 @@ export default function WishlistPage() {
 
                 {/* Image */}
                 <Link
-                  href={`/product/${item.slug}`}
+                  href={wishlistItemHref(item)}
                   className="relative aspect-square overflow-hidden"
                   style={{ background: 'var(--sl-bg-elevated)' }}
                 >
-                  <Image
-                    src={item.image}
-                    alt={item.name}
-                    fill
-                    className="object-contain p-3 transition-transform duration-300 group-hover/wish:scale-105"
-                    sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-                  />
+                  {item.image ? (
+                    <Image
+                      src={item.image}
+                      alt={item.name}
+                      fill
+                      className="object-contain p-3 transition-transform duration-300 group-hover/wish:scale-105"
+                      sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                    />
+                  ) : (
+                    /* Services often ship without a cover — next/image rejects an empty src. */
+                    <span className="absolute inset-0 flex items-center justify-center">
+                      <Wrench className="h-8 w-8" style={{ color: 'var(--sl-text-muted)', opacity: 0.4 }} />
+                    </span>
+                  )}
                 </Link>
 
                 {/* Info */}
                 <div className="flex flex-1 flex-col p-3">
                   <Link
-                    href={`/product/${item.slug}`}
+                    href={wishlistItemHref(item)}
                     className="mb-2 line-clamp-2 text-sm font-medium leading-snug transition-colors"
                     style={{ color: 'var(--sl-text-secondary)', fontFamily: 'var(--sl-font-body)' }}
                     onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.color = 'var(--sl-text-primary)')}
@@ -195,7 +208,7 @@ export default function WishlistPage() {
                   <button
                     type="button"
                     onClick={() => {
-                      addItem({ productId: item.productId, variantId: item.variantId, slug: item.slug, quantity: 1 });
+                      addItem(toCartItem(item));
                       toast.success(`${item.name} додано в кошик`);
                     }}
                     className="mt-auto flex h-9 w-full items-center justify-center gap-1.5 rounded-lg text-xs font-semibold transition-all"

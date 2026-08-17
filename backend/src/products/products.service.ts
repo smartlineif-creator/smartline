@@ -90,7 +90,10 @@ const PRODUCT_INCLUDE = {
     orderBy: { sortOrder: 'asc' as const },
     include: { values: { orderBy: { sortOrder: 'asc' as const } } },
   },
-  variants: { where: { isActive: true, price: { gt: 0 } }, ...VARIANT_SELECTIONS_INCLUDE },
+  variants: {
+    where: { isActive: true, price: { gt: 0 } },
+    ...VARIANT_SELECTIONS_INCLUDE,
+  },
   ...PRODUCT_RELATIONS_INCLUDE,
 };
 
@@ -211,17 +214,24 @@ export class ProductsService {
     );
 
     // Determine the primary browsed category and fetch inherited attribute templates
-    const primaryCategoryId = categoryId || (categorySlug ? resolvedCategoryIds[0] : undefined);
+    const primaryCategoryId =
+      categoryId || (categorySlug ? resolvedCategoryIds[0] : undefined);
     const inheritedTemplates = primaryCategoryId
       ? await this.getInheritedTemplates(primaryCategoryId)
       : [];
-    const attrTemplateNames = new Set(inheritedTemplates.filter((t) => t.filterable).map((t) => t.name));
+    const attrTemplateNames = new Set(
+      inheritedTemplates.filter((t) => t.filterable).map((t) => t.name),
+    );
 
     // Split filters: badge, variant-based, attribute-based
     const BADGE_GROUP = 'Бейдж';
     const badgeValues = parsedOptions[BADGE_GROUP] ?? [];
-    const variantOptionEntries = optionEntries.filter(([name]) => name !== BADGE_GROUP && !attrTemplateNames.has(name));
-    const attributeOptionEntries = optionEntries.filter(([name]) => name !== BADGE_GROUP && attrTemplateNames.has(name));
+    const variantOptionEntries = optionEntries.filter(
+      ([name]) => name !== BADGE_GROUP && !attrTemplateNames.has(name),
+    );
+    const attributeOptionEntries = optionEntries.filter(
+      ([name]) => name !== BADGE_GROUP && attrTemplateNames.has(name),
+    );
 
     if (badgeValues.length > 0) {
       where.badge = { in: badgeValues };
@@ -249,23 +259,43 @@ export class ProductsService {
     if (attributeOptionEntries.length > 0) {
       where.AND = attributeOptionEntries.map(([name, values]) => ({
         attributes: { some: { name, value: { in: values } } },
-      })) as Prisma.ProductWhereInput[];
+      }));
     }
 
     const orderBy: Prisma.ProductOrderByWithRelationInput =
-      sortBy === 'price_asc'
-        ? { basePrice: 'asc' }
-        : sortBy === 'price_desc'
-          ? { basePrice: 'desc' }
-          : sortBy === 'popular'
-            ? { reviews: { _count: 'desc' } }
-            : { createdAt: 'desc' };
+      sortBy === 'popular'
+        ? { reviews: { _count: 'desc' } }
+        : { createdAt: 'desc' };
 
     const skip = (page - 1) * limit;
 
+    // Price sorting cannot use `orderBy: { basePrice }`: variant products keep
+    // basePrice null (their price lives on variants), so asc and desc returned
+    // the same NULL-ordered list. Sort by effective price (min active variant
+    // price, else basePrice) in JS, page over ids, then fetch that page.
+    let pageIdFilter: string[] | null = null;
+    if (sortBy === 'price_asc' || sortBy === 'price_desc') {
+      const [prods, variantMins] = await Promise.all([
+        this.prisma.product.findMany({ where, select: { id: true, basePrice: true } }),
+        this.prisma.variant.groupBy({
+          by: ['productId'],
+          where: { isActive: true, price: { gt: 0 }, product: where },
+          _min: { price: true },
+        }),
+      ]);
+      const minByProduct = new Map(
+        variantMins.map((v) => [v.productId, Number(v._min.price)]),
+      );
+      const effective = (p: { id: string; basePrice: Prisma.Decimal | null }) =>
+        minByProduct.get(p.id) ?? (p.basePrice != null ? Number(p.basePrice) : Infinity);
+      const dir = sortBy === 'price_asc' ? 1 : -1;
+      prods.sort((a, b) => dir * (effective(a) - effective(b)));
+      pageIdFilter = prods.slice(skip, skip + limit).map((p) => p.id);
+    }
+
     const [data, total, availableFilters] = await Promise.all([
       this.prisma.product.findMany({
-        where,
+        where: pageIdFilter ? { id: { in: pageIdFilter } } : where,
         include: {
           category: true,
           attributes: true,
@@ -293,22 +323,68 @@ export class ProductsService {
           },
           _count: { select: { reviews: true } },
         },
-        orderBy,
-        skip,
-        take: limit,
+        // With the id page filter the page is already cut and ordered in JS.
+        ...(pageIdFilter ? {} : { orderBy, skip, take: limit }),
       }),
       this.prisma.product.count({ where }),
-      this.buildAvailableFilters(resolvedCategoryIds, parsedOptions, minPrice, maxPrice, inheritedTemplates),
+      this.buildAvailableFilters(
+        resolvedCategoryIds,
+        parsedOptions,
+        minPrice,
+        maxPrice,
+        inheritedTemplates,
+      ),
     ]);
 
+    const orderedData = pageIdFilter
+      ? pageIdFilter
+          .map((id) => data.find((p) => p.id === id))
+          .filter((p): p is (typeof data)[number] => p !== undefined)
+      : data;
+
     return {
-      data,
+      data: orderedData,
       total,
       page,
       limit,
       totalPages: Math.ceil(total / limit),
       availableFilters,
+      priceRange: await this.buildPriceRange(where),
     };
+  }
+
+  /**
+   * Real price bounds of the current selection (ignoring the user's own
+   * min/max input) — the storefront shows them as placeholders so the price
+   * filter suggests actual values instead of «0 … ∞».
+   */
+  private async buildPriceRange(
+    where: Prisma.ProductWhereInput,
+  ): Promise<{ min: number; max: number } | null> {
+    const boundsWhere = { ...where };
+    delete boundsWhere.basePrice;
+
+    const [productAgg, variantAgg] = await Promise.all([
+      this.prisma.product.aggregate({
+        where: { ...boundsWhere, basePrice: { not: null } },
+        _min: { basePrice: true },
+        _max: { basePrice: true },
+      }),
+      this.prisma.variant.aggregate({
+        where: { isActive: true, price: { gt: 0 }, product: boundsWhere },
+        _min: { price: true },
+        _max: { price: true },
+      }),
+    ]);
+
+    const mins = [productAgg._min.basePrice, variantAgg._min.price]
+      .filter((v) => v != null)
+      .map(Number);
+    const maxs = [productAgg._max.basePrice, variantAgg._max.price]
+      .filter((v) => v != null)
+      .map(Number);
+    if (mins.length === 0 || maxs.length === 0) return null;
+    return { min: Math.min(...mins), max: Math.max(...maxs) };
   }
 
   private async buildAvailableFilters(
@@ -316,7 +392,11 @@ export class ProductsService {
     activeOptions: Record<string, string[]> = {},
     minPrice?: number,
     maxPrice?: number,
-    inheritedTemplates: { name: string; sortOrder: number; filterable: boolean }[] = [],
+    inheritedTemplates: {
+      name: string;
+      sortOrder: number;
+      filterable: boolean;
+    }[] = [],
   ) {
     // One query: fetch all active variants (with selections) for qualifying products.
     // Then compute facets in-memory using the "exclude-self" faceted pattern:
@@ -365,9 +445,26 @@ export class ProductsService {
       ([, vals]) => vals.length > 0,
     );
 
-    const filterMap = new Map<string, { sortOrder: number; counts: Map<string, number> }>();
+    // Names that are also filterable category attributes are counted only in
+    // the attribute-based section below — otherwise a collision (a variant
+    // option group and an attribute template sharing a name, e.g. "Оперативна
+    // пам'ять") is double-counted here while `findAll` only ever applies the
+    // attribute-branch filter, so the facet count and the actual result count
+    // disagree.
+    const filterableAttrNames = new Set(
+      inheritedTemplates
+        .filter((t) => t.filterable)
+        .map((t) => t.name.toLowerCase()),
+    );
+
+    const filterMap = new Map<
+      string,
+      { sortOrder: number; counts: Map<string, number> }
+    >();
 
     for (const [groupName, sortOrder] of groupMeta) {
+      if (filterableAttrNames.has(groupName.toLowerCase())) continue;
+
       // For this group: match variants against all OTHER active groups
       const otherActive = activeEntries.filter(([gn]) => gn !== groupName);
 
@@ -395,32 +492,44 @@ export class ProductsService {
 
       if (valueCounts.size > 0) {
         const counts = new Map<string, number>();
-        for (const [v, productSet] of valueCounts) counts.set(v, productSet.size);
+        for (const [v, productSet] of valueCounts)
+          counts.set(v, productSet.size);
         filterMap.set(groupName, { sortOrder, counts });
       }
     }
 
-    const variantFilters: { groupName: string; values: { value: string; count: number }[] }[] =
-      Array.from(filterMap.entries())
-        .sort((a, b) => a[1].sortOrder - b[1].sortOrder)
-        .map(([groupName, { counts }]) => ({
-          groupName,
-          values: Array.from(counts.entries()).map(([value, count]) => ({ value, count })),
-        }));
+    const variantFilters: {
+      groupName: string;
+      values: { value: string; count: number }[];
+    }[] = Array.from(filterMap.entries())
+      .sort((a, b) => a[1].sortOrder - b[1].sortOrder)
+      .map(([groupName, { counts }]) => ({
+        groupName,
+        values: Array.from(counts.entries()).map(([value, count]) => ({
+          value,
+          count,
+        })),
+      }));
 
     if (inheritedTemplates.length === 0) return variantFilters;
 
     // Attribute-based facets with exclude-self pattern
-    const variantGroupNames = new Set(variantFilters.map((f) => f.groupName.toLowerCase()));
+    const variantGroupNames = new Set(
+      variantFilters.map((f) => f.groupName.toLowerCase()),
+    );
     const attrTemplateNamesSet = new Set(inheritedTemplates.map((t) => t.name));
     const BADGE_GROUP = 'Бейдж';
-    const activeAttrEntries = activeEntries.filter(([name]) => attrTemplateNamesSet.has(name));
+    const activeAttrEntries = activeEntries.filter(([name]) =>
+      attrTemplateNamesSet.has(name),
+    );
     const activeVariantEntries = activeEntries.filter(
       ([name]) => !attrTemplateNamesSet.has(name) && name !== BADGE_GROUP,
     );
 
     const sortedTemplates = [...inheritedTemplates]
-      .filter((t) => t.filterable && !variantGroupNames.has(t.name.toLowerCase()))
+      .filter(
+        (t) => t.filterable && !variantGroupNames.has(t.name.toLowerCase()),
+      )
       .sort((a, b) => a.sortOrder - b.sortOrder);
 
     for (const tmpl of sortedTemplates) {
@@ -434,7 +543,7 @@ export class ProductsService {
           ? {
               AND: otherAttrEntries.map(([name, values]) => ({
                 attributes: { some: { name, value: { in: values } } },
-              })) as Prisma.ProductWhereInput[],
+              })),
             }
           : {}),
         ...(activeVariantEntries.length > 0
@@ -446,7 +555,10 @@ export class ProductsService {
                   AND: activeVariantEntries.map(([groupName, values]) => ({
                     selections: {
                       some: {
-                        optionValue: { value: { in: values }, group: { name: groupName } },
+                        optionValue: {
+                          value: { in: values },
+                          group: { name: groupName },
+                        },
                       },
                     },
                   })),
@@ -472,7 +584,10 @@ export class ProductsService {
       if (attrRows.length > 0) {
         variantFilters.push({
           groupName: tmpl.name,
-          values: attrRows.map((r) => ({ value: r.value, count: r._count.productId })),
+          values: attrRows.map((r) => ({
+            value: r.value,
+            count: r._count.productId,
+          })),
         });
       }
     }
@@ -515,7 +630,10 @@ export class ProductsService {
     const where: Prisma.ProductWhereInput = {};
 
     const parsedCategoryIds = categoryIds
-      ? categoryIds.split(',').map((s) => s.trim()).filter(Boolean)
+      ? categoryIds
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean)
       : [];
 
     if (parsedCategoryIds.length > 1) {
@@ -654,12 +772,6 @@ export class ProductsService {
     return this.enrichProduct(product);
   }
 
-  async count() {
-    return {
-      count: await this.prisma.product.count({ where: { isActive: true } }),
-    };
-  }
-
   async getOptionGroupNames(categoryId?: string): Promise<string[]> {
     const rows = await this.prisma.productOptionGroup.groupBy({
       by: ['name'],
@@ -671,8 +783,13 @@ export class ProductsService {
     return rows.map((r) => r.name);
   }
 
-  async getAttributeValues(name: string, categoryId?: string): Promise<string[]> {
-    const productWhere: Prisma.ProductWhereInput = categoryId ? { categoryId } : {};
+  async getAttributeValues(
+    name: string,
+    categoryId?: string,
+  ): Promise<string[]> {
+    const productWhere: Prisma.ProductWhereInput = categoryId
+      ? { categoryId }
+      : {};
     const rows = await this.prisma.attribute.groupBy({
       by: ['value'],
       where: {
@@ -905,10 +1022,14 @@ export class ProductsService {
         .filter((link: any) => link.type === PRODUCT_CATEGORY_LINK_ACCESSORY)
         .map((link: any) => link.categoryId),
       recommendedCategoryIds: (source.categoryLinks || [])
-        .filter((link: any) => link.type === PRODUCT_CATEGORY_LINK_RECOMMENDED_CAT)
+        .filter(
+          (link: any) => link.type === PRODUCT_CATEGORY_LINK_RECOMMENDED_CAT,
+        )
         .map((link: any) => link.categoryId),
       withThisBuyCategoryIds: (source.categoryLinks || [])
-        .filter((link: any) => link.type === PRODUCT_CATEGORY_LINK_WITH_THIS_BUY_CAT)
+        .filter(
+          (link: any) => link.type === PRODUCT_CATEGORY_LINK_WITH_THIS_BUY_CAT,
+        )
         .map((link: any) => link.categoryId),
     });
   }
@@ -1190,14 +1311,29 @@ export class ProductsService {
   }
 
   private async getInheritedTemplates(categoryId: string) {
-    const templates: { name: string; sortOrder: number; filterable: boolean }[] = [];
+    const templates: {
+      name: string;
+      sortOrder: number;
+      filterable: boolean;
+    }[] = [];
     let currentId: string | null = categoryId;
     while (currentId) {
-      const cat: { parentId: string | null; attributeTemplates: { name: string; sortOrder: number; filterable: boolean }[] } | null =
-        await this.prisma.category.findUnique({
-          where: { id: currentId },
-          select: { parentId: true, attributeTemplates: { select: { name: true, sortOrder: true, filterable: true } } },
-        });
+      const cat: {
+        parentId: string | null;
+        attributeTemplates: {
+          name: string;
+          sortOrder: number;
+          filterable: boolean;
+        }[];
+      } | null = await this.prisma.category.findUnique({
+        where: { id: currentId },
+        select: {
+          parentId: true,
+          attributeTemplates: {
+            select: { name: true, sortOrder: true, filterable: true },
+          },
+        },
+      });
       if (!cat) break;
       templates.push(...cat.attributeTemplates);
       currentId = cat.parentId;
@@ -1278,10 +1414,14 @@ export class ProductsService {
     const categoryLinks = product.categoryLinks || [];
 
     const recommendedCategoryIds = categoryLinks
-      .filter((link: any) => link.type === PRODUCT_CATEGORY_LINK_RECOMMENDED_CAT)
+      .filter(
+        (link: any) => link.type === PRODUCT_CATEGORY_LINK_RECOMMENDED_CAT,
+      )
       .map((link: any) => link.categoryId);
     const withThisBuyCategoryIds = categoryLinks
-      .filter((link: any) => link.type === PRODUCT_CATEGORY_LINK_WITH_THIS_BUY_CAT)
+      .filter(
+        (link: any) => link.type === PRODUCT_CATEGORY_LINK_WITH_THIS_BUY_CAT,
+      )
       .map((link: any) => link.categoryId);
 
     const recommendedCategoryProducts =
@@ -1295,7 +1435,9 @@ export class ProductsService {
 
     const recommendedProducts = [
       ...relations
-        .filter((relation: any) => relation.type === PRODUCT_RELATION_RECOMMENDED)
+        .filter(
+          (relation: any) => relation.type === PRODUCT_RELATION_RECOMMENDED,
+        )
         .map((relation: any) => relation.related),
       ...recommendedCategoryProducts,
     ].filter(

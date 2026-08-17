@@ -2,14 +2,28 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { adminGetUsers, adminUpdateUser } from '@/lib/api';
-import { stripNegative } from '@/lib/utils';
+import { stripNegative, STATE_BADGE } from '@/lib/utils';
+import SortableTh from '@/components/admin/SortableTh';
+import { useTableSort, compareText, compareNumber, compareDate, type SortComparators } from '@/lib/useTableSort';
 import { User } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select } from '@/components/ui/select';
 import AdminPageHint from '@/components/admin/AdminPageHint';
 import { Pencil, Search } from 'lucide-react';
 import { toast } from 'sonner';
+
+type UserSortColumn = 'email' | 'name' | 'phone' | 'discount' | 'role' | 'date';
+
+const USER_COMPARATORS: SortComparators<UserSortColumn, User> = {
+  email: (a, b) => compareText(a.email, b.email),
+  name: (a, b) => compareText(a.name, b.name),
+  phone: (a, b) => compareText((a as User & { phone?: string }).phone, (b as User & { phone?: string }).phone),
+  discount: (a, b) => compareNumber(a.discount, b.discount),
+  role: (a, b) => compareText(a.role, b.role),
+  date: (a, b) => compareDate(a.createdAt, b.createdAt),
+};
 
 export default function AdminUsersPage() {
   const [users, setUsers] = useState<User[]>([]);
@@ -48,6 +62,8 @@ export default function AdminUsersPage() {
     );
   }, [users, search]);
 
+  const { sorted, column, direction, onSort } = useTableSort(filtered, USER_COMPARATORS);
+
   return (
     <div>
       <AdminPageHint
@@ -76,12 +92,12 @@ export default function AdminUsersPage() {
           <table className="w-full text-sm">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">Email</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">Ім'я</th>
-                <th className="hidden px-4 py-3 text-left text-xs font-medium text-muted-foreground sm:table-cell">Телефон</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">Знижка</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">Роль</th>
-                <th className="hidden px-4 py-3 text-left text-xs font-medium text-muted-foreground sm:table-cell">Дата</th>
+                <SortableTh column="email" active={column} direction={direction} onSort={onSort} className="text-xs font-medium text-muted-foreground">Email</SortableTh>
+                <SortableTh column="name" active={column} direction={direction} onSort={onSort} className="text-xs font-medium text-muted-foreground">Імʼя</SortableTh>
+                <SortableTh column="phone" active={column} direction={direction} onSort={onSort} className="hidden text-xs font-medium text-muted-foreground sm:table-cell">Телефон</SortableTh>
+                <SortableTh column="discount" active={column} direction={direction} onSort={onSort} className="text-xs font-medium text-muted-foreground">Знижка</SortableTh>
+                <SortableTh column="role" active={column} direction={direction} onSort={onSort} className="text-xs font-medium text-muted-foreground">Роль</SortableTh>
+                <SortableTh column="date" active={column} direction={direction} onSort={onSort} className="hidden text-xs font-medium text-muted-foreground sm:table-cell">Дата</SortableTh>
                 <th className="px-4 py-3"></th>
               </tr>
             </thead>
@@ -92,20 +108,20 @@ export default function AdminUsersPage() {
                 <tr><td colSpan={7} className="py-10 text-center text-sm text-muted-foreground">
                   {search ? 'Нічого не знайдено' : 'Клієнтів ще немає'}
                 </td></tr>
-              ) : filtered.map((user) => (
+              ) : sorted.map((user) => (
                 <tr key={user.id} className="hover:bg-gray-50 transition-colors">
                   <td className="px-4 py-3 font-medium">{user.email}</td>
                   <td className="px-4 py-3 text-muted-foreground">{user.name || '—'}</td>
                   <td className="hidden px-4 py-3 text-muted-foreground sm:table-cell">{(user as any).phone || '—'}</td>
                   <td className="px-4 py-3">
                     {user.discount > 0 ? (
-                      <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
+                      <span className={`rounded-full px-2 py-0.5 text-xs font-medium ring-1 ${STATE_BADGE.on}`}>
                         -{user.discount}%
                       </span>
                     ) : '—'}
                   </td>
                   <td className="px-4 py-3">
-                    <span className={`text-xs px-2 py-1 rounded-full ${user.role === 'ADMIN' ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-700'}`}>
+                    <span className={`text-xs px-2 py-1 rounded-full ring-1 ${user.role === 'ADMIN' ? 'bg-blue-50 text-blue-700 ring-blue-200' : 'bg-gray-50 text-gray-500 ring-gray-200'}`}>
                       {user.role}
                     </span>
                   </td>
@@ -133,14 +149,14 @@ export default function AdminUsersPage() {
             </div>
             <div className="space-y-1.5">
               <Label>Роль</Label>
-              <select
+              <Select
                 value={role}
-                onChange={(e) => setRole(e.target.value)}
-                className="w-full rounded-md border border-input bg-white px-3 py-2 text-sm"
-              >
-                <option value="USER">USER</option>
-                <option value="ADMIN">ADMIN</option>
-              </select>
+                onChange={setRole}
+                options={[
+                  { value: 'USER', label: 'USER' },
+                  { value: 'ADMIN', label: 'ADMIN' },
+                ]}
+              />
             </div>
             <div className="space-y-1.5">
               <Label>Знижка % <span className="text-muted-foreground">(0–100)</span></Label>

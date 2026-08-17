@@ -28,17 +28,19 @@ import {
   adminDeleteHomepageSection,
   HomepageSectionData,
   adminGetProducts,
+  adminGetServices,
   getCategories,
 } from '@/lib/api';
-import { Product, Category } from '@/types';
+import { Product, Category, Service } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select } from '@/components/ui/select';
 import {
   Plus, Trash2, ChevronUp, ChevronDown, Eye, EyeOff,
   Settings, GripVertical, X, AlertTriangle, LayoutTemplate,
   Sparkles, Image as ImageIcon, Tags, LayoutList, Star, Shield,
-  Megaphone, Rows3,
+  Megaphone, Rows3, Wrench,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -46,17 +48,21 @@ import AdminPageHint from '@/components/admin/AdminPageHint';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type SectionType = 'hero' | 'marquee' | 'banners' | 'categories' | 'carousel' | 'promo' | 'reviews' | 'trust';
+type SectionType = 'hero' | 'marquee' | 'banners' | 'categories' | 'carousel' | 'promo' | 'reviews' | 'trust' | 'services';
 
-const SECTION_META: Record<SectionType, { label: string; icon: React.ComponentType<{ className?: string }>; color: string; description: string }> = {
-  hero:       { label: 'Головний CTA',       icon: Sparkles,     color: 'bg-purple-50 text-purple-700 border-purple-200', description: 'Великий блок із товаром, заголовком і кнопками' },
-  marquee:    { label: 'Рядок, що біжить',   icon: Rows3,        color: 'bg-gray-50 text-gray-600 border-gray-200',       description: 'Анімований рядок із брендами' },
-  banners:    { label: 'Банери',             icon: ImageIcon,    color: 'bg-blue-50 text-blue-700 border-blue-200',       description: 'Слайдер банерів (керується у Банери)' },
-  categories: { label: 'Популярні напрямки', icon: Tags,         color: 'bg-green-50 text-green-700 border-green-200',    description: 'Сітка категорій для швидкого входу' },
-  carousel:   { label: 'Карусель товарів',   icon: LayoutList,   color: 'bg-orange-50 text-orange-700 border-orange-200', description: 'Горизонтальна карусель із товарами' },
-  promo:      { label: 'Акції',              icon: Megaphone,    color: 'bg-red-50 text-red-700 border-red-200',          description: 'Активні акції та розпродажі' },
-  reviews:    { label: 'Відгуки',            icon: Star,         color: 'bg-yellow-50 text-yellow-700 border-yellow-200', description: 'Карусель відгуків покупців' },
-  trust:      { label: 'Переваги',           icon: Shield,       color: 'bg-teal-50 text-teal-700 border-teal-200',       description: 'Блок "Чому купують тут"' },
+/** One neutral chip for every section type — the icon carries the distinction, not a colour. */
+const SECTION_CHIP = 'bg-gray-50 text-gray-500 border-gray-200';
+
+const SECTION_META: Record<SectionType, { label: string; icon: React.ComponentType<{ className?: string }>; description: string }> = {
+  hero:       { label: 'Головний CTA',       icon: Sparkles,     description: 'Великий блок із товаром, заголовком і кнопками' },
+  marquee:    { label: 'Рядок, що біжить',   icon: Rows3,        description: 'Анімований рядок із брендами' },
+  banners:    { label: 'Банери',             icon: ImageIcon,    description: 'Слайдер банерів (керується у Банери)' },
+  categories: { label: 'Популярні напрямки', icon: Tags,         description: 'Сітка категорій для швидкого входу' },
+  carousel:   { label: 'Карусель товарів',   icon: LayoutList,   description: 'Горизонтальна карусель із товарами' },
+  promo:      { label: 'Акції',              icon: Megaphone,    description: 'Активні акції та розпродажі' },
+  reviews:    { label: 'Відгуки',            icon: Star,         description: 'Карусель відгуків покупців' },
+  trust:      { label: 'Переваги',           icon: Shield,       description: 'Блок "Чому купують тут"' },
+  services:   { label: 'Послуги',            icon: Wrench,       description: 'Сітка або карусель послуг сервісу' },
 };
 
 const SOURCE_OPTIONS = [
@@ -66,7 +72,7 @@ const SOURCE_OPTIONS = [
   { value: 'manual', label: 'Вручну — вибрати товари' },
 ];
 
-const SECTION_TYPES: SectionType[] = ['hero', 'marquee', 'banners', 'categories', 'carousel', 'promo', 'reviews', 'trust'];
+const SECTION_TYPES: SectionType[] = ['hero', 'marquee', 'banners', 'categories', 'services', 'carousel', 'promo', 'reviews', 'trust'];
 
 const DEFAULT_MARQUEE_ITEMS = [
   '★ 4.9 з 5 — рейтинг покупців',
@@ -133,6 +139,18 @@ function getDefaultConfig(type: SectionType): Record<string, any> {
         subtitle: 'Коротко про речі, які важливі перед покупкою техніки.',
         cards: DEFAULT_TRUST_CARDS,
       };
+    case 'services':
+      return {
+        eyebrow: 'Сервіс',
+        title: 'Ремонт і послуги',
+        subtitle: 'Професійне обслуговування техніки — від діагностики до складного ремонту.',
+        mode: 'all',
+        serviceIds: [],
+        layout: 'grid',
+        limit: 8,
+        href: '/services',
+        hrefLabel: 'Усі послуги',
+      };
   }
 }
 
@@ -148,6 +166,7 @@ function getTitle(s: HomepageSectionData): string {
   if (s.type === 'promo') return cfg.title || 'Акції';
   if (s.type === 'reviews') return cfg.title || 'Відгуки';
   if (s.type === 'trust') return cfg.title || 'Переваги';
+  if (s.type === 'services') return cfg.title || 'Послуги';
   return '';
 }
 
@@ -157,11 +176,12 @@ interface EditorProps {
   section: HomepageSectionData;
   products: Product[];
   categories: Category[];
+  services: Service[];
   onSave: (id: string, config: Record<string, any>) => Promise<void>;
   onClose: () => void;
 }
 
-function SectionEditor({ section, products, categories, onSave, onClose }: EditorProps) {
+function SectionEditor({ section, products, categories, services, onSave, onClose }: EditorProps) {
   const [cfg, setCfg] = useState<Record<string, any>>({
     ...getDefaultConfig(section.type as SectionType),
     ...section.config,
@@ -210,6 +230,15 @@ function SectionEditor({ section, products, categories, onSave, onClose }: Edito
   const removeCategory = (id: string) =>
     setC('categoryIds', (cfg.categoryIds ?? []).filter((x: string) => x !== id));
 
+  const addService = (id: string) => {
+    if (!(cfg.serviceIds ?? []).includes(id)) {
+      setC('serviceIds', [...(cfg.serviceIds ?? []), id]);
+    }
+  };
+
+  const removeService = (id: string) =>
+    setC('serviceIds', (cfg.serviceIds ?? []).filter((x: string) => x !== id));
+
   const handleSave = async () => {
     setSaving(true);
     try {
@@ -238,6 +267,10 @@ function SectionEditor({ section, products, categories, onSave, onClose }: Edito
     .map((id: string) => products.find((p) => p.id === id))
     .filter(Boolean) as Product[];
 
+  const selectedServiceObjects = (cfg.serviceIds ?? [])
+    .map((id: string) => services.find((sv) => sv.id === id))
+    .filter(Boolean) as Service[];
+
   const meta = SECTION_META[section.type as SectionType];
 
   return (
@@ -247,7 +280,7 @@ function SectionEditor({ section, products, categories, onSave, onClose }: Edito
         <div className="flex items-center justify-between border-b px-5 py-4">
           <div className="flex items-center gap-3">
             {meta && (
-              <span className={cn('flex h-8 w-8 items-center justify-center rounded-lg border text-sm', meta.color)}>
+              <span className={cn('flex h-8 w-8 items-center justify-center rounded-lg border text-sm', SECTION_CHIP)}>
                 <meta.icon className="h-4 w-4" />
               </span>
             )}
@@ -354,19 +387,23 @@ function SectionEditor({ section, products, categories, onSave, onClose }: Edito
                   })}
                 </div>
                 <p className="text-xs text-muted-foreground mb-1">Якщо список порожній — виводяться всі кореневі категорії автоматично (до 8)</p>
-                <select
-                  className="w-full rounded-md border border-input bg-white px-3 py-2 text-sm"
+                <Select
                   value=""
-                  onChange={(e) => { if (e.target.value) addCategory(e.target.value); }}
-                >
-                  <option value="">+ Додати категорію...</option>
-                  {flatCategories
+                  placeholder="+ Додати категорію…"
+                  onChange={(v) => { if (v) addCategory(v); }}
+                  options={flatCategories
                     .filter((c) => !(cfg.categoryIds ?? []).includes(c.id))
-                    .map((c) => (
-                      <option key={c.id} value={c.id}>{c.isParent ? c.name : `  └ ${c.name}`}</option>
-                    ))}
-                </select>
+                    .map((c) => ({ value: c.id, label: c.name, indent: !c.isParent }))}
+                />
               </div>
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={cfg.showServicesTile !== false}
+                  onChange={(e) => setC('showServicesTile', e.target.checked)}
+                />
+                Показувати плитку Послуги
+              </label>
             </div>
           )}
 
@@ -396,13 +433,11 @@ function SectionEditor({ section, products, categories, onSave, onClose }: Edito
                 </div>
                 <div className="space-y-1.5">
                   <Label>Джерело товарів</Label>
-                  <select
-                    className="w-full rounded-md border border-input bg-white px-3 py-2 text-sm"
+                  <Select
                     value={cfg.source ?? 'featured'}
-                    onChange={(e) => setC('source', e.target.value)}
-                  >
-                    {SOURCE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-                  </select>
+                    onChange={(v) => setC('source', v)}
+                    options={SOURCE_OPTIONS.map((o) => ({ value: o.value, label: o.label }))}
+                  />
                 </div>
               </div>
 
@@ -579,6 +614,89 @@ function SectionEditor({ section, products, categories, onSave, onClose }: Edito
               </div>
             </div>
           )}
+
+          {/* SERVICES */}
+          {section.type === 'services' && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label>Мітка (eyebrow)</Label>
+                  <Input value={cfg.eyebrow ?? ''} onChange={(e) => setC('eyebrow', e.target.value)} placeholder="Сервіс" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Посилання &quot;Усі послуги&quot;</Label>
+                  <Input value={cfg.href ?? ''} onChange={(e) => setC('href', e.target.value)} placeholder="/services" />
+                </div>
+                <div className="space-y-1.5 col-span-2">
+                  <Label>Заголовок</Label>
+                  <Input value={cfg.title ?? ''} onChange={(e) => setC('title', e.target.value)} placeholder="Ремонт і послуги" />
+                </div>
+                <div className="space-y-1.5 col-span-2">
+                  <Label>Підзаголовок</Label>
+                  <Input value={cfg.subtitle ?? ''} onChange={(e) => setC('subtitle', e.target.value)} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Текст кнопки</Label>
+                  <Input value={cfg.hrefLabel ?? ''} onChange={(e) => setC('hrefLabel', e.target.value)} placeholder="Усі послуги" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Макет</Label>
+                  <Select
+                    value={cfg.layout ?? 'grid'}
+                    onChange={(v) => setC('layout', v)}
+                    options={[
+                      { value: 'grid', label: 'Сітка' },
+                      { value: 'carousel', label: 'Карусель' },
+                    ]}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Режим вибору</Label>
+                  <Select
+                    value={cfg.mode ?? 'all'}
+                    onChange={(v) => setC('mode', v)}
+                    options={[
+                      { value: 'all', label: 'Усі активні' },
+                      { value: 'manual', label: 'Вручну' },
+                    ]}
+                  />
+                </div>
+                {cfg.mode !== 'manual' && (
+                  <div className="space-y-1.5">
+                    <Label>Кількість (limit)</Label>
+                    <Input
+                      type="number"
+                      min={1}
+                      value={cfg.limit ?? 8}
+                      onChange={(e) => setC('limit', Number(e.target.value))}
+                    />
+                  </div>
+                )}
+              </div>
+
+              {cfg.mode === 'manual' && (
+                <div className="space-y-2">
+                  <Label>Послуги (порядок виводу)</Label>
+                  <div className="space-y-1">
+                    {selectedServiceObjects.map((sv) => (
+                      <div key={sv.id} className="flex items-center gap-2 rounded-lg border bg-gray-50 px-3 py-2 text-sm">
+                        <span className="flex-1 truncate">{sv.name}</span>
+                        <button onClick={() => removeService(sv.id)}><X className="h-3.5 w-3.5 text-muted-foreground" /></button>
+                      </div>
+                    ))}
+                  </div>
+                  <Select
+                    value=""
+                    placeholder="+ Додати послугу…"
+                    onChange={(v) => { if (v) addService(v); }}
+                    options={services
+                      .filter((sv) => !(cfg.serviceIds ?? []).includes(sv.id))
+                      .map((sv) => ({ value: sv.id, label: sv.name }))}
+                  />
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Footer */}
@@ -646,7 +764,7 @@ function SectionCard({
         <GripVertical className="h-4 w-4 shrink-0" />
       </button>
 
-      <span className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border text-sm', meta?.color ?? 'bg-gray-50 text-gray-600 border-gray-200')}>
+      <span className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border text-sm', SECTION_CHIP)}>
         <Icon className="h-4 w-4" />
       </span>
 
@@ -746,6 +864,7 @@ export default function AdminHomepagePage() {
   const [deleteTarget, setDeleteTarget] = useState<HomepageSectionData | null>(null);
   const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [allCategories, setAllCategories] = useState<Category[]>([]);
+  const [allServices, setAllServices] = useState<Service[]>([]);
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
   const [addPickerOpen, setAddPickerOpen] = useState(false);
   const sensors = useSensors(
@@ -770,8 +889,9 @@ export default function AdminHomepagePage() {
     queueMicrotask(() => {
       void load();
     });
-    adminGetProducts({ limit: 300 }).then((r: any) => setAllProducts(r.data || [])).catch(() => {});
+    adminGetProducts({ limit: 100 }).then((r: any) => setAllProducts(r.data || [])).catch(() => {});
     getCategories().then(setAllCategories).catch(() => {});
+    adminGetServices().then(setAllServices).catch(() => {});
   }, [load]);
 
   const toggleActive = async (s: HomepageSectionData) => {
@@ -899,12 +1019,12 @@ export default function AdminHomepagePage() {
                         onClick={() => handleCreateSection(type)}
                         className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left transition-colors hover:bg-gray-50"
                       >
-                        <span className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border', meta.color)}>
+                        <span className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border', SECTION_CHIP)}>
                           <Icon className="h-4 w-4" />
                         </span>
-                        <span className="min-w-0">
+                        <span className="min-w-0 flex-1">
                           <span className="block text-sm font-medium text-gray-900">{meta.label}</span>
-                          <span className="block truncate text-xs text-muted-foreground">{meta.description}</span>
+                          <span className="block text-xs leading-snug text-muted-foreground">{meta.description}</span>
                         </span>
                       </button>
                     );
@@ -962,6 +1082,7 @@ export default function AdminHomepagePage() {
           section={editing}
           products={allProducts}
           categories={allCategories}
+          services={allServices}
           onSave={handleSaveConfig}
           onClose={() => setEditing(null)}
         />

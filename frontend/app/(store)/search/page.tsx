@@ -1,6 +1,8 @@
 import Link from 'next/link';
+import Breadcrumbs from '@/components/store/Breadcrumbs';
 import { SearchX } from 'lucide-react';
 import { getProducts } from '@/lib/api';
+import { pluralUk } from '@/lib/utils';
 import ProductCard from '@/components/store/ProductCard';
 
 export const dynamic = 'force-dynamic';
@@ -25,18 +27,7 @@ export default async function SearchPage({ searchParams }: Props) {
   return (
     <div className="min-h-screen" style={{ background: 'var(--sl-bg-primary)' }}>
       <div className="mx-auto max-w-7xl px-4 py-8">
-        {/* Breadcrumbs */}
-        <nav className="mb-5 text-xs" style={{ fontFamily: 'var(--sl-font-mono)' }}>
-          <Link
-            href="/"
-            className="sl-hover-accent"
-            style={{ color: 'var(--sl-text-muted)' }}
-          >
-            Головна
-          </Link>
-          <span style={{ color: 'var(--sl-border-hover)' }}> / </span>
-          <span style={{ color: 'var(--sl-text-secondary)' }}>Пошук</span>
-        </nav>
+        <Breadcrumbs items={[{ label: 'Пошук' }]} />
 
         <h1
           className="mb-2 text-3xl sm:text-4xl"
@@ -45,7 +36,7 @@ export default async function SearchPage({ searchParams }: Props) {
           {q ? `РЕЗУЛЬТАТИ ДЛЯ "${q.toUpperCase()}"` : 'ПОШУК'}
         </h1>
         <p className="mb-8 text-sm" style={{ color: 'var(--sl-text-muted)', fontFamily: 'var(--sl-font-mono)' }}>
-          {results.total} товарів
+          {results.total} {pluralUk(results.total, 'товар', 'товари', 'товарів')}
         </p>
 
         {results.data.length > 0 ? (

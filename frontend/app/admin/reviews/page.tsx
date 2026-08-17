@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import Link from 'next/link';
 import { adminGetReviews, adminApproveReview, adminDeleteReview } from '@/lib/api';
 import { Review } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -78,8 +79,15 @@ export default function AdminReviewsPage() {
                 </div>
                 <span className="text-xs text-muted-foreground">{new Date(review.createdAt).toLocaleDateString('uk-UA')}</span>
               </div>
-              {(review as any).product && (
-                <p className="text-xs text-blue-600 mb-1">{(review as any).product.name}</p>
+              {review.product && (
+                <Link href={`/product/${review.product.slug}`} className="text-xs text-blue-600 hover:underline mb-1 block">
+                  Товар: {review.product.name}
+                </Link>
+              )}
+              {review.service && (
+                <Link href={`/services/${review.service.slug}`} className="text-xs text-blue-600 hover:underline mb-1 block">
+                  Послуга: {review.service.name}
+                </Link>
               )}
               {review.text && <p className="text-sm">{review.text}</p>}
             </div>

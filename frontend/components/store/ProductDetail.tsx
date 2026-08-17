@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import Image from 'next/image';
 import Link from 'next/link';
+import Breadcrumbs from '@/components/store/Breadcrumbs';
 import { useRouter } from 'next/navigation';
 import {
   ArrowRight,
@@ -24,7 +25,7 @@ import {
   X,
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Product, Variant, Attribute } from '@/types';
+import { Product, Variant, Attribute, Review } from '@/types';
 import {
   cn,
   formatPrice,
@@ -36,11 +37,13 @@ import {
   getRepresentativeImage,
   pickCardHighlights,
   getBadgeStyle,
+  pluralUk,
 } from '@/lib/utils';
 import { useCartStore } from '@/store/cart';
 import { toast } from 'sonner';
-import { createReview } from '@/lib/api';
 import WishlistButton from './WishlistButton';
+import ReviewsSection from './ReviewsSection';
+import StickyBuyBar from './StickyBuyBar';
 
 interface Props {
   product: Product;
@@ -198,7 +201,7 @@ function ProductShelf({ title, description, products }: { title: string; descrip
           <p className="mt-1 text-sm" style={{ color: 'var(--sl-text-muted)' }}>{description}</p>
         </div>
         <div className="text-sm" style={{ color: 'var(--sl-text-muted)', fontFamily: 'var(--sl-font-mono)' }}>
-          {products.length} позицій
+          {products.length} {pluralUk(products.length, 'позиція', 'позиції', 'позицій')}
         </div>
       </div>
       <div className="-mx-2 overflow-x-auto px-2 pt-2 pb-6 -mt-2 -mb-6">
@@ -366,9 +369,6 @@ export default function ProductDetail({ product }: Props) {
     return () => observer.disconnect();
   }, []);
   const [showAllAttrs, setShowAllAttrs] = useState(false);
-  const [reviewText, setReviewText] = useState('');
-  const [reviewRating, setReviewRating] = useState(5);
-  const [reviewName, setReviewName] = useState('');
   const addItem = useCartStore((s) => s.addItem);
 
   const resolvedVariant = useMemo(() => {
@@ -393,7 +393,7 @@ export default function ProductDetail({ product }: Props) {
     setMobileCarouselIndex(newIndex);
   }, []);
 
-  const reviews = (product as Product & { reviews?: any[] }).reviews || [];
+  const reviews = (product.reviews as Review[] | undefined) || [];
   const attributes = useMemo(() => {
     const merged = mergeVariantAttributes(product.attributes || [], resolvedVariant?.attributes || []);
     return dedupeAttributes(merged.filter((attribute) => !shouldHideAttribute(attribute)));
@@ -403,7 +403,7 @@ export default function ProductDetail({ product }: Props) {
   const accessoryProducts = product.accessoryProducts || [];
   const similarProducts = product.similarProducts || [];
   const averageRating = reviews.length > 0
-    ? reviews.reduce((sum: number, review: any) => sum + review.rating, 0) / reviews.length
+    ? reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length
     : 0;
   const currentStock = getProductStock(product, resolvedVariant);
   const isOutOfStock = currentStock <= 0;
@@ -431,6 +431,8 @@ export default function ProductDetail({ product }: Props) {
   const [addedToCart, setAddedToCart] = useState(false);
   const cartBtnRef = useRef<HTMLButtonElement>(null);
   const addedTimerRef = useRef<number | null>(null);
+  const ctaBlockRef = useRef<HTMLDivElement | null>(null);
+  const optionsRef = useRef<HTMLDivElement | null>(null);
 
   const [lightbox, setLightbox] = useState<{ type: 'image' | 'video'; index: number } | null>(null);
 
@@ -460,7 +462,7 @@ export default function ProductDetail({ product }: Props) {
   }, [lightbox, images.length]);
 
   const handleAddToCart = useCallback(() => {
-    addItem({ productId: product.id, variantId: resolvedVariant?.id, slug: resolvedVariant?.slug ?? product.slug, quantity: qty });
+    addItem({ itemType: 'product', productId: product.id, variantId: resolvedVariant?.id, slug: resolvedVariant?.slug ?? product.slug, quantity: qty, maxQuantity: currentStock });
     toast.success(`${displayName} × ${qty} додано в кошик`);
 
     // Restart CSS animation via force-reflow (React 18 batching workaround)
@@ -483,19 +485,7 @@ export default function ProductDetail({ product }: Props) {
     if (addedTimerRef.current) clearTimeout(addedTimerRef.current);
     setAddedToCart(true);
     addedTimerRef.current = window.setTimeout(() => setAddedToCart(false), 1800);
-  }, [addItem, product.id, resolvedVariant, qty, displayName]);
-
-  const handleReviewSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      await createReview({ productId: product.id, authorName: reviewName, rating: reviewRating, text: reviewText });
-      toast.success('Відгук надіслано на модерацію');
-      setReviewText('');
-      setReviewName('');
-    } catch {
-      toast.error('Помилка надсилання відгуку');
-    }
-  };
+  }, [addItem, product.id, product.slug, resolvedVariant, qty, currentStock, displayName]);
 
   const handleOptionSelect = (groupName: string, value: string) => {
     const nextSelectedOptions = { ...selectedOptions, [groupName]: value };
@@ -533,30 +523,12 @@ export default function ProductDetail({ product }: Props) {
   return (
     <div style={{ background: 'var(--sl-bg-primary)' }}>
       <div className="mx-auto max-w-7xl px-4 pb-40 pt-6 sm:px-6 md:pb-16 lg:px-8">
-        {/* Breadcrumbs */}
-        <nav className="mb-6 text-sm" style={{ fontFamily: 'var(--sl-font-mono)' }}>
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-            <Link
-              href="/"
-              style={{ color: 'var(--sl-text-muted)' }}
-              onMouseEnter={(e) => ((e.target as HTMLElement).style.color = 'var(--sl-accent)')}
-              onMouseLeave={(e) => ((e.target as HTMLElement).style.color = 'var(--sl-text-muted)')}
-            >
-              Головна
-            </Link>
-            <span style={{ color: 'var(--sl-border-hover)' }}>/</span>
-            <Link
-              href={`/catalog/${product.category?.slug}`}
-              style={{ color: 'var(--sl-text-muted)' }}
-              onMouseEnter={(e) => ((e.target as HTMLElement).style.color = 'var(--sl-accent)')}
-              onMouseLeave={(e) => ((e.target as HTMLElement).style.color = 'var(--sl-text-muted)')}
-            >
-              {product.category?.name}
-            </Link>
-            <span style={{ color: 'var(--sl-border-hover)' }}>/</span>
-            <span className="line-clamp-1" style={{ color: 'var(--sl-text-secondary)' }}>{displayName}</span>
-          </div>
-        </nav>
+        <Breadcrumbs
+          items={[
+            { label: product.category?.name ?? 'Каталог', href: `/catalog/${product.category?.slug}` },
+            { label: displayName },
+          ]}
+        />
 
         <div className="grid gap-8 md:grid-cols-[minmax(0,1fr)_360px] lg:grid-cols-[minmax(0,1fr)_400px] xl:grid-cols-[minmax(0,1.08fr)_420px]">
           {/* Left column */}
@@ -947,7 +919,7 @@ export default function ProductDetail({ product }: Props) {
 
               {/* Configurable options */}
               {hasConfigurableOptions && (
-                <div className="mb-6 space-y-5">
+                <div ref={optionsRef} className="mb-6 space-y-5">
                   {configurableGroups.map((group) => (
                     <div key={group.id}>
                       <div className="mb-2 flex items-center justify-between gap-3">
@@ -1047,7 +1019,7 @@ export default function ProductDetail({ product }: Props) {
               )}
 
               {/* CTA buttons */}
-              <div className="mb-6 grid gap-3">
+              <div ref={ctaBlockRef} className="mb-6 grid gap-3">
 
                 {/* Quantity selector row */}
                 {!isOutOfStock && (
@@ -1114,8 +1086,10 @@ export default function ProductDetail({ product }: Props) {
                   </div>
                 )}
 
-                {/* Add to cart + wishlist row */}
-                <div className="flex gap-3">
+                {/* Add to cart + wishlist row — secondary */}
+                {/* items-center: the wishlist button is a fixed h-10, so without it
+                    the 48px cart button leaves it hanging 4px above centre. */}
+                <div className="mb-3 flex items-center gap-3">
                   <button
                     ref={cartBtnRef}
                     type="button"
@@ -1123,24 +1097,30 @@ export default function ProductDetail({ product }: Props) {
                     disabled={isOutOfStock}
                     className="flex h-12 flex-1 items-center justify-center gap-2 rounded-xl text-base font-semibold"
                     style={{
-                      background: isOutOfStock
-                        ? 'var(--sl-bg-elevated)'
+                      background: addedToCart ? 'var(--sl-status-success)' : 'transparent',
+                      color: isOutOfStock
+                        ? 'var(--sl-text-muted)'
                         : addedToCart
-                          ? 'var(--sl-status-success)'
+                          ? '#fff'
                           : 'var(--sl-accent)',
-                      color: isOutOfStock ? 'var(--sl-text-muted)' : '#fff',
+                      border: `1px solid ${
+                        isOutOfStock
+                          ? 'var(--sl-border)'
+                          : addedToCart
+                            ? 'var(--sl-status-success)'
+                            : 'var(--sl-accent)'
+                      }`,
                       fontFamily: 'var(--sl-font-mono)',
-                      boxShadow: isOutOfStock ? 'none' : '0 0 20px var(--sl-accent-glow-strong)',
                       cursor: isOutOfStock ? 'not-allowed' : 'pointer',
                       transition: 'background 0.25s ease',
                     }}
                     onMouseEnter={(e) => {
                       if (!isOutOfStock && !addedToCart)
-                        (e.currentTarget as HTMLButtonElement).style.background = 'var(--sl-accent-hover)';
+                        (e.currentTarget as HTMLButtonElement).style.background = 'var(--sl-accent-muted)';
                     }}
                     onMouseLeave={(e) => {
                       if (!isOutOfStock && !addedToCart)
-                        (e.currentTarget as HTMLButtonElement).style.background = 'var(--sl-accent)';
+                        (e.currentTarget as HTMLButtonElement).style.background = 'transparent';
                     }}
                   >
                     {addedToCart ? (
@@ -1169,23 +1149,23 @@ export default function ProductDetail({ product }: Props) {
                   />
                 </div>
 
-                {/* Buy now */}
+                {/* Buy now — primary action */}
                 {!isOutOfStock && (
                   <Link
                     href="/checkout"
-                    onClick={() => addItem({ productId: product.id, variantId: resolvedVariant?.id, slug: resolvedVariant?.slug ?? product.slug, quantity: qty })}
+                    onClick={() => addItem({ itemType: 'product', productId: product.id, variantId: resolvedVariant?.id, slug: resolvedVariant?.slug ?? product.slug, quantity: qty, maxQuantity: currentStock })}
                     className="flex h-12 w-full items-center justify-center gap-2 rounded-xl text-base font-semibold transition-all"
                     style={{
-                      border: '1px solid var(--sl-accent)',
-                      color: 'var(--sl-accent)',
-                      background: 'transparent',
+                      background: 'var(--sl-accent)',
+                      color: '#fff',
                       fontFamily: 'var(--sl-font-mono)',
+                      boxShadow: '0 0 20px var(--sl-accent-glow-strong)',
                     }}
                     onMouseEnter={(e) => {
-                      (e.currentTarget as HTMLElement).style.background = 'var(--sl-accent-muted)';
+                      (e.currentTarget as HTMLElement).style.background = 'var(--sl-accent-hover)';
                     }}
                     onMouseLeave={(e) => {
-                      (e.currentTarget as HTMLElement).style.background = 'transparent';
+                      (e.currentTarget as HTMLElement).style.background = 'var(--sl-accent)';
                     }}
                   >
                     Купити зараз{qty > 1 ? ` (${qty})` : ''}
@@ -1318,120 +1298,7 @@ export default function ProductDetail({ product }: Props) {
 
             {/* Reviews */}
             <TabsContent value="reviews" className="mt-0">
-              <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
-                <div
-                  className="rounded-2xl px-5 py-6 sm:px-6"
-                  style={{ background: 'var(--sl-bg-surface)', border: '1px solid var(--sl-border)' }}
-                >
-                  <div className="mb-6 flex items-end gap-4">
-                    <div>
-                      <p className="text-4xl font-semibold" style={{ color: 'var(--sl-text-primary)', fontFamily: 'var(--sl-font-mono)' }}>
-                        {reviews.length > 0 ? averageRating.toFixed(1) : '—'}
-                      </p>
-                      <p className="mt-1 text-sm" style={{ color: 'var(--sl-text-muted)' }}>Середня оцінка</p>
-                    </div>
-                    <div className="pb-1">
-                      <div className="flex items-center gap-0.5" style={{ color: 'var(--sl-accent)' }}>
-                        {Array.from({ length: 5 }, (_, index) => (
-                          <Star key={index} className={cn('h-5 w-5', index < Math.round(averageRating) ? 'fill-current' : '')} style={{ opacity: index < Math.round(averageRating) ? 1 : 0.25 }} />
-                        ))}
-                      </div>
-                      <p className="mt-1 text-sm" style={{ color: 'var(--sl-text-muted)', fontFamily: 'var(--sl-font-mono)' }}>{reviews.length} відгуків</p>
-                    </div>
-                  </div>
-                  <div className="space-y-4">
-                    {reviews.length > 0 ? reviews.map((review: any) => (
-                      <div
-                        key={review.id}
-                        className="rounded-xl p-4"
-                        style={{ background: 'var(--sl-bg-elevated)', border: '1px solid var(--sl-border)' }}
-                      >
-                        <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
-                          <div>
-                            <p className="font-medium" style={{ color: 'var(--sl-text-primary)' }}>{review.authorName}</p>
-                            <div className="mt-1 flex items-center gap-0.5" style={{ color: 'var(--sl-accent)' }}>
-                              {Array.from({ length: 5 }, (_, index) => (
-                                <Star key={index} className="h-4 w-4" style={{ fill: index < review.rating ? 'currentColor' : 'none', opacity: index < review.rating ? 1 : 0.25 }} />
-                              ))}
-                            </div>
-                          </div>
-                        </div>
-                        {review.text && <p className="text-sm leading-6" style={{ color: 'var(--sl-text-secondary)' }}>{review.text}</p>}
-                      </div>
-                    )) : (
-                      <p className="text-sm" style={{ color: 'var(--sl-text-muted)' }}>Поки що відгуків немає.</p>
-                    )}
-                  </div>
-                </div>
-
-                {/* Review form */}
-                <form
-                  onSubmit={handleReviewSubmit}
-                  className="rounded-2xl p-5 sm:p-6 xl:sticky xl:top-[68px] xl:self-start"
-                  style={{ background: 'var(--sl-bg-surface)', border: '1px solid var(--sl-border)' }}
-                >
-                  <h3 className="text-lg font-semibold" style={{ color: 'var(--sl-text-primary)', fontFamily: 'var(--sl-font-body)' }}>Залишити відгук</h3>
-                  <p className="mt-1 text-sm" style={{ color: 'var(--sl-text-muted)' }}>Короткий чесний відгук допоможе наступному покупцю прийняти рішення.</p>
-                  <div className="mt-5 space-y-4">
-                    <input
-                      type="text"
-                      placeholder="Ваше ім'я"
-                      value={reviewName}
-                      onChange={(e) => setReviewName(e.target.value)}
-                      required
-                      className="h-11 w-full rounded-xl px-3 text-sm outline-none"
-                      style={{
-                        background: 'var(--sl-bg-elevated)',
-                        border: '1px solid var(--sl-border)',
-                        color: 'var(--sl-text-primary)',
-                        fontFamily: 'var(--sl-font-body)',
-                      }}
-                      onFocus={(e) => (e.target.style.borderColor = 'var(--sl-accent)')}
-                      onBlur={(e) => (e.target.style.borderColor = 'var(--sl-border)')}
-                    />
-                    <div>
-                      <p className="mb-2 text-sm font-medium" style={{ color: 'var(--sl-text-secondary)' }}>Оцінка</p>
-                      <div className="flex gap-1">
-                        {[1, 2, 3, 4, 5].map((rating) => (
-                          <button key={rating} type="button" onClick={() => setReviewRating(rating)} className="rounded-md p-1">
-                            <Star
-                              className="h-6 w-6"
-                              style={{
-                                fill: rating <= reviewRating ? 'var(--sl-accent)' : 'none',
-                                color: rating <= reviewRating ? 'var(--sl-accent)' : 'var(--sl-text-muted)',
-                              }}
-                            />
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                    <textarea
-                      placeholder="Що сподобалось, як поводиться товар у використанні..."
-                      value={reviewText}
-                      onChange={(e) => setReviewText(e.target.value)}
-                      rows={5}
-                      className="w-full rounded-xl px-3 py-3 text-sm outline-none"
-                      style={{
-                        background: 'var(--sl-bg-elevated)',
-                        border: '1px solid var(--sl-border)',
-                        color: 'var(--sl-text-primary)',
-                        fontFamily: 'var(--sl-font-body)',
-                      }}
-                      onFocus={(e) => (e.target.style.borderColor = 'var(--sl-accent)')}
-                      onBlur={(e) => (e.target.style.borderColor = 'var(--sl-border)')}
-                    />
-                    <button
-                      type="submit"
-                      className="flex h-11 w-full items-center justify-center rounded-xl text-sm font-semibold"
-                      style={{ background: 'var(--sl-accent)', color: '#fff', fontFamily: 'var(--sl-font-mono)' }}
-                      onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.background = 'var(--sl-accent-hover)')}
-                      onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.background = 'var(--sl-accent)')}
-                    >
-                      Надіслати відгук
-                    </button>
-                  </div>
-                </form>
-              </div>
+              <ReviewsSection target={{ kind: 'product', id: product.id }} reviews={reviews} />
             </TabsContent>
           </Tabs>
         </section>
@@ -1555,6 +1422,20 @@ export default function ProductDetail({ product }: Props) {
           )}
         </div>,
         document.body,
+      )}
+
+      {!isOutOfStock && (
+        <StickyBuyBar
+          anchorRef={ctaBlockRef}
+          price={finalPrice}
+          crossedPrice={crossedPrice}
+          configLabel={hasConfigurableOptions ? Object.values(selectedOptions).join(' / ') : undefined}
+          onConfigTap={hasConfigurableOptions ? () => optionsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }) : undefined}
+          primaryLabel={`Купити зараз${qty > 1 ? ` (${qty})` : ''}`}
+          onPrimary={() => addItem({ itemType: 'product', productId: product.id, variantId: resolvedVariant?.id, slug: resolvedVariant?.slug ?? product.slug, quantity: qty, maxQuantity: currentStock })}
+          onAddToCart={handleAddToCart}
+          hideAt="md"
+        />
       )}
     </div>
   );

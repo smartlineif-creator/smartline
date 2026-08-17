@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard, Package, Tag, ShoppingCart, Users,
   Star, Image, Percent, LogOut, LayoutTemplate, HelpCircle,
+  Wrench, ClipboardList,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/auth';
@@ -16,6 +17,8 @@ const NAV = [
   { href: '/admin/products', label: 'Товари', icon: Package },
   { href: '/admin/categories', label: 'Категорії', icon: Tag },
   { href: '/admin/orders', label: 'Замовлення', icon: ShoppingCart },
+  { href: '/admin/requests', label: 'Заявки', icon: ClipboardList },
+  { href: '/admin/services', label: 'Послуги', icon: Wrench },
   { href: '/admin/users', label: 'Клієнти', icon: Users },
   { href: '/admin/promotions', label: 'Акції', icon: Percent },
   { href: '/admin/banners', label: 'Банери', icon: Image },

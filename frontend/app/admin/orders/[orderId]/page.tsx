@@ -8,7 +8,9 @@ import { toast } from 'sonner';
 import {
   ArrowLeft,
   CalendarDays,
+  Check,
   CheckCircle2,
+  Copy,
   Mail,
   MapPin,
   Package,
@@ -20,7 +22,7 @@ import {
 } from 'lucide-react';
 import { adminGetOrder, adminUpdateOrderStatus } from '@/lib/api';
 import { Order, OrderStatus } from '@/types';
-import { formatPrice, ORDER_STATUS_LABELS } from '@/lib/utils';
+import { formatPrice, ORDER_STATUS_COLORS, ORDER_STATUS_LABELS, pluralUk } from '@/lib/utils';
 
 const STATUSES: OrderStatus[] = ['NEW', 'CONFIRMED', 'SHIPPED', 'DELIVERED', 'CANCELLED'];
 
@@ -28,12 +30,52 @@ function formatDate(value: string) {
   return new Date(value).toLocaleDateString('uk-UA', { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
-function getStatusTone(status: OrderStatus) {
-  if (status === 'NEW') return 'bg-blue-50 text-blue-700 ring-blue-200';
-  if (status === 'CONFIRMED') return 'bg-amber-50 text-amber-700 ring-amber-200';
-  if (status === 'SHIPPED') return 'bg-orange-50 text-orange-700 ring-orange-200';
-  if (status === 'DELIVERED') return 'bg-emerald-50 text-emerald-700 ring-emerald-200';
-  return 'bg-red-50 text-red-700 ring-red-200';
+function ContactRow({ href, icon, value }: { href: string; icon: React.ReactNode; value: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    let ok = false;
+    try {
+      await navigator.clipboard.writeText(value);
+      ok = true;
+    } catch {
+      // Clipboard API is blocked in some contexts (http, iframe) — legacy fallback
+      const ta = document.createElement('textarea');
+      ta.value = value;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      ok = document.execCommand('copy');
+      ta.remove();
+    }
+
+    if (!ok) {
+      toast.error('Не вдалося скопіювати');
+      return;
+    }
+    setCopied(true);
+    toast.success('Скопійовано');
+    window.setTimeout(() => setCopied(false), 1500);
+  };
+
+  return (
+    <div className="flex items-center gap-2">
+      <a href={href} className="flex min-w-0 flex-1 items-center gap-3 rounded-xl border bg-gray-50 px-3 py-2 text-sm font-medium text-gray-900 hover:bg-white">
+        {icon}
+        <span className="truncate">{value}</span>
+      </a>
+      <button
+        type="button"
+        onClick={handleCopy}
+        title="Скопіювати"
+        aria-label={`Скопіювати ${value}`}
+        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border bg-gray-50 text-gray-500 transition-colors hover:bg-white hover:text-blue-600"
+      >
+        {copied ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
+      </button>
+    </div>
+  );
 }
 
 function normalizeDelivery(value: unknown): Array<[string, string]> {
@@ -49,7 +91,9 @@ function normalizeDelivery(value: unknown): Array<[string, string]> {
   };
   const METHOD_LABELS: Record<string, string> = {
     nova_poshta_branch: 'Відділення або поштомат',
+    nova_poshta_address: 'Адресна доставка',
     nova_poshta_courier: "Кур'єр до дверей",
+    pickup: 'Самовивіз',
     self_pickup: 'Самовивіз',
   };
 
@@ -69,7 +113,8 @@ function normalizeDelivery(value: unknown): Array<[string, string]> {
   const phone = str(d.recipientPhone);
   if (phone) rows.push(['Телефон', phone]);
 
-  const comment = str(d.comment);
+  // Checkout sends the customer's note as `note`; `comment` kept for legacy orders
+  const comment = str(d.note) || str(d.comment);
   if (comment) rows.push(['Коментар', comment]);
 
   return rows;
@@ -81,8 +126,9 @@ function normalizePayment(value: unknown): Array<[string, string]> {
   const str = (v: unknown) => (v != null && v !== '' ? String(v) : null);
 
   const METHOD_LABELS: Record<string, string> = {
-    cod: 'Накладний платіж',
-    online: 'Онлайн картою',
+    cod: 'Накладений платіж',
+    online: 'Онлайн оплата',
+    bank_transfer: 'На розрахунковий рахунок',
     installments: 'Оплата частинами',
     cash: 'Готівка',
   };
@@ -178,7 +224,7 @@ export default function AdminOrderDetailPage() {
           <div>
             <div className="flex flex-wrap items-center gap-3">
               <h1 className="text-3xl font-bold tracking-tight text-gray-950">Замовлення #{order.orderNumber}</h1>
-              <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ring-1 ${getStatusTone(order.status)}`}>
+              <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ring-1 ${ORDER_STATUS_COLORS[order.status]}`}>
                 {ORDER_STATUS_LABELS[order.status]}
               </span>
             </div>
@@ -189,7 +235,7 @@ export default function AdminOrderDetailPage() {
               </span>
               <span className="inline-flex items-center gap-2">
                 <Package className="h-4 w-4" />
-                {itemsCount} товарів
+                {itemsCount} {pluralUk(itemsCount, 'товар', 'товари', 'товарів')}
               </span>
             </div>
           </div>
@@ -279,15 +325,17 @@ export default function AdminOrderDetailPage() {
                 <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Імʼя</p>
                 <p className="mt-1 font-semibold text-gray-950">{order.customerName}</p>
               </div>
-              <a href={`tel:${order.customerPhone}`} className="flex items-center gap-3 rounded-xl border bg-gray-50 px-3 py-2 text-sm font-medium text-gray-900 hover:bg-white">
-                <Phone className="h-4 w-4 text-blue-600" />
-                {order.customerPhone}
-              </a>
+              <ContactRow
+                href={`tel:${order.customerPhone}`}
+                icon={<Phone className="h-4 w-4 shrink-0 text-blue-600" />}
+                value={order.customerPhone}
+              />
               {order.customerEmail && (
-                <a href={`mailto:${order.customerEmail}`} className="flex items-center gap-3 rounded-xl border bg-gray-50 px-3 py-2 text-sm font-medium text-gray-900 hover:bg-white">
-                  <Mail className="h-4 w-4 text-blue-600" />
-                  {order.customerEmail}
-                </a>
+                <ContactRow
+                  href={`mailto:${order.customerEmail}`}
+                  icon={<Mail className="h-4 w-4 shrink-0 text-blue-600" />}
+                  value={order.customerEmail}
+                />
               )}
             </div>
           </section>
@@ -308,7 +356,7 @@ export default function AdminOrderDetailPage() {
                     type="button"
                     onClick={() => setStatus(item)}
                     className={`rounded-xl px-3 py-2 text-sm font-medium ring-1 transition ${
-                      active ? getStatusTone(item) : 'bg-white text-gray-600 ring-gray-200 hover:ring-blue-200'
+                      active ? ORDER_STATUS_COLORS[item] : 'bg-white text-gray-600 ring-gray-200 hover:ring-blue-200'
                     }`}
                   >
                     {ORDER_STATUS_LABELS[item]}

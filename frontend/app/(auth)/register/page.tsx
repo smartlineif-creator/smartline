@@ -5,19 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { AlertCircle, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { register } from '@/lib/api';
-
-function formatPhone(raw: string): string {
-  const digits = raw.replace(/\D/g, '');
-  // Strip leading 380 if user typed it
-  const local = digits.startsWith('380') ? digits.slice(3) : digits.startsWith('0') ? digits.slice(1) : digits;
-  const d = local.slice(0, 9);
-  let out = '+380';
-  if (d.length > 0) out += ' ' + d.slice(0, 2);
-  if (d.length > 2) out += ' ' + d.slice(2, 5);
-  if (d.length > 5) out += ' ' + d.slice(5, 7);
-  if (d.length > 7) out += ' ' + d.slice(7, 9);
-  return out === '+380' && raw === '' ? '' : out;
-}
+import { formatPhone, isValidUAPhone } from '@/lib/validation';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -37,6 +25,10 @@ export default function RegisterPage() {
     e.preventDefault();
     if (password.length < 8) {
       setError('Пароль має містити щонайменше 8 символів.');
+      return;
+    }
+    if (phone && !isValidUAPhone(phone)) {
+      setError('Введіть повний номер телефону: +380 XX XXX XX XX.');
       return;
     }
     setError('');

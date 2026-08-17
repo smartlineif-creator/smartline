@@ -36,7 +36,7 @@ export class TelegramService {
 
   async notifyNewOrder(order: any) {
     const PAYMENT_LABELS: Record<string, string> = {
-      cod: 'Накладний платіж (без передоплати)',
+      cod: 'Накладений платіж (без передоплати)',
       online: 'Онлайн картою',
       bank_transfer: 'На розрахунковий рахунок',
     };
@@ -44,15 +44,24 @@ export class TelegramService {
     const itemLines = (order.items ?? [])
       .map((item: any) => {
         const variant = item.variantName ? ` (${item.variantName})` : '';
-        return `  • ${item.name}${variant} × ${item.quantity} — ${item.price * item.quantity} грн`;
+        const type = item.serviceId ? ' 🔧' : '';
+        return `  • ${item.name}${variant}${type} × ${item.quantity} — ${item.price * item.quantity} грн`;
       })
       .join('\n');
 
+    const DELIVERY_LABELS: Record<string, string> = {
+      pickup: 'Самовивіз',
+      nova_poshta_branch: 'НП, відділення',
+      nova_poshta_address: 'НП, адресна доставка',
+    };
+
     const delivery = order.delivery ?? {};
+    const methodLine =
+      DELIVERY_LABELS[delivery.type] || delivery.method || delivery.type || '';
     const cityLine = delivery.cityName || delivery.city || '';
     const branchLine =
       delivery.warehouseName || delivery.warehouse || delivery.address || '';
-    const deliveryLine = [cityLine, branchLine].filter(Boolean).join(', ');
+    const placeLine = [cityLine, branchLine].filter(Boolean).join(', ');
 
     const paymentMethod =
       order.payment?.method || order.payment?.paymentMethod || '';
@@ -66,6 +75,11 @@ export class TelegramService {
       ? `${primaryFrontendUrl}/admin/orders/${order.id}`
       : '';
 
+    const itemCount = (order.items ?? []).reduce(
+      (sum: number, item: any) => sum + item.quantity,
+      0,
+    );
+
     const lines = [
       `🛒 <b>Нове замовлення #${order.orderNumber}</b>`,
       ``,
@@ -73,12 +87,14 @@ export class TelegramService {
       `📞 <a href="tel:${order.customerPhone}">${order.customerPhone}</a>`,
       order.customerEmail ? `📧 ${order.customerEmail}` : null,
       ``,
-      `📦 <b>Товари:</b>`,
+      `📦 <b>Товари (${itemCount} шт.):</b>`,
       itemLines,
       ``,
       `💰 Сума: <b>${order.totalAmount} грн</b>`,
       `💳 Оплата: ${paymentLine}`,
-      deliveryLine ? `🚚 Доставка: ${deliveryLine}` : null,
+      methodLine ? `🚚 Доставка: ${methodLine}` : null,
+      placeLine ? `📍 ${placeLine}` : null,
+      delivery.note ? `📝 Коментар: <i>${delivery.note}</i>` : null,
       adminUrl ? `\n🔗 <a href="${adminUrl}">Відкрити в адмінці</a>` : null,
     ]
       .filter((l) => l !== null)

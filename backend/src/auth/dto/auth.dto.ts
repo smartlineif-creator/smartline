@@ -1,4 +1,13 @@
-import { IsEmail, IsString, MinLength, IsOptional } from 'class-validator';
+import {
+  IsEmail,
+  IsString,
+  MinLength,
+  MaxLength,
+  Matches,
+  IsOptional,
+} from 'class-validator';
+import { Transform } from 'class-transformer';
+import { UA_PHONE, stripPhone } from '../../orders/dto/order.dto';
 
 export class LoginDto {
   @IsEmail()
@@ -19,10 +28,14 @@ export class RegisterDto {
 
   @IsString()
   @IsOptional()
+  @MaxLength(120)
   name?: string;
 
   @IsString()
   @IsOptional()
+  @MaxLength(32)
+  @Transform(stripPhone)
+  @Matches(UA_PHONE, { message: 'phone must be a valid UA phone (+380XXXXXXXXX)' })
   phone?: string;
 }
 
@@ -43,10 +56,14 @@ export class ResetPasswordDto {
 export class UpdateProfileDto {
   @IsString()
   @IsOptional()
+  @MaxLength(120)
   name?: string;
 
   @IsString()
   @IsOptional()
+  @MaxLength(32)
+  @Transform(stripPhone)
+  @Matches(UA_PHONE, { message: 'phone must be a valid UA phone (+380XXXXXXXXX)' })
   phone?: string;
 }
 

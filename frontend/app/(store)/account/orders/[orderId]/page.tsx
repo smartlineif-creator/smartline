@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import { getOrder } from '@/lib/api';
 import { Order } from '@/types';
-import { formatPrice, ORDER_STATUS_LABELS } from '@/lib/utils';
+import { formatPrice, ORDER_STATUS_LABELS, pluralUk } from '@/lib/utils';
 
 const STATUS_STEPS: Order['status'][] = ['NEW', 'CONFIRMED', 'SHIPPED', 'DELIVERED'];
 
@@ -114,7 +114,7 @@ export default function OrderDetailPage() {
                 </span>
                 <span className="inline-flex items-center gap-2">
                   <Package className="h-4 w-4" />
-                  {itemsCount} товарів
+                  {itemsCount} {pluralUk(itemsCount, 'товар', 'товари', 'товарів')}
                 </span>
               </div>
             </div>

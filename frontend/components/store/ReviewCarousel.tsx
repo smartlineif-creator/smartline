@@ -198,6 +198,14 @@ export default function ReviewCarousel({ reviews }: Props) {
                 >
                   {review.product.name}
                 </Link>
+              ) : review.service ? (
+                <Link
+                  href={`/services/${review.service.slug}`}
+                  className="inline-flex items-center rounded-full px-3 py-1.5 text-xs font-medium transition-all"
+                  style={{ background: 'var(--sl-bg-elevated)', color: 'var(--sl-text-secondary)', border: '1px solid var(--sl-border)', fontFamily: 'var(--sl-font-mono)' }}
+                >
+                  {review.service.name}
+                </Link>
               ) : (
                 <div
                   className="inline-flex items-center rounded-full px-3 py-1.5 text-xs font-medium"

@@ -35,7 +35,9 @@ export class PaymentService {
     }
 
     const token = this.config.get<string>('MONOBANK_TOKEN');
-    const frontendUrl = getPrimaryFrontendUrl(this.config.get<string>('FRONTEND_URL'));
+    const frontendUrl = getPrimaryFrontendUrl(
+      this.config.get<string>('FRONTEND_URL'),
+    );
     const redirectUrl = `${frontendUrl}/checkout/success?orderId=${order.id}`;
 
     if (!token || token === 'placeholder') {

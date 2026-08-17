@@ -15,7 +15,9 @@ async function bootstrap() {
   );
 
   await app.register(fastifyCookie);
-  await app.register(fastifyMultipart, { limits: { fileSize: 200 * 1024 * 1024 } });
+  await app.register(fastifyMultipart, {
+    limits: { fileSize: 200 * 1024 * 1024 },
+  });
 
   const configuredOrigins = (process.env.FRONTEND_URL || '')
     .split(',')

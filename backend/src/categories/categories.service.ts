@@ -34,7 +34,7 @@ export class CategoriesService {
               },
             },
           },
-          orderBy: { sortOrder: 'asc' },
+          orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
         },
         ...CATEGORY_INCLUDE,
         _count: {
@@ -44,7 +44,7 @@ export class CategoriesService {
           },
         },
       },
-      orderBy: { sortOrder: 'asc' },
+      orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
     });
     return categories;
   }
@@ -64,7 +64,7 @@ export class CategoriesService {
       include: {
         children: {
           include: { ...CATEGORY_INCLUDE },
-          orderBy: { sortOrder: 'asc' },
+          orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
         },
         ...CATEGORY_INCLUDE,
       },

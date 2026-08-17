@@ -41,13 +41,6 @@ export class ProductsController {
     return this.productsService.findAll(query);
   }
 
-  @Get('count')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.ADMIN)
-  count() {
-    return this.productsService.count();
-  }
-
   @Get('admin/list')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)

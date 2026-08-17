@@ -2,26 +2,54 @@ import {
   IsString,
   IsOptional,
   IsArray,
+  ArrayNotEmpty,
   IsEmail,
   IsEnum,
   ValidateNested,
-  IsNumber,
+  IsInt,
   Min,
+  Max,
+  MinLength,
+  MaxLength,
+  Matches,
   IsIn,
 } from 'class-validator';
-import { Type } from 'class-transformer';
+import { Type, Transform } from 'class-transformer';
 import { OrderStatus } from '@prisma/client';
+
+// Same rule as frontend/lib/validation.ts — change both together.
+export const UA_PHONE = /^(\+?38)?0\d{9}$/;
+// Empty string collapses to undefined so optional phones stay optional —
+// @IsOptional only skips undefined/null, and '' would otherwise fail @Matches.
+export const stripPhone = ({ value }: { value: unknown }) => {
+  if (typeof value !== 'string') return value;
+  const stripped = value.replace(/[\s()-]/g, '');
+  return stripped === '' ? undefined : stripped;
+};
 
 export class OrderItemDto {
   @IsString()
-  productId: string;
+  @IsOptional()
+  productId?: string;
 
   @IsString()
   @IsOptional()
   variantId?: string;
 
-  @IsNumber()
+  @IsString()
+  @IsOptional()
+  serviceId?: string;
+
+  @IsString()
+  @IsOptional()
+  tierId?: string;
+
+  // Int, not Number: a fractional quantity slips past `stock >= quantity` and
+  // then fails on an Int column. Max is a sanity bound — real availability is
+  // enforced by the atomic stock decrement in OrdersService.create.
+  @IsInt()
   @Min(1)
+  @Max(999)
   quantity: number;
 }
 
@@ -145,9 +173,13 @@ export class PaymentInfoDto {
 
 export class CreateOrderDto {
   @IsString()
+  @MinLength(2)
+  @MaxLength(120)
   customerName: string;
 
   @IsString()
+  @Transform(stripPhone)
+  @Matches(UA_PHONE, { message: 'customerPhone must be a valid UA phone (+380XXXXXXXXX)' })
   customerPhone: string;
 
   @IsEmail()
@@ -155,6 +187,7 @@ export class CreateOrderDto {
   customerEmail?: string;
 
   @IsArray()
+  @ArrayNotEmpty()
   @ValidateNested({ each: true })
   @Type(() => OrderItemDto)
   items: OrderItemDto[];

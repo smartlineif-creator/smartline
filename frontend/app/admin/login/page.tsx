@@ -15,6 +15,9 @@ export default function AdminLoginPage() {
   const [capsLock, setCapsLock] = useState(false);
 
   const syncCapsLock = useCallback((e: KeyboardEvent) => {
+    // Autofill and browser extensions dispatch synthetic keydown/keyup events
+    // that are plain Events without the KeyboardEvent interface
+    if (typeof e.getModifierState !== 'function') return;
     setCapsLock(e.getModifierState('CapsLock'));
   }, []);
 

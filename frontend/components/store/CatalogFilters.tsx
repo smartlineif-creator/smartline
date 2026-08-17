@@ -11,6 +11,8 @@ interface Props {
   activeOptions?: Record<string, string[]>;
   currentMinPrice?: string;
   currentMaxPrice?: string;
+  /** Real bounds of the selection — shown as placeholders instead of «0 … ∞». */
+  priceRange?: { min: number; max: number } | null;
 }
 
 const SORT_OPTIONS = [
@@ -26,6 +28,7 @@ export default function CatalogFilters({
   activeOptions = {},
   currentMinPrice = '',
   currentMaxPrice = '',
+  priceRange,
 }: Props) {
   const router = useRouter();
   const pathname = usePathname();
@@ -274,7 +277,7 @@ export default function CatalogFilters({
                 type="number"
                 inputMode="numeric"
                 min="0"
-                placeholder="0"
+                placeholder={priceRange ? String(priceRange.min) : '0'}
                 value={localMin}
                 onChange={(e) => setLocalMin(e.target.value)}
                 onKeyDown={handlePriceKeyDown}
@@ -313,7 +316,7 @@ export default function CatalogFilters({
                 type="number"
                 inputMode="numeric"
                 min="0"
-                placeholder="∞"
+                placeholder={priceRange ? String(priceRange.max) : '∞'}
                 value={localMax}
                 onChange={(e) => setLocalMax(e.target.value)}
                 onKeyDown={handlePriceKeyDown}

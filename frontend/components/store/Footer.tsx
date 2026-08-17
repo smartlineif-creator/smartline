@@ -86,6 +86,7 @@ export default async function Footer() {
               {[
                 { href: '/about', label: 'Про нас' },
                 { href: '/contacts', label: 'Контакти' },
+                { href: '/services', label: 'Послуги' },
               ].map((item) => (
                 <li key={item.href}>
                   <Link

@@ -44,8 +44,9 @@ export default function BannerSlider({ banners }: Props) {
           key={banner.id}
           className={cn(
             'absolute inset-0 transition-opacity duration-700',
-            i === current ? 'opacity-100' : 'opacity-0',
+            i === current ? 'opacity-100' : 'pointer-events-none opacity-0',
           )}
+          aria-hidden={i === current ? undefined : true}
         >
           {banner.link ? (
             <Link href={banner.link} className="absolute inset-0">

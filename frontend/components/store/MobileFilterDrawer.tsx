@@ -11,6 +11,10 @@ interface Props {
   activeOptions?: Record<string, string[]>;
   currentMinPrice?: string;
   currentMaxPrice?: string;
+  /** Result count for the sticky «Показати N товарів» button. */
+  total?: number;
+  /** Real price bounds of the current selection — passed through to the price inputs. */
+  priceRange?: { min: number; max: number } | null;
 }
 
 export default function MobileFilterDrawer({
@@ -19,6 +23,8 @@ export default function MobileFilterDrawer({
   activeOptions = {},
   currentMinPrice,
   currentMaxPrice,
+  total,
+  priceRange,
 }: Props) {
   const [open, setOpen] = useState(false);
 
@@ -26,10 +32,9 @@ export default function MobileFilterDrawer({
     Object.values(activeOptions).flat().length +
     (currentMinPrice || currentMaxPrice ? 1 : 0);
 
-  // Close on route change (filter applied)
-  useEffect(() => {
-    setOpen(false);
-  }, [currentSort, activeOptions, currentMinPrice, currentMaxPrice]);
+  // The drawer intentionally stays open while the user composes filters —
+  // every tap used to close it, forcing a reopen per option. It closes only
+  // via X, the backdrop, or the «Показати N товарів» button below.
 
   // Lock body scroll when open
   useEffect(() => {
@@ -109,13 +114,31 @@ export default function MobileFilterDrawer({
           </button>
         </div>
 
-        <CatalogFilters
-          currentSort={currentSort}
-          availableFilters={availableFilters}
-          activeOptions={activeOptions}
-          currentMinPrice={currentMinPrice}
-          currentMaxPrice={currentMaxPrice}
-        />
+        <div className="pb-20">
+          <CatalogFilters
+            currentSort={currentSort}
+            availableFilters={availableFilters}
+            activeOptions={activeOptions}
+            currentMinPrice={currentMinPrice}
+            currentMaxPrice={currentMaxPrice}
+            priceRange={priceRange}
+          />
+        </div>
+
+        {/* Sticky apply — the one deliberate exit from filter composing */}
+        <div
+          className="sticky bottom-0 -mx-4 px-4 pb-4 pt-3"
+          style={{ background: 'var(--sl-bg-primary)', borderTop: '1px solid var(--sl-border)' }}
+        >
+          <button
+            type="button"
+            onClick={() => setOpen(false)}
+            className="h-12 w-full rounded-xl text-sm font-semibold"
+            style={{ background: 'var(--sl-accent)', color: '#fff', fontFamily: 'var(--sl-font-mono)' }}
+          >
+            {typeof total === 'number' ? `Показати ${total} товарів` : 'Показати товари'}
+          </button>
+        </div>
       </div>
     </>
   );
