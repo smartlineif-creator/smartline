@@ -30,6 +30,12 @@ let refreshPromise: Promise<boolean> | null = null;
 const ACCESS_TOKEN_KEY = 'sl_access_token';
 const REFRESH_TOKEN_KEY = 'sl_refresh_token';
 const ACCESS_COOKIE_NAME = 'accessToken';
+// Long-lived "a session exists" marker for proxy.ts. The access cookie dies
+// after 15 min, and the edge middleware can't reach localStorage — without
+// this marker every navigation into /account or /admin after idle >15 min
+// bounced to the login page even though the refresh token was still valid.
+const SESSION_COOKIE_NAME = 'sl_session';
+const SESSION_COOKIE_MAX_AGE = 60 * 60 * 24 * 30; // matches refresh token TTL
 
 export function getAccessToken(): string | null {
   if (typeof window === 'undefined') return null;
@@ -46,6 +52,7 @@ function saveTokens(tokens: { accessToken?: string; refreshToken?: string }) {
   if (tokens.accessToken) {
     localStorage.setItem(ACCESS_TOKEN_KEY, tokens.accessToken);
     document.cookie = `${ACCESS_COOKIE_NAME}=${tokens.accessToken}; path=/; max-age=900; SameSite=Lax`;
+    document.cookie = `${SESSION_COOKIE_NAME}=1; path=/; max-age=${SESSION_COOKIE_MAX_AGE}; SameSite=Lax`;
   }
   if (tokens.refreshToken) localStorage.setItem(REFRESH_TOKEN_KEY, tokens.refreshToken);
 }
@@ -55,6 +62,7 @@ function clearTokens() {
   localStorage.removeItem(ACCESS_TOKEN_KEY);
   localStorage.removeItem(REFRESH_TOKEN_KEY);
   document.cookie = `${ACCESS_COOKIE_NAME}=; path=/; max-age=0`;
+  document.cookie = `${SESSION_COOKIE_NAME}=; path=/; max-age=0`;
 }
 
 async function getServerAccessToken(): Promise<string | null> {
@@ -92,6 +100,20 @@ async function refreshSession() {
   }
 
   return refreshPromise;
+}
+
+/**
+ * Re-mint the access token when its 15-min mirror cookie has expired but the
+ * refresh token is still alive. Called once on app mount, so a returning user
+ * is silently logged back in instead of seeing a guest page.
+ */
+export async function ensureSession(): Promise<void> {
+  if (typeof window === 'undefined') return;
+  const hasAccessCookie = document.cookie
+    .split('; ')
+    .some((c) => c.startsWith(`${ACCESS_COOKIE_NAME}=`));
+  if (hasAccessCookie || !getRefreshToken()) return;
+  await refreshSession();
 }
 
 function shouldTryRefresh(path: string) {
@@ -658,4 +680,8 @@ export async function adminUpdateService(id: string, data: ServiceInput) {
 
 export async function adminDeleteService(id: string) {
   return apiFetch<void>(`/services/${id}`, { method: 'DELETE' });
+}
+
+export async function adminDuplicateService(id: string) {
+  return apiFetch<Service>(`/services/${id}/duplicate`, { method: 'POST' });
 }
