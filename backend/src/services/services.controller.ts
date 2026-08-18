@@ -50,6 +50,13 @@ export class ServicesController {
     return this.servicesService.create(dto);
   }
 
+  @Post(':id/duplicate')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
+  duplicate(@Param('id') id: string) {
+    return this.servicesService.duplicate(id);
+  }
+
   @Patch(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)

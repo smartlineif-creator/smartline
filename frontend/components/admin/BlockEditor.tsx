@@ -4,9 +4,10 @@ import { useState, useRef } from 'react';
 import { ServiceBlock, ServiceBlockFaq, ServiceBlockImage, ServiceBlockPricing } from '@/types';
 import { uploadImage } from '@/lib/api';
 import TiptapEditor from './TiptapEditor';
-import { GripVertical, Trash2, ChevronDown, ChevronUp, Plus, Upload } from 'lucide-react';
+import { GripVertical, Trash2, ChevronDown, ChevronUp, Loader2, Plus, Upload, X } from 'lucide-react';
 import Image from 'next/image';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 
 interface Props {
   blocks: ServiceBlock[];
@@ -187,19 +188,48 @@ function BlockEditForm({ block, onChange }: { block: ServiceBlock; onChange: (b:
   if (block.type === 'image') {
     return (
       <div className="flex flex-col gap-3">
-        {block.url && (
-          <div className="relative aspect-video overflow-hidden rounded-xl border border-gray-200">
+        {block.url ? (
+          <div className="group relative aspect-video overflow-hidden rounded-xl border border-gray-200 bg-gray-50">
             <Image src={block.url} alt={block.caption ?? ''} fill className="object-cover" />
+            <div className="absolute inset-0 flex items-center justify-center gap-2 bg-black/0 opacity-0 transition group-hover:bg-black/30 group-hover:opacity-100">
+              <button
+                type="button"
+                onClick={() => fileRef.current?.click()}
+                disabled={uploading}
+                className="rounded-lg bg-white px-3 py-1.5 text-xs font-medium text-gray-700 shadow hover:bg-gray-100"
+              >
+                Замінити
+              </button>
+              <button
+                type="button"
+                onClick={() => onChange({ ...block, url: '' })}
+                className="rounded-lg bg-white p-1.5 text-red-500 shadow hover:bg-red-50"
+                aria-label="Видалити фото"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
           </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => fileRef.current?.click()}
+            disabled={uploading}
+            className={cn(
+              'w-full rounded-lg border-2 border-dashed p-8 text-center transition-colors',
+              uploading ? 'cursor-not-allowed bg-gray-50' : 'hover:border-blue-400',
+            )}
+          >
+            {uploading ? (
+              <Loader2 className="mx-auto mb-2 h-8 w-8 animate-spin text-blue-500" />
+            ) : (
+              <Upload className="mx-auto mb-2 h-8 w-8 text-gray-400" />
+            )}
+            <span className="text-sm text-gray-500">
+              {uploading ? 'Завантаження...' : 'Натисніть, щоб завантажити фото'}
+            </span>
+          </button>
         )}
-        <button
-          onClick={() => fileRef.current?.click()}
-          disabled={uploading}
-          className="flex w-full items-center justify-center gap-2 rounded-xl border border-gray-200 py-2 text-sm text-gray-600 transition hover:border-gray-300 hover:bg-gray-50 disabled:opacity-60"
-        >
-          <Upload className="h-4 w-4" />
-          {uploading ? 'Завантаження...' : block.url ? 'Замінити' : 'Завантажити фото'}
-        </button>
         <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
         <div className="flex flex-col gap-1">
           <label className={labelCls}>Підпис (необовʼязково)</label>

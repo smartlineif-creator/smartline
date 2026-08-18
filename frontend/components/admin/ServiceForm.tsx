@@ -9,20 +9,11 @@ import BlockEditor from './BlockEditor';
 import ServiceTierEditor, { ServiceTierDraft } from './ServiceTierEditor';
 import { toast } from 'sonner';
 import Image from 'next/image';
-import { Upload } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { Loader2, Upload, X } from 'lucide-react';
+import { cn, toSlug } from '@/lib/utils';
 
 interface Props {
   initial?: Service;
-}
-
-function toSlugLocal(str: string): string {
-  return str
-    .toLowerCase()
-    .replace(/[^a-z0-9\s-]/g, '')
-    .trim()
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-');
 }
 
 const inputCls = 'h-10 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-50';
@@ -51,7 +42,8 @@ export default function ServiceForm({ initial }: Props) {
 
   const handleNameChange = (val: string) => {
     setName(val);
-    if (!initial) setSlug(toSlugLocal(val));
+    // toSlug transliterates Cyrillic — «Чистка ноутбука» → chystka-noutbuka
+    if (!initial) setSlug(toSlug(val));
   };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -71,7 +63,9 @@ export default function ServiceForm({ initial }: Props) {
   const handleSave = async () => {
     if (!name.trim()) { toast.error('Введіть назву'); return; }
     if (!slug.trim()) { toast.error('Введіть slug'); return; }
-    if (!price || isNaN(Number(price)) || Number(price) < 0) { toast.error('Введіть коректну ціну'); return; }
+    // With tiers the price is optional — the backend derives it from the cheapest tier
+    if (!price && tiers.length === 0) { toast.error('Введіть ціну або додайте тариф'); return; }
+    if (price && (isNaN(Number(price)) || Number(price) < 0)) { toast.error('Введіть коректну ціну'); return; }
     if (tiers.some((t) => !t.label.trim() || isNaN(Number(t.price)) || Number(t.price) < 0)) {
       toast.error('Перевірте назви й ціни тарифів');
       return;
@@ -83,7 +77,7 @@ export default function ServiceForm({ initial }: Props) {
         name: name.trim(),
         slug: slug.trim(),
         description: description.trim() || undefined,
-        price: Number(price),
+        price: price ? Number(price) : undefined,
         priceLabel: 'від',
         coverImage: coverImage || undefined,
         isActive,
@@ -188,12 +182,14 @@ export default function ServiceForm({ initial }: Props) {
               value={price}
               onChange={(e) => setPrice(e.target.value)}
               min={0}
+              placeholder={tiers.length > 0 ? 'Авто — з найдешевшого тарифу' : ''}
               className={inputCls}
             />
           </div>
           <p className="mt-2 text-xs leading-relaxed text-gray-500">
-            Використовується, лише якщо тарифів немає. Коли тарифи додані, ціна на сайті
-            рахується з них: один тариф — його ціна, кілька — «від» найдешевшого.
+            {tiers.length > 0
+              ? 'Можна лишити порожньою — тоді візьмемо ціну найдешевшого тарифу.'
+              : 'Використовується, лише якщо тарифів немає. Коли тарифи додані, ціна на сайті рахується з них: один тариф — його ціна, кілька — «від» найдешевшого.'}
           </p>
         </div>
 
@@ -204,19 +200,48 @@ export default function ServiceForm({ initial }: Props) {
 
         <div className="border-t border-gray-100 pt-4">
           <h3 className={`${labelCls} mb-3`}>Обкладинка</h3>
-          {coverImage && (
-            <div className="relative mb-2 aspect-video overflow-hidden rounded-xl border border-gray-200">
+          {coverImage ? (
+            <div className="group relative aspect-video overflow-hidden rounded-xl border border-gray-200 bg-gray-50">
               <Image src={coverImage} alt="cover" fill className="object-cover" />
+              <div className="absolute inset-0 flex items-center justify-center gap-2 bg-black/0 opacity-0 transition group-hover:bg-black/30 group-hover:opacity-100">
+                <button
+                  type="button"
+                  onClick={() => fileRef.current?.click()}
+                  disabled={uploading}
+                  className="rounded-lg bg-white px-3 py-1.5 text-xs font-medium text-gray-700 shadow hover:bg-gray-100"
+                >
+                  Замінити
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCoverImage('')}
+                  className="rounded-lg bg-white p-1.5 text-red-500 shadow hover:bg-red-50"
+                  aria-label="Видалити обкладинку"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
             </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => fileRef.current?.click()}
+              disabled={uploading}
+              className={cn(
+                'w-full rounded-lg border-2 border-dashed p-8 text-center transition-colors',
+                uploading ? 'cursor-not-allowed bg-gray-50' : 'hover:border-blue-400',
+              )}
+            >
+              {uploading ? (
+                <Loader2 className="mx-auto mb-2 h-8 w-8 animate-spin text-blue-500" />
+              ) : (
+                <Upload className="mx-auto mb-2 h-8 w-8 text-gray-400" />
+              )}
+              <span className="text-sm text-gray-500">
+                {uploading ? 'Завантаження...' : 'Натисніть, щоб завантажити фото'}
+              </span>
+            </button>
           )}
-          <button
-            onClick={() => fileRef.current?.click()}
-            disabled={uploading}
-            className="flex w-full items-center justify-center gap-2 rounded-xl border border-gray-200 py-2 text-sm text-gray-600 transition hover:border-gray-300 hover:bg-gray-50 disabled:opacity-60"
-          >
-            <Upload className="h-4 w-4" />
-            {uploading ? 'Завантаження...' : coverImage ? 'Замінити' : 'Завантажити'}
-          </button>
           <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
         </div>
 

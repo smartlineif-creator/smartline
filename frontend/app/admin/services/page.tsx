@@ -3,9 +3,9 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { adminGetServices, adminUpdateService, adminDeleteService } from '@/lib/api';
+import { adminGetServices, adminUpdateService, adminDeleteService, adminDuplicateService } from '@/lib/api';
 import { Service } from '@/types';
-import { Plus, Trash2, AlertTriangle, ArrowRight, Eye, EyeOff } from 'lucide-react';
+import { Plus, Trash2, AlertTriangle, ArrowRight, Copy, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatPrice, getServiceDisplayPrice, STATE_BADGE } from '@/lib/utils';
 import SortableTh from '@/components/admin/SortableTh';
@@ -53,6 +53,16 @@ export default function AdminServicesPage() {
       load();
     } catch {
       toast.error('Помилка видалення');
+    }
+  };
+
+  const handleDuplicate = async (s: Service) => {
+    try {
+      const copy = await adminDuplicateService(s.id);
+      toast.success(`Скопійовано: «${copy.name}»`);
+      load();
+    } catch {
+      toast.error('Помилка копіювання');
     }
   };
 
@@ -115,8 +125,24 @@ export default function AdminServicesPage() {
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                    <Link
+                      href={`/services/${s.slug}`}
+                      target="_blank"
+                      title="Переглянути на сайті"
+                      className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-gray-100 hover:text-blue-600"
+                    >
+                      <Eye className="h-3.5 w-3.5" />
+                    </Link>
+                    <button
+                      onClick={() => handleDuplicate(s)}
+                      title="Скопіювати"
+                      className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-gray-100 hover:text-blue-600"
+                    >
+                      <Copy className="h-3.5 w-3.5" />
+                    </button>
                     <button
                       onClick={() => setDeleteTarget(s)}
+                      title="Видалити"
                       className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600"
                     >
                       <Trash2 className="h-3.5 w-3.5" />

@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   ConflictException,
+  BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { Prisma } from '@prisma/client';
@@ -65,10 +66,13 @@ export class CreateServiceDto {
   @MaxLength(2000)
   description?: string;
 
+  // Optional: when tiers are provided the price is derived from the cheapest
+  // tier, so the admin doesn't have to type a number that already exists.
   @IsNumber()
+  @IsOptional()
   @Min(0)
   @Type(() => Number)
-  price: number;
+  price?: number;
 
   @IsString()
   @IsOptional()
@@ -194,15 +198,29 @@ export class ServicesService {
     return service;
   }
 
+  /** Derives the base price from the cheapest tier when it wasn't set explicitly. */
+  private resolvePrice(
+    price: number | undefined,
+    tiers: ServiceTierDto[] | undefined,
+  ): number | undefined {
+    if (price !== undefined) return price;
+    if (tiers?.length) return Math.min(...tiers.map((t) => t.price));
+    return undefined;
+  }
+
   async create(dto: CreateServiceDto) {
     const sanitized = this.sanitizeBlocks(dto.blocks ?? []);
+    const price = this.resolvePrice(dto.price, dto.tiers);
+    if (price === undefined) {
+      throw new BadRequestException('Вкажіть ціну або додайте хоча б один тариф');
+    }
     try {
       return await this.prisma.service.create({
         data: {
           name: dto.name,
           slug: dto.slug,
           description: dto.description,
-          price: dto.price,
+          price,
           priceLabel: dto.priceLabel,
           coverImage: dto.coverImage,
           isActive: dto.isActive ?? true,
@@ -233,6 +251,9 @@ export class ServicesService {
     await this.findOne(id);
     const sanitized =
       dto.blocks !== undefined ? this.sanitizeBlocks(dto.blocks) : undefined;
+    // Admin cleared the price but the payload carries tiers — keep the stored
+    // price meaningful by deriving it from the cheapest tier.
+    const price = this.resolvePrice(dto.price, dto.tiers);
     try {
       return await this.prisma.$transaction(async (tx) => {
         if (dto.tiers !== undefined) {
@@ -246,7 +267,7 @@ export class ServicesService {
             ...(dto.description !== undefined && {
               description: dto.description,
             }),
-            ...(dto.price !== undefined && { price: dto.price }),
+            ...(price !== undefined && { price }),
             ...(dto.priceLabel !== undefined && { priceLabel: dto.priceLabel }),
             ...(dto.coverImage !== undefined && { coverImage: dto.coverImage }),
             ...(dto.isActive !== undefined && { isActive: dto.isActive }),
@@ -261,6 +282,52 @@ export class ServicesService {
         throw new ConflictException('A service with this slug already exists');
       }
       throw e;
+    }
+  }
+
+  async duplicate(id: string) {
+    const source = await this.prisma.service.findUnique({
+      where: { id },
+      include: { tiers: { orderBy: { sortOrder: 'asc' } } },
+    });
+    if (!source) throw new NotFoundException('Service not found');
+
+    const slug = await this.generateUniqueSlug(`${source.slug}-copy`);
+
+    return this.prisma.service.create({
+      data: {
+        name: `${source.name} (копія)`,
+        slug,
+        description: source.description,
+        price: source.price,
+        priceLabel: source.priceLabel,
+        coverImage: source.coverImage,
+        // Hidden until the admin reviews and renames it
+        isActive: false,
+        sortOrder: source.sortOrder,
+        blocks: source.blocks as Prisma.InputJsonValue,
+        tiers: {
+          create: source.tiers.map((tier, index) => ({
+            label: tier.label,
+            price: tier.price,
+            note: tier.note,
+            sortOrder: tier.sortOrder ?? index,
+          })),
+        },
+      },
+      include: { tiers: { orderBy: { sortOrder: 'asc' } } },
+    });
+  }
+
+  private async generateUniqueSlug(base: string): Promise<string> {
+    let slug = base;
+    for (let suffix = 2; ; suffix++) {
+      const exists = await this.prisma.service.findUnique({
+        where: { slug },
+        select: { id: true },
+      });
+      if (!exists) return slug;
+      slug = `${base}-${suffix}`;
     }
   }
 
