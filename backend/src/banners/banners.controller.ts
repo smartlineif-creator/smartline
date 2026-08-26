@@ -23,9 +23,15 @@ import { Role } from '@prisma/client';
 export class BannersController {
   constructor(private bannersService: BannersService) {}
 
+  @Get('admin/list')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
+  findAllAdmin() {
+    return this.bannersService.findAll();
+  }
+
   @Get()
-  find(@Query('position') position?: string, @Query('all') all?: string) {
-    if (all === 'true') return this.bannersService.findAll();
+  find(@Query('position') position?: string) {
     return this.bannersService.findActive(position || 'home');
   }
 

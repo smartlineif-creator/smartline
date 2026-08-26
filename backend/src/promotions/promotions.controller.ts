@@ -23,9 +23,15 @@ import { Role } from '@prisma/client';
 export class PromotionsController {
   constructor(private promotionsService: PromotionsService) {}
 
+  @Get('admin/list')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
+  findAllAdmin() {
+    return this.promotionsService.findAll();
+  }
+
   @Get()
-  findActive(@Query('all') all?: string) {
-    if (all === 'true') return this.promotionsService.findAll();
+  findActive() {
     return this.promotionsService.findActive();
   }
 
