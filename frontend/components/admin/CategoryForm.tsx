@@ -109,7 +109,9 @@ export default function CategoryForm({ mode, category }: Props) {
       toast.error(
         msg.includes('slug')
           ? 'Slug вже зайнятий — категорія з таким slug уже існує'
-          : 'Не вдалося зберегти категорію',
+          : msg
+            ? `Не вдалося зберегти категорію: ${msg}`
+            : 'Не вдалося зберегти категорію',
       );
     } finally {
       setSaving(false);

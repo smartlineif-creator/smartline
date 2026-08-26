@@ -917,6 +917,7 @@ export default function ProductForm({ mode, productId }: Props) {
 
     setUploading(true);
     let failed = 0;
+    let lastError = '';
     try {
       // Upload one at a time — parallel uploads overwhelm the image
       // processing on the server (memory) and cause 502s on large photos.
@@ -928,11 +929,16 @@ export default function ProductForm({ mode, productId }: Props) {
           } else {
             setImages((current) => [...current, url]);
           }
-        } catch {
+        } catch (uploadError: unknown) {
           failed += 1;
+          lastError = (uploadError as Error).message || '';
         }
       }
-      if (failed > 0) toast.error(`Не вдалося завантажити ${failed} з ${files.length} фото`);
+      if (failed > 0) {
+        toast.error(
+          `Не вдалося завантажити ${failed} з ${files.length} фото${lastError ? `: ${lastError}` : ''}`,
+        );
+      }
     } finally {
       setUploading(false);
       e.target.value = '';
@@ -1139,7 +1145,9 @@ export default function ProductForm({ mode, productId }: Props) {
           ? 'Slug вже зайнятий — товар або конфігурація з таким slug уже існує'
           : msg.includes('SKU')
             ? 'Артикул (SKU) вже зайнятий іншим товаром або конфігурацією'
-            : 'Помилка збереження',
+            : msg
+              ? `Помилка збереження: ${msg}`
+              : 'Помилка збереження',
       );
     } finally {
       setSaving(false);

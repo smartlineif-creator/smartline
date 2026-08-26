@@ -1,4 +1,4 @@
-import { NestFactory } from '@nestjs/core';
+import { HttpAdapterHost, NestFactory } from '@nestjs/core';
 import {
   FastifyAdapter,
   NestFastifyApplication,
@@ -7,6 +7,7 @@ import { ValidationPipe } from '@nestjs/common';
 import fastifyCookie from '@fastify/cookie';
 import fastifyMultipart from '@fastify/multipart';
 import { AppModule } from './app.module';
+import { HttpExceptionLoggingFilter } from './common/http-exception-logging.filter';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestFastifyApplication>(
@@ -51,6 +52,10 @@ async function bootstrap() {
       transform: true,
       forbidNonWhitelisted: true,
     }),
+  );
+
+  app.useGlobalFilters(
+    new HttpExceptionLoggingFilter(app.get(HttpAdapterHost).httpAdapter),
   );
 
   app.setGlobalPrefix('api');

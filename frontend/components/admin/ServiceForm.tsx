@@ -99,7 +99,13 @@ export default function ServiceForm({ initial }: Props) {
       }
     } catch (e: unknown) {
       const msg = (e as Error).message;
-      toast.error(msg?.includes('slug') ? 'Slug вже зайнятий' : 'Помилка збереження');
+      toast.error(
+        msg?.includes('slug')
+          ? 'Slug вже зайнятий'
+          : msg
+            ? `Помилка збереження: ${msg}`
+            : 'Помилка збереження',
+      );
     } finally {
       setSaving(false);
     }

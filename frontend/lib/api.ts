@@ -165,7 +165,10 @@ async function apiFetch<T>(
 
   if (!res.ok) {
     const error = await res.json().catch(() => ({ message: res.statusText }));
-    throw new Error(error.message || `API error ${res.status}`);
+    // ValidationPipe returns message as an array of constraint strings
+    const raw = (error as { message?: string | string[] }).message;
+    const message = Array.isArray(raw) ? raw.join('; ') : raw;
+    throw new Error(message || `API error ${res.status}`);
   }
 
   const text = await res.text();
