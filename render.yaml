@@ -3,7 +3,7 @@ services:
   - type: web
     name: smartline-backend
     runtime: docker
-    plan: free
+    plan: starter
     dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
     healthCheckPath: /api/health
@@ -53,7 +53,7 @@ services:
   - type: web
     name: smartline-frontend
     runtime: node
-    plan: free
+    plan: starter
     buildCommand: cd frontend && npm install --include=dev && npm run build
     startCommand: cd frontend && npm start
     envVars:
