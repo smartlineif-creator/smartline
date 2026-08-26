@@ -11,7 +11,10 @@ import { AppModule } from './app.module';
 async function bootstrap() {
   const app = await NestFactory.create<NestFastifyApplication>(
     AppModule,
-    new FastifyAdapter(),
+    // Behind the Render proxy every request arrives from the proxy's IP.
+    // Without trustProxy the per-IP ThrottlerGuard (60 req/min, login 5/min)
+    // treats ALL visitors as one client and the whole shop shares one bucket.
+    new FastifyAdapter({ trustProxy: true }),
   );
 
   await app.register(fastifyCookie);
