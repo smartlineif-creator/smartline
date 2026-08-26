@@ -1,6 +1,7 @@
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import { ArrowRight } from 'lucide-react';
-import { adminGetDashboardAttention, adminGetDashboardStats, adminGetAllOrders } from '@/lib/api';
+import { adminGetDashboardAttention, adminGetDashboardStats, adminGetAllOrders, SessionExpiredError } from '@/lib/api';
 import { formatPrice, ORDER_STATUS_COLORS, ORDER_STATUS_LABELS } from '@/lib/utils';
 import { DashboardStats } from '@/types';
 import AdminPageHint from '@/components/admin/AdminPageHint';
@@ -35,13 +36,24 @@ export default async function AdminDashboardPage({ searchParams }: Props) {
   const sp = await searchParams;
   const period = sp.period || '7d';
 
-  const [attention, stats, recentOrders] = await Promise.all([
-    adminGetDashboardAttention().catch(() => ({
-      newOrders: 0, serviceRequests: 0, pendingReviews: 0, outOfStock: 0, expiringPromotions: 0,
-    })),
-    adminGetDashboardStats(period).catch(() => EMPTY_STATS),
-    adminGetAllOrders({ limit: '10', page: '1' }).catch(() => ({ data: [], total: 0, page: 1, limit: 10 })),
+  // allSettled so one failing call can't hide a session-expiry behind another's
+  // fallback: if any settled as a dead session, send the admin to log in again
+  // instead of rendering zeros as if they were real data.
+  const [attentionR, statsR, recentR] = await Promise.allSettled([
+    adminGetDashboardAttention(),
+    adminGetDashboardStats(period),
+    adminGetAllOrders({ limit: '10', page: '1' }),
   ]);
+  if ([attentionR, statsR, recentR].some(
+    (r) => r.status === 'rejected' && r.reason instanceof SessionExpiredError,
+  )) {
+    redirect('/admin/login');
+  }
+  const attention = attentionR.status === 'fulfilled' ? attentionR.value : {
+    newOrders: 0, serviceRequests: 0, pendingReviews: 0, outOfStock: 0, expiringPromotions: 0,
+  };
+  const stats = statsR.status === 'fulfilled' ? statsR.value : EMPTY_STATS;
+  const recentOrders = recentR.status === 'fulfilled' ? recentR.value : { data: [], total: 0, page: 1, limit: 10 };
 
   const cards = [
     { label: 'Замовлень', value: stats.metrics.orders.value, deltaPercent: stats.metrics.orders.deltaPercent },

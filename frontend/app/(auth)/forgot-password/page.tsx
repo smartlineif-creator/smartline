@@ -25,7 +25,7 @@ export default function ForgotPasswordPage() {
     setError('');
     setLoading(true);
     try {
-      await forgotPassword(email);
+      await forgotPassword(email.trim().toLowerCase());
       setSent(true);
       setCooldown(RESEND_COOLDOWN);
     } catch {
@@ -41,7 +41,7 @@ export default function ForgotPasswordPage() {
     if (cooldown > 0) return;
     setLoading(true);
     try {
-      await forgotPassword(email);
+      await forgotPassword(email.trim().toLowerCase());
     } catch { /* silent */ } finally {
       setLoading(false);
       setCooldown(RESEND_COOLDOWN);

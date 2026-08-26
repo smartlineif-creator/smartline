@@ -22,7 +22,6 @@ export class OrdersService {
     page = 1,
     limit = 20,
     today?: boolean,
-    userEmail?: string,
     q?: string,
     statusCsv?: string,
     hasService?: boolean,
@@ -32,12 +31,10 @@ export class OrdersService {
     const where: Prisma.OrderWhereInput = {};
 
     if (userId) {
-      // For logged-in non-admin users: match orders by userId OR guest orders by email
-      if (userEmail) {
-        where.OR = [{ userId }, { customerEmail: userEmail, userId: null }];
-      } else {
-        where.userId = userId;
-      }
+      // Only orders truly owned by the account. Guest orders are NOT matched by
+      // email — email is unverified, so that would expose another person's
+      // orders (name, phone, address) to whoever registers the same address.
+      where.userId = userId;
     }
 
     if (hasService) {

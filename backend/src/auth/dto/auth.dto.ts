@@ -13,8 +13,8 @@ export class LoginDto {
   @IsEmail()
   email: string;
 
+  // No @MinLength here — a failed login must not reveal the password policy.
   @IsString()
-  @MinLength(6)
   password: string;
 }
 
@@ -23,7 +23,7 @@ export class RegisterDto {
   email: string;
 
   @IsString()
-  @MinLength(6)
+  @MinLength(8)
   password: string;
 
   @IsString()
@@ -49,7 +49,7 @@ export class ResetPasswordDto {
   token: string;
 
   @IsString()
-  @MinLength(6)
+  @MinLength(8)
   password: string;
 }
 

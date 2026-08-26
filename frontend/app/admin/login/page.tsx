@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { AlertCircle, Eye, EyeOff, Loader2, Lock, TriangleAlert } from 'lucide-react';
-import { login } from '@/lib/api';
+import { login, getMe, clearTokens } from '@/lib/api';
 
 export default function AdminLoginPage() {
   const [email, setEmail] = useState('');
@@ -34,6 +34,14 @@ export default function AdminLoginPage() {
     setLoading(true);
     try {
       await login(email, password);
+      // The login endpoint accepts any role; gate the admin panel on ADMIN here
+      // so a regular customer isn't dropped into an empty shell full of 403s.
+      const me = await getMe();
+      if (me.role !== 'ADMIN') {
+        clearTokens();
+        setError('Цей акаунт не має доступу до адмін-панелі.');
+        return;
+      }
       window.location.assign('/admin');
     } catch (err: any) {
       setError(err.message || 'Invalid email or password. Please try again.');
@@ -167,7 +175,7 @@ export default function AdminLoginPage() {
                   Password
                 </label>
                 <a
-                  href="/account/forgot"
+                  href="/forgot-password"
                   className="text-xs font-medium transition-opacity hover:opacity-70"
                   style={{ color: '#0082FF' }}
                 >

@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 
-import { createOrder, getMe, getWarehouses, searchCities, searchStreets } from '@/lib/api';
+import { createOrder, getMe, getWarehouses, hasStoredSession, searchCities, searchStreets } from '@/lib/api';
 import { formatPhone, isValidEmail, isValidUAPhone } from '@/lib/validation';
 import { useCartStore } from '@/store/cart';
 import { User as UserType } from '@/types';
@@ -113,6 +113,9 @@ export default function CheckoutPage() {
   }, []);
 
   useEffect(() => {
+    // Guests check out without a session — only prefill from the profile when
+    // one actually exists, so we don't fire a guaranteed 401.
+    if (!hasStoredSession()) return;
     let cancelled = false;
     getMe()
       .then((user) => {

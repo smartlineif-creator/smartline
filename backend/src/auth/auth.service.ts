@@ -31,14 +31,6 @@ export class AuthService {
     private mail: MailService,
   ) {}
 
-  /** Link any guest orders (userId: null) with matching email to the given user */
-  private async claimGuestOrders(userId: string, email: string): Promise<void> {
-    await this.prisma.order.updateMany({
-      where: { customerEmail: email, userId: null },
-      data: { userId },
-    });
-  }
-
   async register(dto: RegisterDto) {
     const email = dto.email.toLowerCase();
     const exists = await this.prisma.user.findUnique({
@@ -56,9 +48,6 @@ export class AuthService {
       },
     });
 
-    // Attach any guest orders made with this email before registration
-    await this.claimGuestOrders(user.id, user.email);
-
     return this.issueTokens(user.id, user.email, user.role);
   }
 
@@ -71,9 +60,6 @@ export class AuthService {
     const valid = await bcrypt.compare(dto.password, user.password);
     if (!valid) throw new UnauthorizedException('Невірний email або пароль');
 
-    // Also claim any guest orders placed before logging in
-    await this.claimGuestOrders(user.id, user.email);
-
     return this.issueTokens(user.id, user.email, user.role);
   }
 
@@ -82,30 +68,32 @@ export class AuthService {
     return this.issueTokens(userId, email, role);
   }
 
-  async logout(refreshToken: string) {
-    await this.prisma.refreshToken.deleteMany({
-      where: { token: refreshToken },
-    });
+  // Kills every session of the user, not just the presented token — a lost or
+  // stolen refresh token must die on logout/password change, and in the prod
+  // Bearer flow the httpOnly cookie never reaches the backend anyway.
+  async logout(userId: string) {
+    await this.prisma.refreshToken.deleteMany({ where: { userId } });
   }
 
   async forgotPassword(dto: ForgotPasswordDto) {
+    const email = dto.email.toLowerCase();
     const user = await this.prisma.user.findUnique({
-      where: { email: dto.email },
+      where: { email },
     });
     if (!user) return; // silent — don't leak user existence
 
     const token = randomBytes(32).toString('hex');
     await this.prisma.passwordResetToken.deleteMany({
-      where: { email: dto.email },
+      where: { email },
     });
     await this.prisma.passwordResetToken.create({
-      data: { email: dto.email, token, expiresAt: addHours(new Date(), 1) },
+      data: { email, token, expiresAt: addHours(new Date(), 1) },
     });
 
     const frontendUrl = getPrimaryFrontendUrl(
       this.config.get<string>('FRONTEND_URL'),
     );
-    this.mail.sendPasswordReset(dto.email, token, frontendUrl).catch(() => {});
+    this.mail.sendPasswordReset(email, token, frontendUrl).catch(() => {});
   }
 
   async resetPassword(dto: ResetPasswordDto) {
@@ -117,13 +105,16 @@ export class AuthService {
     }
 
     const hashed = await bcrypt.hash(dto.password, 10);
-    await this.prisma.user.update({
+    const user = await this.prisma.user.update({
       where: { email: record.email },
-      data: { password: hashed },
+      data: { password: hashed, passwordChangedAt: new Date() },
     });
     await this.prisma.passwordResetToken.delete({
       where: { token: dto.token },
     });
+    // Password reset kills every existing session — a compromised account
+    // must not stay reachable via a refresh token the attacker already holds.
+    await this.prisma.refreshToken.deleteMany({ where: { userId: user.id } });
   }
 
   async updateProfile(userId: string, dto: UpdateProfileDto) {
@@ -146,22 +137,34 @@ export class AuthService {
     const hashed = await bcrypt.hash(dto.newPassword, 10);
     await this.prisma.user.update({
       where: { id: userId },
-      data: { password: hashed },
+      data: { password: hashed, passwordChangedAt: new Date() },
     });
+    // Changing the password logs out every device.
+    await this.prisma.refreshToken.deleteMany({ where: { userId } });
   }
 
   private async issueTokens(userId: string, email: string, role: string) {
-    const payload = { sub: userId, email, role };
-
-    const accessToken = this.jwt.sign(payload, {
-      secret: this.config.get('JWT_SECRET'),
-      expiresIn: this.config.get('JWT_EXPIRES_IN') || '15m',
+    // Best-effort cleanup so the table doesn't grow unbounded (one row per
+    // login/refresh, 30-day TTL) — no cron needed.
+    await this.prisma.refreshToken.deleteMany({
+      where: { userId, expiresAt: { lt: new Date() } },
     });
 
-    const refreshToken = this.jwt.sign(payload, {
-      secret: this.config.get('JWT_REFRESH_SECRET'),
-      expiresIn: this.config.get('JWT_REFRESH_EXPIRES_IN') || '30d',
-    });
+    const accessToken = this.jwt.sign(
+      { sub: userId, email, role, typ: 'access' },
+      {
+        secret: this.config.get('JWT_SECRET'),
+        expiresIn: this.config.get('JWT_EXPIRES_IN') || '15m',
+      },
+    );
+
+    const refreshToken = this.jwt.sign(
+      { sub: userId, email, role, typ: 'refresh' },
+      {
+        secret: this.config.get('JWT_REFRESH_SECRET'),
+        expiresIn: this.config.get('JWT_REFRESH_EXPIRES_IN') || '30d',
+      },
+    );
 
     await this.prisma.refreshToken.create({
       data: {

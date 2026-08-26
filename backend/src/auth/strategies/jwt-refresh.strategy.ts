@@ -26,6 +26,10 @@ export class JwtRefreshStrategy extends PassportStrategy(
   }
 
   async validate(req: Request, payload: JwtPayload) {
+    // An access token must never be used to refresh (defense-in-depth against
+    // accidentally identical secrets). Absent typ = legacy token, allowed.
+    if (payload.typ === 'access') throw new UnauthorizedException();
+
     const refreshToken =
       req?.cookies?.refreshToken ||
       req?.headers?.authorization?.replace(/^Bearer\s+/i, '');

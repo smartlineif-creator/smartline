@@ -36,7 +36,6 @@ export class OrdersController {
   ) {
     const isAdmin = user.role === Role.ADMIN;
     const userId = isAdmin ? undefined : user.id;
-    const userEmail = isAdmin ? undefined : user.email;
     const clampedPage = Math.max(1, Number(page) || 1);
     const clampedLimit = Math.min(100, Math.max(1, Number(limit) || 20));
     return this.ordersService.findAll(
@@ -44,7 +43,6 @@ export class OrdersController {
       clampedPage,
       clampedLimit,
       today === 'true',
-      userEmail,
       q?.trim() || undefined,
       status,
       hasService === 'true',

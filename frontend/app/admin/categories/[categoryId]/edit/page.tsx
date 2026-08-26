@@ -1,6 +1,6 @@
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import CategoryForm from '@/components/admin/CategoryForm';
-import { getAdminCategory } from '@/lib/api';
+import { getAdminCategory, SessionExpiredError } from '@/lib/api';
 
 interface Props {
   params: Promise<{ categoryId: string }>;
@@ -8,7 +8,11 @@ interface Props {
 
 export default async function EditCategoryPage({ params }: Props) {
   const { categoryId } = await params;
-  const category = await getAdminCategory(categoryId).catch(() => null);
+  // Don't collapse a dead session into a false 404 — send the admin to log in.
+  const category = await getAdminCategory(categoryId).catch((e: unknown) => {
+    if (e instanceof SessionExpiredError) redirect('/admin/login');
+    return null;
+  });
 
   if (!category) notFound();
 

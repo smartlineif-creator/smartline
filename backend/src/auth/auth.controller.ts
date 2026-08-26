@@ -53,6 +53,7 @@ export class AuthController {
   }
 
   @Post('refresh')
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
   @UseGuards(JwtRefreshGuard)
   @HttpCode(HttpStatus.OK)
   async refresh(
@@ -77,15 +78,21 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
   async logout(
-    @Req() req: FastifyRequest,
+    @CurrentUser() user: User,
     @Res({ passthrough: true }) res: FastifyReply,
   ) {
-    const refreshToken =
-      (req.cookies as any)?.refreshToken ||
-      req.headers.authorization?.replace(/^Bearer\s+/i, '');
-    if (refreshToken) await this.authService.logout(refreshToken);
-    res.clearCookie('accessToken');
-    res.clearCookie('refreshToken');
+    await this.authService.logout(user.id);
+    // clearCookie must carry the same attributes as setCookie, otherwise the
+    // browser won't drop the original SameSite=None; Secure cross-site cookies.
+    const isProd = process.env.NODE_ENV === 'production';
+    const opts = {
+      httpOnly: true,
+      secure: isProd,
+      sameSite: (isProd ? 'none' : 'lax') as 'none' | 'lax',
+      path: '/',
+    };
+    res.clearCookie('accessToken', opts);
+    res.clearCookie('refreshToken', opts);
     return { message: 'Logged out' };
   }
 
@@ -98,6 +105,7 @@ export class AuthController {
   }
 
   @Post('reset-password')
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
   @HttpCode(HttpStatus.OK)
   async resetPassword(@Body() dto: ResetPasswordDto) {
     await this.authService.resetPassword(dto);

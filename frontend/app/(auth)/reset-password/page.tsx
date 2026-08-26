@@ -25,7 +25,7 @@ function ResetPasswordForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    if (password.length < 6) { setError('Пароль має бути не менше 6 символів'); return; }
+    if (password.length < 8) { setError('Пароль має бути не менше 8 символів'); return; }
     if (password !== confirm) { setError('Паролі не збігаються'); return; }
 
     setLoading(true);

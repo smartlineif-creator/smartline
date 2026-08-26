@@ -49,15 +49,17 @@ function getRefreshToken(): string | null {
 
 function saveTokens(tokens: { accessToken?: string; refreshToken?: string }) {
   if (typeof window === 'undefined') return;
+  // Add Secure on HTTPS so the JWT-bearing cookie never rides an http request.
+  const secure = window.location.protocol === 'https:' ? '; Secure' : '';
   if (tokens.accessToken) {
     localStorage.setItem(ACCESS_TOKEN_KEY, tokens.accessToken);
-    document.cookie = `${ACCESS_COOKIE_NAME}=${tokens.accessToken}; path=/; max-age=900; SameSite=Lax`;
-    document.cookie = `${SESSION_COOKIE_NAME}=1; path=/; max-age=${SESSION_COOKIE_MAX_AGE}; SameSite=Lax`;
+    document.cookie = `${ACCESS_COOKIE_NAME}=${tokens.accessToken}; path=/; max-age=900; SameSite=Lax${secure}`;
+    document.cookie = `${SESSION_COOKIE_NAME}=1; path=/; max-age=${SESSION_COOKIE_MAX_AGE}; SameSite=Lax${secure}`;
   }
   if (tokens.refreshToken) localStorage.setItem(REFRESH_TOKEN_KEY, tokens.refreshToken);
 }
 
-function clearTokens() {
+export function clearTokens() {
   if (typeof window === 'undefined') return;
   localStorage.removeItem(ACCESS_TOKEN_KEY);
   localStorage.removeItem(REFRESH_TOKEN_KEY);
@@ -116,6 +118,16 @@ export async function ensureSession(): Promise<void> {
   await refreshSession();
 }
 
+/** True if some session material exists — lets public pages skip protected
+ * calls for guests instead of firing a guaranteed 401. */
+export function hasStoredSession(): boolean {
+  if (typeof window === 'undefined') return false;
+  const hasAccessCookie = document.cookie
+    .split('; ')
+    .some((c) => c.startsWith(`${ACCESS_COOKIE_NAME}=`));
+  return hasAccessCookie || Boolean(getRefreshToken());
+}
+
 function shouldTryRefresh(path: string) {
   return ![
     '/auth/login',
@@ -125,6 +137,15 @@ function shouldTryRefresh(path: string) {
     '/auth/forgot-password',
     '/auth/reset-password',
   ].includes(path);
+}
+
+/** Thrown when a Server Component request gets 401 — no window to refresh, so
+ * the page should redirect to login rather than render empty/placeholder data. */
+export class SessionExpiredError extends Error {
+  constructor(message = 'Session expired') {
+    super(message);
+    this.name = 'SessionExpiredError';
+  }
 }
 
 async function apiFetch<T>(
@@ -164,14 +185,15 @@ async function apiFetch<T>(
   }
 
   if (!res.ok) {
-    // Still 401 after the refresh attempt — the session is dead. Clear it and
-    // send the user to the matching login page instead of leaving every page
-    // to surface raw Unauthorized errors.
+    // Still 401 after the refresh attempt — the session is dead. Only redirect
+    // on pages that actually REQUIRE a session (/account, /admin). Public pages
+    // like /checkout call protected endpoints opportunistically for guests, and
+    // must never be bounced to login on a 401.
     if (res.status === 401 && typeof window !== 'undefined' && shouldTryRefresh(path)) {
       const current = window.location.pathname;
-      const onAuthPage =
-        current === '/login' || current === '/register' || current === '/admin/login';
-      if (!onAuthPage) {
+      const gated = current.startsWith('/account') || current.startsWith('/admin');
+      const onAuthPage = current === '/admin/login';
+      if (gated && !onAuthPage) {
         clearTokens();
         window.location.assign(current.startsWith('/admin') ? '/admin/login' : '/login');
       }
@@ -180,6 +202,12 @@ async function apiFetch<T>(
     // ValidationPipe returns message as an array of constraint strings
     const raw = (error as { message?: string | string[] }).message;
     const message = Array.isArray(raw) ? raw.join('; ') : raw;
+    // On the server there is no window to refresh or redirect, so a 401 would
+    // otherwise be swallowed into empty data (dashboard zeros, false 404s).
+    // Surface it as a distinct error so RSC pages can redirect to login.
+    if (res.status === 401 && typeof window === 'undefined') {
+      throw new SessionExpiredError(message || 'Session expired');
+    }
     throw new Error(message || `API error ${res.status}`);
   }
 
@@ -593,7 +621,7 @@ export async function adminReorderCategories(categories: { id: string; sortOrder
 }
 
 export async function adminGetPromotions() {
-  return apiFetch<{ data: Promotion[]; total: number }>('/promotions?all=true');
+  return apiFetch<{ data: Promotion[]; total: number }>('/promotions/admin/list');
 }
 
 export async function adminCreatePromotion(data: any) {
@@ -609,7 +637,7 @@ export async function adminDeletePromotion(id: string) {
 }
 
 export async function adminGetBanners() {
-  return apiFetch<Banner[]>('/banners?all=true');
+  return apiFetch<Banner[]>('/banners/admin/list');
 }
 
 export async function adminCreateBanner(data: any) {
