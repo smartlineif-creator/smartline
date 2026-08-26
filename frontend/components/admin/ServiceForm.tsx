@@ -78,7 +78,6 @@ export default function ServiceForm({ initial }: Props) {
         slug: slug.trim(),
         description: description.trim() || undefined,
         price: price ? Number(price) : undefined,
-        priceLabel: 'від',
         coverImage: coverImage || undefined,
         isActive,
         blocks,

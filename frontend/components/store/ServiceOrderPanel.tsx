@@ -33,11 +33,8 @@ export default function ServiceOrderPanel({ service }: Props) {
 
   return (
     <>
-      {/* «від» only makes sense when the number summarises a range. Here a concrete
-          tier is always selected, so the price is exact — fall back to the service's
-          own label only when there are no tiers at all. */}
       <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--sl-text-muted)] mb-1">
-        {selectedTier ? 'Вартість' : service.priceLabel ?? 'Вартість'}
+        Вартість
       </p>
       <p className="font-[var(--sl-font-display)] text-[44px] tracking-[0.03em] text-[var(--sl-accent)] leading-none mb-1.5">
         {priceStr}

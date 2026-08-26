@@ -360,7 +360,6 @@ model Service {
   slug        String        @unique
   description String?
   price       Decimal       @db.Decimal(10, 2)
-  priceLabel  String?
   coverImage  String?
   isActive    Boolean       @default(true)
   sortOrder   Int           @default(0)

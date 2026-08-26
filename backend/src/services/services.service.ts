@@ -76,11 +76,6 @@ export class CreateServiceDto {
 
   @IsString()
   @IsOptional()
-  @MaxLength(50)
-  priceLabel?: string;
-
-  @IsString()
-  @IsOptional()
   coverImage?: string;
 
   @IsBoolean()
@@ -129,11 +124,6 @@ export class UpdateServiceDto {
   @Min(0)
   @Type(() => Number)
   price?: number;
-
-  @IsString()
-  @IsOptional()
-  @MaxLength(50)
-  priceLabel?: string;
 
   @IsString()
   @IsOptional()
@@ -212,7 +202,9 @@ export class ServicesService {
     const sanitized = this.sanitizeBlocks(dto.blocks ?? []);
     const price = this.resolvePrice(dto.price, dto.tiers);
     if (price === undefined) {
-      throw new BadRequestException('Вкажіть ціну або додайте хоча б один тариф');
+      throw new BadRequestException(
+        'Вкажіть ціну або додайте хоча б один тариф',
+      );
     }
     try {
       return await this.prisma.service.create({
@@ -221,7 +213,6 @@ export class ServicesService {
           slug: dto.slug,
           description: dto.description,
           price,
-          priceLabel: dto.priceLabel,
           coverImage: dto.coverImage,
           isActive: dto.isActive ?? true,
           sortOrder: dto.sortOrder ?? 0,
@@ -268,7 +259,6 @@ export class ServicesService {
               description: dto.description,
             }),
             ...(price !== undefined && { price }),
-            ...(dto.priceLabel !== undefined && { priceLabel: dto.priceLabel }),
             ...(dto.coverImage !== undefined && { coverImage: dto.coverImage }),
             ...(dto.isActive !== undefined && { isActive: dto.isActive }),
             ...(dto.sortOrder !== undefined && { sortOrder: dto.sortOrder }),
@@ -300,7 +290,6 @@ export class ServicesService {
         slug,
         description: source.description,
         price: source.price,
-        priceLabel: source.priceLabel,
         coverImage: source.coverImage,
         // Hidden until the admin reviews and renames it
         isActive: false,

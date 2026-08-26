@@ -67,7 +67,7 @@ export function getProductDisplayPrices(product: Product, variant?: Variant) {
 export function getServiceDisplayPrice(service: Service): { amount: number; prefix?: string } {
   const tiers = service.tiers ?? [];
   if (tiers.length === 0) {
-    return { amount: Number(service.price), prefix: service.priceLabel ?? undefined };
+    return { amount: Number(service.price) };
   }
   if (tiers.length === 1) {
     return { amount: Number(tiers[0].price) };
