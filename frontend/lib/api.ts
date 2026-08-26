@@ -164,6 +164,18 @@ async function apiFetch<T>(
   }
 
   if (!res.ok) {
+    // Still 401 after the refresh attempt — the session is dead. Clear it and
+    // send the user to the matching login page instead of leaving every page
+    // to surface raw Unauthorized errors.
+    if (res.status === 401 && typeof window !== 'undefined' && shouldTryRefresh(path)) {
+      const current = window.location.pathname;
+      const onAuthPage =
+        current === '/login' || current === '/register' || current === '/admin/login';
+      if (!onAuthPage) {
+        clearTokens();
+        window.location.assign(current.startsWith('/admin') ? '/admin/login' : '/login');
+      }
+    }
     const error = await res.json().catch(() => ({ message: res.statusText }));
     // ValidationPipe returns message as an array of constraint strings
     const raw = (error as { message?: string | string[] }).message;
