@@ -66,9 +66,11 @@ services:
       - key: NEXT_PUBLIC_META_PIXEL
         sync: false
 
-# ── PostgreSQL Database (free 90 days) ───────────────────────────────────
+# ── PostgreSQL Database ──────────────────────────────────────────────────
 databases:
   - name: smartline-db
     databaseName: smartline
     user: smartline
-    plan: free
+    # Must match the live plan: the DB was upgraded in the dashboard, and a
+    # blueprint sync with `plan: free` here could downgrade it (data loss).
+    plan: basic-256mb
