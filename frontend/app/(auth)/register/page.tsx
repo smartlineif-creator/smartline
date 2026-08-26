@@ -1,14 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { AlertCircle, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { register } from '@/lib/api';
 import { formatPhone, isValidUAPhone } from '@/lib/validation';
 
 export default function RegisterPage() {
-  const router = useRouter();
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
@@ -35,7 +33,7 @@ export default function RegisterPage() {
     setLoading(true);
     try {
       await register({ email, password, name, phone });
-      router.push('/account');
+      window.location.assign('/account');
     } catch (err: any) {
       setError(err.message || 'Помилка реєстрації. Спробуйте ще раз.');
     } finally {

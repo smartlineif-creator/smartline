@@ -29,6 +29,10 @@ export class OrdersController {
     @Query('page') page?: string,
     @Query('limit') limit?: string,
     @Query('today') today?: string,
+    @Query('q') q?: string,
+    @Query('status') status?: string,
+    @Query('hasService') hasService?: string,
+    @Query('withStats') withStats?: string,
   ) {
     const isAdmin = user.role === Role.ADMIN;
     const userId = isAdmin ? undefined : user.id;
@@ -41,6 +45,10 @@ export class OrdersController {
       clampedLimit,
       today === 'true',
       userEmail,
+      q?.trim() || undefined,
+      status,
+      hasService === 'true',
+      isAdmin || withStats === 'true',
     );
   }
 

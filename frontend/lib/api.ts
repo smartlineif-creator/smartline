@@ -1,7 +1,7 @@
 import {
   Product, Category, Banner, Promotion, Order, CartItem,
   Review, User, PaginatedResponse, Service, ServiceInput,
-  DashboardAttention, DashboardStats,
+  DashboardAttention, DashboardStats, OrderListStats,
 } from '@/types';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
@@ -237,7 +237,9 @@ export async function getActivePromotions() {
 
 export async function getOrders(params: Record<string, string> = {}) {
   const query = new URLSearchParams(params).toString();
-  return apiFetch<PaginatedResponse<Order>>(`/orders${query ? `?${query}` : ''}`);
+  return apiFetch<PaginatedResponse<Order> & { stats?: OrderListStats }>(
+    `/orders${query ? `?${query}` : ''}`,
+  );
 }
 
 export async function getOrder(id: string) {
@@ -329,12 +331,16 @@ export async function changePassword(currentPassword: string, newPassword: strin
 
 // ─── Reviews ─────────────────────────────────────────────────────────────────
 
-export async function getReviews(productId: string) {
-  return apiFetch<Review[]>(`/reviews?productId=${productId}`);
+export async function getReviews(productId: string, page = 1) {
+  return apiFetch<PaginatedResponse<Review> & { avgRating: number }>(
+    `/reviews?productId=${productId}&page=${page}`,
+  );
 }
 
-export async function getServiceReviews(serviceId: string) {
-  return apiFetch<Review[]>(`/reviews?serviceId=${serviceId}`);
+export async function getServiceReviews(serviceId: string, page = 1) {
+  return apiFetch<PaginatedResponse<Review> & { avgRating: number }>(
+    `/reviews?serviceId=${serviceId}&page=${page}`,
+  );
 }
 
 export async function getStoreReviews(page = 1) {
@@ -428,9 +434,15 @@ export async function uploadVideo(file: File): Promise<string> {
 
 // ─── Admin ───────────────────────────────────────────────────────────────────
 
-export async function adminGetAllOrders(params: Record<string, string> = {}) {
-  const query = new URLSearchParams(params).toString();
-  return apiFetch<PaginatedResponse<Order>>(`/orders?${query}`);
+export async function adminGetAllOrders(params: Record<string, string | number | undefined> = {}) {
+  const query = new URLSearchParams(
+    Object.entries(params)
+      .filter(([, v]) => v !== undefined && v !== '')
+      .map(([k, v]) => [k, String(v)]),
+  ).toString();
+  return apiFetch<PaginatedResponse<Order> & { stats?: OrderListStats }>(
+    `/orders${query ? `?${query}` : ''}`,
+  );
 }
 
 export async function adminGetOrder(id: string) {
@@ -441,8 +453,13 @@ export async function adminUpdateOrderStatus(id: string, data: any) {
   return apiFetch<Order>(`/orders/${id}/status`, { method: 'PATCH', body: JSON.stringify(data) });
 }
 
-export async function adminGetUsers(page = 1) {
-  return apiFetch<PaginatedResponse<User>>(`/users?page=${page}`);
+export async function adminGetUsers(params: Record<string, string | number | undefined> = {}) {
+  const query = new URLSearchParams(
+    Object.entries(params)
+      .filter(([, v]) => v !== undefined && v !== '')
+      .map(([k, v]) => [k, String(v)]),
+  ).toString();
+  return apiFetch<PaginatedResponse<User>>(`/users${query ? `?${query}` : ''}`);
 }
 
 export async function adminUpdateUser(id: string, data: any) {
@@ -464,6 +481,20 @@ export async function adminGetProducts(params: Record<string, string | number | 
       .map(([k, v]) => [k, String(v)]),
   ).toString();
   return apiFetch<PaginatedResponse<Product>>(`/products/admin${query ? `?${query}` : ''}`);
+}
+
+// Resolves picker selections by id in chunks of 50 — the admin list endpoint
+// caps limit at 100 and long CSV id lists would overflow the query string.
+export async function adminGetProductsByIds(ids: string[]) {
+  if (ids.length === 0) return [] as Product[];
+  const chunks: string[][] = [];
+  for (let i = 0; i < ids.length; i += 50) chunks.push(ids.slice(i, i + 50));
+  const results = await Promise.all(
+    chunks.map((chunk) =>
+      adminGetProducts({ ids: chunk.join(','), limit: chunk.length }).then((r) => r.data),
+    ),
+  );
+  return results.flat();
 }
 
 export async function adminCreateProduct(data: any) {
@@ -547,7 +578,7 @@ export async function adminReorderCategories(categories: { id: string; sortOrder
 }
 
 export async function adminGetPromotions() {
-  return apiFetch<PaginatedResponse<Promotion>>('/promotions?all=true');
+  return apiFetch<{ data: Promotion[]; total: number }>('/promotions?all=true');
 }
 
 export async function adminCreatePromotion(data: any) {
@@ -578,11 +609,11 @@ export async function adminDeleteBanner(id: string) {
   return apiFetch<void>(`/banners/${id}`, { method: 'DELETE' });
 }
 
-export async function adminGetReviews(approved?: boolean) {
+export async function adminGetReviews(approved?: boolean, page = 1) {
   // `GET /reviews` only ever returns approved reviews (public-safe default).
   // Unapproved reviews live behind the ADMIN-guarded /reviews/pending.
-  if (approved === false) return apiFetch<PaginatedResponse<Review>>('/reviews/pending');
-  return apiFetch<PaginatedResponse<Review>>('/reviews');
+  if (approved === false) return apiFetch<PaginatedResponse<Review>>(`/reviews/pending?page=${page}`);
+  return apiFetch<PaginatedResponse<Review>>(`/reviews?page=${page}`);
 }
 
 export async function adminApproveReview(id: string) {

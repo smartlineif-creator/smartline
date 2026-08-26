@@ -1,14 +1,17 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ArrowRight, Search, Wrench } from 'lucide-react';
 import { adminGetAllOrders } from '@/lib/api';
 import { Order, OrderStatus } from '@/types';
 import { formatPrice, ORDER_STATUS_COLORS, ORDER_STATUS_LABELS, pluralUk } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
 import SortableTh from '@/components/admin/SortableTh';
 import { useTableSort, compareText, compareNumber, compareDate, type SortComparators } from '@/lib/useTableSort';
+
+const PAGE_SIZE = 20;
 
 function formatDate(value: string) {
   return new Date(value).toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit', year: 'numeric' });
@@ -40,30 +43,43 @@ const REQUEST_COMPARATORS: SortComparators<RequestSortColumn, Order> = {
 export default function AdminRequestsPage() {
   const router = useRouter();
   const [orders, setOrders] = useState<Order[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [query, setQuery] = useState('');
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [searchDraft, setSearchDraft] = useState('');
+  const [search, setSearch] = useState('');
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
+  const loading = !hasLoadedOnce;
+
+  const load = useCallback(() => {
+    adminGetAllOrders({
+      page,
+      limit: PAGE_SIZE,
+      hasService: 'true',
+      q: search || undefined,
+    })
+      .then((res) => {
+        setOrders(res.data);
+        setTotal(res.total);
+      })
+      .catch(() => {
+        setOrders([]);
+        setTotal(0);
+      })
+      .finally(() => setHasLoadedOnce(true));
+  }, [page, search]);
+
+  useEffect(() => { load(); }, [load]);
 
   useEffect(() => {
-    adminGetAllOrders({ page: '1', limit: '200' })
-      .then((res) => {
-        const requests = res.data.filter((o) => o.items?.some((item) => item.serviceId));
-        setOrders(requests);
-      })
-      .catch(() => setOrders([]))
-      .finally(() => setLoading(false));
-  }, []);
+    const timer = setTimeout(() => {
+      setPage(1);
+      setSearch(searchDraft.trim());
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [searchDraft]);
 
-  const filtered = orders.filter((o) => {
-    if (!query) return true;
-    const q = query.toLowerCase();
-    return (
-      o.customerName.toLowerCase().includes(q) ||
-      o.customerPhone.includes(q) ||
-      String(o.orderNumber).includes(q)
-    );
-  });
-
-  const { sorted, column, direction, onSort } = useTableSort(filtered, REQUEST_COMPARATORS);
+  const { sorted, column, direction, onSort } = useTableSort(orders, REQUEST_COMPARATORS);
+  const totalPages = Math.ceil(total / PAGE_SIZE);
 
   return (
     <div className="space-y-6">
@@ -73,7 +89,7 @@ export default function AdminRequestsPage() {
           Заявки на послуги
         </h1>
         <p className="mt-1 text-sm text-gray-500">
-          {loading ? '...' : `${orders.length} ${pluralUk(orders.length, 'замовлення', 'замовлення', 'замовлень')} із послугами`}
+          {loading ? '...' : `${total} ${pluralUk(total, 'замовлення', 'замовлення', 'замовлень')} із послугами`}
         </p>
       </div>
 
@@ -81,9 +97,9 @@ export default function AdminRequestsPage() {
         <div className="relative mb-5 max-w-sm">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
           <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Ім'я, телефон, №..."
+            value={searchDraft}
+            onChange={(e) => setSearchDraft(e.target.value)}
+            placeholder="Ім'я, телефон, email, ТТН, №..."
             className="h-10 w-full rounded-xl border border-gray-200 bg-white pl-9 pr-4 text-sm outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-50"
           />
         </div>
@@ -107,12 +123,12 @@ export default function AdminRequestsPage() {
                   <td colSpan={7} className="py-10 text-center text-sm text-gray-400">Завантаження...</td>
                 </tr>
               )}
-              {!loading && sorted.length === 0 && (
+              {!loading && orders.length === 0 && (
                 <tr>
                   <td colSpan={7} className="py-10 text-center text-sm text-gray-400">Заявок немає</td>
                 </tr>
               )}
-              {sorted.map((order) => {
+              {!loading && sorted.map((order) => {
                 const serviceItems = order.items?.filter((i) => i.serviceId) ?? [];
                 return (
                   <tr
@@ -154,6 +170,14 @@ export default function AdminRequestsPage() {
             </tbody>
           </table>
         </div>
+
+        {total > PAGE_SIZE && (
+          <div className="flex justify-center gap-2 border-t border-gray-100 p-4">
+            <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>←</Button>
+            <span className="py-1.5 text-sm">Стор. {page} з {totalPages}</span>
+            <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>→</Button>
+          </div>
+        )}
       </div>
     </div>
   );

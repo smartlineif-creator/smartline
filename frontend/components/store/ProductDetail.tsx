@@ -394,6 +394,7 @@ export default function ProductDetail({ product }: Props) {
   }, []);
 
   const reviews = (product.reviews as Review[] | undefined) || [];
+  const reviewsTotal = product.reviewsTotal ?? reviews.length;
   const attributes = useMemo(() => {
     const merged = mergeVariantAttributes(product.attributes || [], resolvedVariant?.attributes || []);
     return dedupeAttributes(merged.filter((attribute) => !shouldHideAttribute(attribute)));
@@ -402,9 +403,10 @@ export default function ProductDetail({ product }: Props) {
   const withThisBuyProducts = product.withThisBuyProducts || [];
   const accessoryProducts = product.accessoryProducts || [];
   const similarProducts = product.similarProducts || [];
-  const averageRating = reviews.length > 0
-    ? reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length
-    : 0;
+  const averageRating = product.reviewsAvg
+    ?? (reviews.length > 0
+      ? reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length
+      : 0);
   const currentStock = getProductStock(product, resolvedVariant);
   const isOutOfStock = currentStock <= 0;
 
@@ -876,7 +878,7 @@ export default function ProductDetail({ product }: Props) {
                     Артикул: <span style={{ color: 'var(--sl-text-secondary)' }}>{resolvedVariant?.sku || product.sku}</span>
                   </span>
                 )}
-                {reviews.length > 0 ? (
+                {reviewsTotal > 0 ? (
                   <div className="flex items-center gap-2">
                     <div className="flex items-center gap-0.5" style={{ color: 'var(--sl-accent)' }}>
                       {Array.from({ length: 5 }, (_, index) => (
@@ -884,7 +886,7 @@ export default function ProductDetail({ product }: Props) {
                       ))}
                     </div>
                     <span style={{ color: 'var(--sl-text-secondary)' }}>{averageRating.toFixed(1)}</span>
-                    <span>({reviews.length})</span>
+                    <span>({reviewsTotal})</span>
                   </div>
                 ) : (
                   <span>Новий товар у каталозі</span>
@@ -1186,7 +1188,7 @@ export default function ProductDetail({ product }: Props) {
               {[
                 { value: 'specs', label: 'Характеристики' },
                 { value: 'description', label: 'Опис' },
-                { value: 'reviews', label: `Відгуки (${reviews.length})` },
+                { value: 'reviews', label: `Відгуки (${reviewsTotal})` },
               ].map((tab) => (
                 <TabsTrigger
                   key={tab.value}
@@ -1298,7 +1300,12 @@ export default function ProductDetail({ product }: Props) {
 
             {/* Reviews */}
             <TabsContent value="reviews" className="mt-0">
-              <ReviewsSection target={{ kind: 'product', id: product.id }} reviews={reviews} />
+              <ReviewsSection
+                target={{ kind: 'product', id: product.id }}
+                initial={reviews}
+                total={reviewsTotal}
+                avgRating={averageRating}
+              />
             </TabsContent>
           </Tabs>
         </section>

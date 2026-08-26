@@ -1,19 +1,21 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ArrowRight, CalendarDays, Package, Search } from 'lucide-react';
 import { adminGetAllOrders } from '@/lib/api';
-import { Order, OrderStatus } from '@/types';
+import { Order, OrderListStats, OrderStatus } from '@/types';
 import { formatPrice, ORDER_STATUS_COLORS, ORDER_STATUS_LABELS, pluralUk } from '@/lib/utils';
 import { MultiSelect } from '@/components/ui/multi-select';
+import { Button } from '@/components/ui/button';
 import SortableTh from '@/components/admin/SortableTh';
 import { useTableSort, compareText, compareNumber, compareDate, type SortComparators } from '@/lib/useTableSort';
 import AdminPageHint from '@/components/admin/AdminPageHint';
 import StatStrip from '@/components/admin/StatStrip';
 
 const STATUSES: OrderStatus[] = ['NEW', 'CONFIRMED', 'SHIPPED', 'DELIVERED', 'CANCELLED'];
+const PAGE_SIZE = 20;
 
 function formatDate(value: string) {
   return new Date(value).toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit', year: 'numeric' });
@@ -37,43 +39,46 @@ const ORDER_COMPARATORS: SortComparators<OrderSortColumn, Order> = {
 export default function AdminOrdersPage() {
   const router = useRouter();
   const [orders, setOrders] = useState<Order[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [query, setQuery] = useState('');
+  const [total, setTotal] = useState(0);
+  const [stats, setStats] = useState<OrderListStats | null>(null);
+  const [page, setPage] = useState(1);
+  const [searchDraft, setSearchDraft] = useState('');
+  const [search, setSearch] = useState('');
   const [statuses, setStatuses] = useState<OrderStatus[]>([]);
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
+  const loading = !hasLoadedOnce;
+
+  const load = useCallback(() => {
+    adminGetAllOrders({
+      page,
+      limit: PAGE_SIZE,
+      q: search || undefined,
+      status: statuses.length > 0 ? statuses.join(',') : undefined,
+    })
+      .then((res) => {
+        setOrders(res.data);
+        setTotal(res.total);
+        setStats(res.stats ?? null);
+      })
+      .catch(() => {
+        setOrders([]);
+        setTotal(0);
+      })
+      .finally(() => setHasLoadedOnce(true));
+  }, [page, search, statuses]);
+
+  useEffect(() => { load(); }, [load]);
 
   useEffect(() => {
-    adminGetAllOrders({ page: '1', limit: '100' })
-      .then((res) => setOrders(res.data))
-      .catch(() => setOrders([]))
-      .finally(() => setLoading(false));
-  }, []);
+    const timer = setTimeout(() => {
+      setPage(1);
+      setSearch(searchDraft.trim());
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [searchDraft]);
 
-  const stats = useMemo(() => {
-    const revenue = orders.reduce((sum, order) => sum + Number(order.totalAmount || 0), 0);
-    return {
-      total: orders.length,
-      newOrders: orders.filter((order) => order.status === 'NEW').length,
-      inProgress: orders.filter((order) => ['CONFIRMED', 'SHIPPED'].includes(order.status)).length,
-      revenue,
-    };
-  }, [orders]);
-
-  const filteredOrders = useMemo(() => {
-    const normalizedQuery = query.trim().toLowerCase();
-    return orders.filter((order) => {
-      const matchesStatus = statuses.length === 0 || statuses.includes(order.status);
-      const matchesQuery = !normalizedQuery || [
-        String(order.orderNumber),
-        order.customerName,
-        order.customerPhone,
-        order.customerEmail || '',
-        order.ttn || '',
-      ].some((value) => value.toLowerCase().includes(normalizedQuery));
-      return matchesStatus && matchesQuery;
-    });
-  }, [orders, query, statuses]);
-
-  const { sorted, column, direction, onSort } = useTableSort(filteredOrders, ORDER_COMPARATORS);
+  const { sorted, column, direction, onSort } = useTableSort(orders, ORDER_COMPARATORS);
+  const totalPages = Math.ceil(total / PAGE_SIZE);
 
   return (
     <div className="space-y-6">
@@ -97,10 +102,10 @@ export default function AdminOrdersPage() {
 
       <StatStrip
         items={[
-          { label: 'Всього', value: stats.total },
-          { label: 'Нові', value: stats.newOrders, needsAction: true },
-          { label: 'В роботі', value: stats.inProgress },
-          { label: 'Сума', value: formatPrice(stats.revenue) },
+          { label: 'Всього', value: stats?.total ?? 0 },
+          { label: 'Нові', value: stats?.newOrders ?? 0, needsAction: true },
+          { label: 'В роботі', value: stats?.inProgress ?? 0 },
+          { label: 'Сума', value: formatPrice(stats?.revenue ?? 0) },
         ]}
       />
 
@@ -109,8 +114,8 @@ export default function AdminOrdersPage() {
           <div className="relative max-w-xl flex-1">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
             <input
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
+              value={searchDraft}
+              onChange={(event) => setSearchDraft(event.target.value)}
               placeholder="Пошук по номеру, покупцю, телефону, email або ТТН"
               className="h-11 w-full rounded-xl border border-gray-200 bg-white pl-10 pr-3 text-sm outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-50"
             />
@@ -118,7 +123,7 @@ export default function AdminOrdersPage() {
           <MultiSelect
             className="w-full lg:w-64"
             values={statuses}
-            onChange={(v) => setStatuses(v as OrderStatus[])}
+            onChange={(v) => { setStatuses(v as OrderStatus[]); setPage(1); }}
             placeholder="Усі статуси"
             options={STATUSES.map((s) => ({ value: s, label: ORDER_STATUS_LABELS[s] }))}
           />
@@ -144,7 +149,7 @@ export default function AdminOrdersPage() {
                 <tr>
                   <td colSpan={7} className="py-12 text-center text-gray-500">Завантаження...</td>
                 </tr>
-              ) : filteredOrders.length === 0 ? (
+              ) : orders.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="py-12 text-center text-gray-500">Замовлень за цими умовами немає</td>
                 </tr>
@@ -195,6 +200,14 @@ export default function AdminOrdersPage() {
             </tbody>
           </table>
         </div>
+
+        {total > PAGE_SIZE && (
+          <div className="flex justify-center gap-2 border-t p-4">
+            <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>←</Button>
+            <span className="py-1.5 text-sm">Стор. {page} з {totalPages}</span>
+            <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>→</Button>
+          </div>
+        )}
       </div>
     </div>
   );

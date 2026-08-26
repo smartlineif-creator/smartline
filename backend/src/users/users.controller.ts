@@ -20,8 +20,16 @@ export class UsersController {
   constructor(private usersService: UsersService) {}
 
   @Get()
-  findAll(@Query('page') page?: string, @Query('limit') limit?: string) {
-    return this.usersService.findAll(Number(page) || 1, Number(limit) || 20);
+  findAll(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('q') q?: string,
+  ) {
+    return this.usersService.findAll(
+      Number(page) || 1,
+      Number(limit) || 20,
+      q?.trim() || undefined,
+    );
   }
 
   @Get(':id')

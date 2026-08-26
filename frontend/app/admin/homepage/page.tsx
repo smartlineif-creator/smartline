@@ -28,6 +28,7 @@ import {
   adminDeleteHomepageSection,
   HomepageSectionData,
   adminGetProducts,
+  adminGetProductsByIds,
   adminGetServices,
   getCategories,
 } from '@/lib/api';
@@ -174,20 +175,60 @@ function getTitle(s: HomepageSectionData): string {
 
 interface EditorProps {
   section: HomepageSectionData;
-  products: Product[];
   categories: Category[];
   services: Service[];
   onSave: (id: string, config: Record<string, any>) => Promise<void>;
   onClose: () => void;
 }
 
-function SectionEditor({ section, products, categories, services, onSave, onClose }: EditorProps) {
+function SectionEditor({ section, categories, services, onSave, onClose }: EditorProps) {
   const [cfg, setCfg] = useState<Record<string, any>>({
     ...getDefaultConfig(section.type as SectionType),
     ...section.config,
   });
   const [saving, setSaving] = useState(false);
   const [productSearch, setProductSearch] = useState('');
+  const [productPool, setProductPool] = useState<Product[]>([]);
+  const [productHits, setProductHits] = useState<Product[]>([]);
+
+  const mergeIntoPool = useCallback((items: Product[]) => {
+    setProductPool((prev) => {
+      const seen = new Set(prev.map((p) => p.id));
+      const fresh = items.filter((p) => !seen.has(p.id));
+      return fresh.length > 0 ? [...prev, ...fresh] : prev;
+    });
+  }, []);
+
+  // Selected ids can point beyond any capped product list — resolve them by id
+  // once so the chips always render, regardless of catalog size.
+  const [initialProductIds] = useState<string[]>(() => {
+    const config = section.config ?? {};
+    const ids: string[] = [...(config.productIds ?? [])];
+    if (config.productId) ids.push(config.productId);
+    return ids;
+  });
+
+  useEffect(() => {
+    if (initialProductIds.length === 0) return;
+    adminGetProductsByIds(initialProductIds).then(mergeIntoPool).catch(() => {});
+  }, [initialProductIds, mergeIntoPool]);
+
+  useEffect(() => {
+    const q = productSearch.trim();
+    const timer = setTimeout(() => {
+      if (!q) {
+        setProductHits([]);
+        return;
+      }
+      adminGetProducts({ q, limit: 8 })
+        .then((r) => {
+          mergeIntoPool(r.data);
+          setProductHits(r.data);
+        })
+        .catch(() => setProductHits([]));
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [productSearch, mergeIntoPool]);
 
   const setC = (key: string, val: any) => setCfg((p) => ({ ...p, [key]: val }));
   const setListItem = (key: string, index: number, value: any) => {
@@ -205,13 +246,10 @@ function SectionEditor({ section, products, categories, services, onSave, onClos
   };
 
   const searchResults = useMemo(() => {
-    const q = productSearch.toLowerCase().trim();
-    if (!q) return [];
+    if (!productSearch.trim()) return [];
     const selected: string[] = cfg.productIds ?? [];
-    return products
-      .filter((p) => (p.name.toLowerCase().includes(q) || p.slug.includes(q)) && !selected.includes(p.id))
-      .slice(0, 8);
-  }, [productSearch, products, cfg.productIds]);
+    return productHits.filter((p) => !selected.includes(p.id)).slice(0, 8);
+  }, [productSearch, productHits, cfg.productIds]);
 
   const addProduct = (p: Product) => {
     setC('productIds', [...(cfg.productIds ?? []), p.id]);
@@ -264,7 +302,7 @@ function SectionEditor({ section, products, categories, services, onSave, onClos
   }, [categories]);
 
   const selectedProductObjects = (cfg.productIds ?? [])
-    .map((id: string) => products.find((p) => p.id === id))
+    .map((id: string) => productPool.find((p) => p.id === id))
     .filter(Boolean) as Product[];
 
   const selectedServiceObjects = (cfg.serviceIds ?? [])
@@ -351,7 +389,7 @@ function SectionEditor({ section, products, categories, services, onSave, onClos
                   </div>
                   {cfg.productId && (
                     <div className="flex items-center gap-2 rounded-lg border bg-blue-50 px-3 py-2 text-sm text-blue-700">
-                      <span className="flex-1 truncate">{products.find((p) => p.id === cfg.productId)?.name ?? cfg.productId}</span>
+                      <span className="flex-1 truncate">{productPool.find((p) => p.id === cfg.productId)?.name ?? cfg.productId}</span>
                       <button onClick={() => setC('productId', null)}><X className="h-3.5 w-3.5" /></button>
                     </div>
                   )}
@@ -862,7 +900,6 @@ export default function AdminHomepagePage() {
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<HomepageSectionData | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<HomepageSectionData | null>(null);
-  const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [allCategories, setAllCategories] = useState<Category[]>([]);
   const [allServices, setAllServices] = useState<Service[]>([]);
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
@@ -889,7 +926,6 @@ export default function AdminHomepagePage() {
     queueMicrotask(() => {
       void load();
     });
-    adminGetProducts({ limit: 100 }).then((r: any) => setAllProducts(r.data || [])).catch(() => {});
     getCategories().then(setAllCategories).catch(() => {});
     adminGetServices().then(setAllServices).catch(() => {});
   }, [load]);
@@ -1080,7 +1116,6 @@ export default function AdminHomepagePage() {
       {editing && (
         <SectionEditor
           section={editing}
-          products={allProducts}
           categories={allCategories}
           services={allServices}
           onSave={handleSaveConfig}

@@ -9,26 +9,31 @@ import { Check, Trash2, Star, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import AdminPageHint from '@/components/admin/AdminPageHint';
 
+const PAGE_SIZE = 20;
+
 export default function AdminReviewsPage() {
   const [reviews, setReviews] = useState<Review[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
   const [filter, setFilter] = useState<'pending' | 'approved'>('pending');
   const [loading, setLoading] = useState(true);
   const [deleteTarget, setDeleteTarget] = useState<Review | null>(null);
 
   const load = useCallback(() => {
-    setLoading(true);
-    adminGetReviews(filter === 'approved')
-      .then((r) => setReviews(r.data))
+    adminGetReviews(filter === 'approved', page)
+      .then((r) => {
+        if (r.data.length === 0 && page > 1) {
+          setPage((p) => Math.max(1, p - 1));
+          return;
+        }
+        setReviews(r.data);
+        setTotal(r.total);
+      })
+      .catch(() => { setReviews([]); setTotal(0); })
       .finally(() => setLoading(false));
-  }, [filter]);
+  }, [filter, page]);
 
-  useEffect(() => {
-    let active = true;
-    adminGetReviews(filter === 'approved')
-      .then((r) => { if (active) setReviews(r.data); })
-      .finally(() => { if (active) setLoading(false); });
-    return () => { active = false; };
-  }, [filter]);
+  useEffect(() => { load(); }, [load]);
 
   const handleApprove = async (id: string) => {
     try { await adminApproveReview(id); toast.success('Схвалено'); load(); } catch { toast.error('Помилка'); }
@@ -54,7 +59,7 @@ export default function AdminReviewsPage() {
         {(['pending', 'approved'] as const).map((f) => (
           <button
             key={f}
-            onClick={() => { setLoading(true); setFilter(f); }}
+            onClick={() => { setLoading(true); setFilter(f); setPage(1); }}
             className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${filter === f ? 'bg-blue-600 text-white' : 'bg-gray-100 hover:bg-gray-200'}`}
           >
             {f === 'pending' ? 'На модерації' : 'Схвалені'}
@@ -103,6 +108,13 @@ export default function AdminReviewsPage() {
             </div>
           </div>
         ))}
+        {!loading && total > PAGE_SIZE && (
+          <div className="flex justify-center gap-2 p-4">
+            <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>←</Button>
+            <span className="py-1.5 text-sm">Стор. {page} з {Math.ceil(total / PAGE_SIZE)}</span>
+            <Button variant="outline" size="sm" disabled={page >= Math.ceil(total / PAGE_SIZE)} onClick={() => setPage((p) => p + 1)}>→</Button>
+          </div>
+        )}
       </div>
 
       {deleteTarget && (

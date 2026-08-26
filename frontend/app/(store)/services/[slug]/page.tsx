@@ -34,7 +34,9 @@ export default async function ServicePage({ params }: Props) {
   } catch {
     notFound();
   }
-  const reviews = await getServiceReviews(service.id).catch(() => []);
+  const reviewsRes = await getServiceReviews(service.id).catch(
+    () => ({ data: [], total: 0, page: 1, limit: 10, avgRating: 0 }),
+  );
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-8 pb-20">
@@ -99,7 +101,12 @@ export default async function ServicePage({ params }: Props) {
           <h2 className="font-[var(--sl-font-display)] text-2xl tracking-[0.04em] text-[var(--sl-text-primary)] mb-6">
             ВІДГУКИ
           </h2>
-          <ReviewsSection target={{ kind: 'service', id: service.id }} reviews={reviews} />
+          <ReviewsSection
+            target={{ kind: 'service', id: service.id }}
+            initial={reviewsRes.data}
+            total={reviewsRes.total}
+            avgRating={reviewsRes.avgRating}
+          />
         </div>
       </div>
     </main>

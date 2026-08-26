@@ -66,12 +66,9 @@ export class PromotionsService {
     });
   }
 
-  async findAll(page = 1, limit = 20) {
-    const skip = (page - 1) * limit;
+  async findAll() {
     const [data, total] = await Promise.all([
       this.prisma.promotion.findMany({
-        skip,
-        take: limit,
         orderBy: { createdAt: 'desc' },
         include: {
           category: { select: { id: true, name: true } },
@@ -80,7 +77,7 @@ export class PromotionsService {
       }),
       this.prisma.promotion.count(),
     ]);
-    return { data, total, page, limit };
+    return { data, total };
   }
 
   async create(dto: CreatePromotionDto) {

@@ -147,6 +147,9 @@ export interface Product {
   attributes?: Attribute[];
   images?: ProductImage[];
   reviews?: Review[] | { rating: number }[];
+  /** Detail-page aggregates over ALL approved reviews — `reviews` holds only the first page. */
+  reviewsTotal?: number;
+  reviewsAvg?: number;
   promotions?: { promotion: Promotion }[];
   crossSells?: { related: Product }[];
   crossSellsFrom?: { related: Product }[];
@@ -234,6 +237,14 @@ export interface PaginatedResponse<T> {
   availableFilters?: CatalogFilter[];
   /** Real price bounds of the current selection — placeholders for the price filter. */
   priceRange?: { min: number; max: number } | null;
+}
+
+/** Aggregates over the whole order base (not the current page) for admin list tiles. */
+export interface OrderListStats {
+  total: number;
+  newOrders: number;
+  inProgress: number;
+  revenue: number;
 }
 
 // ─── Dashboard ──────────────────────────────────────────────────────────────
@@ -371,7 +382,6 @@ export interface Service {
   slug: string;
   description?: string;
   price: number | string;
-  priceLabel?: string;
   coverImage?: string;
   isActive: boolean;
   sortOrder: number;

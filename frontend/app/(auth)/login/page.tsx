@@ -1,13 +1,11 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { AlertCircle, Eye, EyeOff, Loader2, TriangleAlert } from 'lucide-react';
 import { login } from '@/lib/api';
 
 export default function LoginPage() {
-  const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -34,7 +32,10 @@ export default function LoginPage() {
     setLoading(true);
     try {
       await login(email, password);
-      router.push('/account');
+      // Full navigation instead of router.push: the client router may have
+      // cached the pre-login /account → /login redirect from proxy.ts, and a
+      // hard load also lets the header/SSR pick up the fresh session cookies.
+      window.location.assign('/account');
     } catch (err: any) {
       setError(err.message || 'Невірний email або пароль. Спробуйте ще раз.');
     } finally {

@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, ArrowRight, Clock3, PackageCheck, ShoppingBag } from 'lucide-react';
 import { getOrders } from '@/lib/api';
-import { Order } from '@/types';
+import { Order, OrderListStats } from '@/types';
 import { formatPrice, ORDER_STATUS_LABELS, pluralUk } from '@/lib/utils';
 
 function formatOrderDate(value: string) {
@@ -18,22 +18,27 @@ function getStatusTone(status: Order['status']) {
   return { bg: 'var(--sl-accent-muted)', color: 'var(--sl-accent)', border: 'var(--sl-border-hover)' };
 }
 
+const PAGE_SIZE = 20;
+
 export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
+  const [total, setTotal] = useState(0);
+  const [stats, setStats] = useState<OrderListStats | null>(null);
+  const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    getOrders()
-      .then((res) => setOrders(res.data))
+    getOrders({ page: String(page), limit: String(PAGE_SIZE), withStats: 'true' })
+      .then((res) => {
+        setOrders(res.data);
+        setTotal(res.total);
+        setStats(res.stats ?? null);
+      })
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, []);
+  }, [page]);
 
-  // Cancelled orders are not money spent
-  const totalSpent = orders.reduce(
-    (sum, order) => (order.status === 'CANCELLED' ? sum : sum + Number(order.totalAmount || 0)),
-    0,
-  );
+  const totalPages = Math.ceil(total / PAGE_SIZE);
 
   if (loading) return (
     <div
@@ -89,7 +94,7 @@ export default function OrdersPage() {
                 Замовлень
               </p>
               <p className="mt-2 text-2xl font-semibold" style={{ color: 'var(--sl-text-primary)', fontFamily: 'var(--sl-font-mono)' }}>
-                {orders.length}
+                {stats?.total ?? total}
               </p>
             </div>
             <div
@@ -100,7 +105,7 @@ export default function OrdersPage() {
                 Сума
               </p>
               <p className="mt-2 text-2xl font-semibold" style={{ color: 'var(--sl-text-primary)', fontFamily: 'var(--sl-font-mono)' }}>
-                {formatPrice(totalSpent)}
+                {formatPrice(stats?.revenue ?? 0)}
               </p>
             </div>
           </div>
@@ -179,6 +184,32 @@ export default function OrdersPage() {
                 </Link>
               );
             })}
+          </div>
+        )}
+
+        {totalPages > 1 && (
+          <div className="mt-6 flex items-center justify-center gap-2">
+            <button
+              type="button"
+              disabled={page <= 1}
+              onClick={() => setPage((p) => p - 1)}
+              className="rounded-lg px-3 py-2 text-sm transition-all disabled:opacity-40"
+              style={{ background: 'var(--sl-bg-elevated)', border: '1px solid var(--sl-border)', color: 'var(--sl-text-secondary)', fontFamily: 'var(--sl-font-mono)' }}
+            >
+              ←
+            </button>
+            <span className="px-2 text-sm" style={{ color: 'var(--sl-text-secondary)', fontFamily: 'var(--sl-font-mono)' }}>
+              Стор. {page} з {totalPages}
+            </span>
+            <button
+              type="button"
+              disabled={page >= totalPages}
+              onClick={() => setPage((p) => p + 1)}
+              className="rounded-lg px-3 py-2 text-sm transition-all disabled:opacity-40"
+              style={{ background: 'var(--sl-bg-elevated)', border: '1px solid var(--sl-border)', color: 'var(--sl-text-secondary)', fontFamily: 'var(--sl-font-mono)' }}
+            >
+              →
+            </button>
           </div>
         )}
       </div>

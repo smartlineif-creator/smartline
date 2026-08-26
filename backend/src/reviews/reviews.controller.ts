@@ -33,8 +33,10 @@ export class ReviewsController {
     @Query('serviceId') serviceId?: string,
     @Query('page') page?: string,
   ) {
-    if (productId) return this.reviewsService.findByProduct(productId);
-    if (serviceId) return this.reviewsService.findByService(serviceId);
+    if (productId)
+      return this.reviewsService.findByProduct(productId, true, Number(page) || 1);
+    if (serviceId)
+      return this.reviewsService.findByService(serviceId, true, Number(page) || 1);
     return this.reviewsService.findAll(Number(page) || 1);
   }
 

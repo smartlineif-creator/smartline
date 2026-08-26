@@ -7,7 +7,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { TelegramService } from '../telegram/telegram.service';
 import { MailService } from '../mail/mail.service';
 import { CreateOrderDto, UpdateOrderStatusDto } from './dto/order.dto';
-import { Role, User } from '@prisma/client';
+import { OrderStatus, Prisma, Role, User } from '@prisma/client';
 
 @Injectable()
 export class OrdersService {
@@ -23,9 +23,13 @@ export class OrdersService {
     limit = 20,
     today?: boolean,
     userEmail?: string,
+    q?: string,
+    statusCsv?: string,
+    hasService?: boolean,
+    includeStats?: boolean,
   ) {
     const skip = (page - 1) * limit;
-    const where: any = {};
+    const where: Prisma.OrderWhereInput = {};
 
     if (userId) {
       // For logged-in non-admin users: match orders by userId OR guest orders by email
@@ -36,13 +40,46 @@ export class OrdersService {
       }
     }
 
+    if (hasService) {
+      where.items = { some: { serviceId: { not: null } } };
+    }
+
+    // Stats are computed over the scope BEFORE q/status/today, so the admin
+    // tiles stay stable while typing a search or toggling status filters.
+    const baseWhere: Prisma.OrderWhereInput = { ...where };
+
     if (today) {
       const start = new Date();
       start.setHours(0, 0, 0, 0);
       where.createdAt = { gte: start };
     }
 
-    const [data, total] = await Promise.all([
+    if (q) {
+      const search: Prisma.OrderWhereInput[] = [
+        { customerName: { contains: q, mode: 'insensitive' } },
+        { customerPhone: { contains: q, mode: 'insensitive' } },
+        { customerEmail: { contains: q, mode: 'insensitive' } },
+        { ttn: { contains: q, mode: 'insensitive' } },
+      ];
+      const numeric = q.replace(/^#/, '');
+      if (/^\d+$/.test(numeric)) {
+        search.push({ orderNumber: Number(numeric) });
+      }
+      // Search goes through AND — for non-admins where.OR already holds the
+      // user scope and must not be overwritten.
+      where.AND = [{ OR: search }];
+    }
+
+    if (statusCsv) {
+      const statuses = statusCsv
+        .split(',')
+        .filter((s): s is OrderStatus =>
+          (Object.values(OrderStatus) as string[]).includes(s),
+        );
+      if (statuses.length > 0) where.status = { in: statuses };
+    }
+
+    const [data, total, grouped] = await Promise.all([
       this.prisma.order.findMany({
         where,
         include: {
@@ -61,9 +98,34 @@ export class OrdersService {
         take: limit,
       }),
       this.prisma.order.count({ where }),
+      includeStats
+        ? this.prisma.order.groupBy({
+            by: ['status'],
+            where: baseWhere,
+            _count: true,
+            _sum: { totalAmount: true },
+          })
+        : Promise.resolve(null),
     ]);
 
-    return { data, total, page, limit };
+    if (!grouped) return { data, total, page, limit };
+
+    const stats = { total: 0, newOrders: 0, inProgress: 0, revenue: 0 };
+    for (const g of grouped) {
+      stats.total += g._count;
+      if (g.status === OrderStatus.NEW) stats.newOrders += g._count;
+      if (
+        g.status === OrderStatus.CONFIRMED ||
+        g.status === OrderStatus.SHIPPED
+      ) {
+        stats.inProgress += g._count;
+      }
+      if (g.status !== OrderStatus.CANCELLED) {
+        stats.revenue += Number(g._sum.totalAmount ?? 0);
+      }
+    }
+
+    return { data, total, page, limit, stats };
   }
 
   async findOne(id: string, user?: Pick<User, 'id' | 'role'>) {

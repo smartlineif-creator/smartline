@@ -259,6 +259,11 @@ export class ProductQueryDto {
   @IsString()
   q?: string;
 
+  /** Comma-separated product IDs — admin pickers resolve selections by id */
+  @IsOptional()
+  @IsString()
+  ids?: string;
+
   @IsOptional()
   @Transform(({ value }) => Number(value))
   @IsNumber()

@@ -1,12 +1,10 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
 import { AlertCircle, Eye, EyeOff, Loader2, Lock, TriangleAlert } from 'lucide-react';
 import { login } from '@/lib/api';
 
 export default function AdminLoginPage() {
-  const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -36,8 +34,7 @@ export default function AdminLoginPage() {
     setLoading(true);
     try {
       await login(email, password);
-      router.push('/admin');
-      router.refresh();
+      window.location.assign('/admin');
     } catch (err: any) {
       setError(err.message || 'Invalid email or password. Please try again.');
     } finally {

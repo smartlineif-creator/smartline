@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState, useCallback } from 'react';
-import { adminGetPromotions, adminCreatePromotion, adminUpdatePromotion, adminDeletePromotion, getCategories, getProducts } from '@/lib/api';
+import { adminGetPromotions, adminCreatePromotion, adminUpdatePromotion, adminDeletePromotion, getCategories, adminGetProducts, adminGetProductsByIds } from '@/lib/api';
 import { Promotion, Category, Product } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -54,7 +54,7 @@ const STATUS_LABELS = {
 export default function AdminPromotionsPage() {
   const [promotions, setPromotions] = useState<Promotion[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [allProducts, setAllProducts] = useState<Product[]>([]);
+  const [searchHits, setSearchHits] = useState<Product[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
@@ -63,13 +63,12 @@ export default function AdminPromotionsPage() {
   const [catDropOpen, setCatDropOpen] = useState(false);
 
   const load = useCallback(() =>
-    adminGetPromotions().then((r: any) => setPromotions(r.data || r)).catch(() => {}),
+    adminGetPromotions().then((r) => setPromotions(r.data)).catch(() => {}),
   []);
 
   useEffect(() => {
     load();
-    getCategories().then((cats) => setCategories(cats));
-    getProducts({ limit: 100 }).then((r: any) => setAllProducts(r.data || [])).catch(() => {});
+    getCategories().then((cats) => setCategories(cats)).catch(() => {});
   }, [load]);
 
   // Close category dropdown on outside click
@@ -102,17 +101,24 @@ export default function AdminPromotionsPage() {
     [categoryOptions, form.categoryId],
   );
 
-  const searchResults = useMemo(() => {
-    const q = form.productSearch.trim().toLowerCase();
-    if (!q) return [];
-    return allProducts
-      .filter(
-        (p) =>
-          (p.name.toLowerCase().includes(q) || p.slug.includes(q)) &&
-          !form.selectedProducts.find((s) => s.id === p.id),
-      )
-      .slice(0, 8);
-  }, [form.productSearch, allProducts, form.selectedProducts]);
+  useEffect(() => {
+    const q = form.productSearch.trim();
+    const timer = setTimeout(() => {
+      if (!q) {
+        setSearchHits([]);
+        return;
+      }
+      adminGetProducts({ q, limit: 8 })
+        .then((r) => setSearchHits(r.data))
+        .catch(() => setSearchHits([]));
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [form.productSearch]);
+
+  const searchResults = useMemo(
+    () => searchHits.filter((p) => !form.selectedProducts.some((s) => s.id === p.id)).slice(0, 8),
+    [searchHits, form.selectedProducts],
+  );
 
   const openCreate = () => {
     setEditingId(null);
@@ -121,10 +127,21 @@ export default function AdminPromotionsPage() {
     setShowForm(true);
   };
 
-  const openEdit = (p: Promotion) => {
-    const existingProducts = (p.products ?? [])
-      .map((pp) => allProducts.find((ap) => ap.id === pp.productId))
-      .filter(Boolean) as Product[];
+  const openEdit = async (p: Promotion) => {
+    let existingProducts: Product[] = [];
+    const ids = (p.products ?? []).map((pp) => pp.productId);
+    if (ids.length > 0) {
+      try {
+        const fetched = await adminGetProductsByIds(ids);
+        const byId = new Map(fetched.map((prod) => [prod.id, prod]));
+        existingProducts = ids
+          .map((id) => byId.get(id))
+          .filter((prod): prod is Product => Boolean(prod));
+      } catch {
+        toast.error('Не вдалося завантажити товари акції');
+        return;
+      }
+    }
 
     setEditingId(p.id);
     setForm({
@@ -272,7 +289,7 @@ export default function AdminPromotionsPage() {
                 </div>
 
                 <div className="flex gap-1 shrink-0">
-                  <Button size="sm" variant="ghost" onClick={() => openEdit(p)} aria-label="Редагувати">
+                  <Button size="sm" variant="ghost" onClick={() => { void openEdit(p); }} aria-label="Редагувати">
                     <Pencil className="h-3.5 w-3.5" />
                   </Button>
                   <Button

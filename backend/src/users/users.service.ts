@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { IsOptional, IsString, IsInt, Min, Max, IsEnum } from 'class-validator';
-import { Role } from '@prisma/client';
+import { Prisma, Role } from '@prisma/client';
 
 export class UpdateUserDto {
   @IsString()
@@ -31,10 +31,20 @@ export class UpdateUserDto {
 export class UsersService {
   constructor(private prisma: PrismaService) {}
 
-  async findAll(page = 1, limit = 20) {
+  async findAll(page = 1, limit = 20, q?: string) {
     const skip = (page - 1) * limit;
+    const where: Prisma.UserWhereInput | undefined = q
+      ? {
+          OR: [
+            { email: { contains: q, mode: 'insensitive' } },
+            { name: { contains: q, mode: 'insensitive' } },
+            { phone: { contains: q, mode: 'insensitive' } },
+          ],
+        }
+      : undefined;
     const [users, total] = await Promise.all([
       this.prisma.user.findMany({
+        where,
         skip,
         take: limit,
         orderBy: { createdAt: 'desc' },
@@ -49,7 +59,7 @@ export class UsersService {
           createdAt: true,
         },
       }),
-      this.prisma.user.count(),
+      this.prisma.user.count({ where }),
     ]);
     return { data: users, total, page, limit };
   }

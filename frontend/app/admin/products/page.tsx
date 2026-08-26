@@ -83,9 +83,14 @@ export default function AdminProductsPage() {
       .then((r) => {
         setProducts(r.data);
         setTotal(r.total);
-        setHasLoadedOnce(true);
         setSelectedIds((current) => current.filter((id) => r.data.some((p: Product) => p.id === id)));
-      });
+      })
+      .catch((e: unknown) => {
+        setProducts([]);
+        setTotal(0);
+        toast.error(`Не вдалося завантажити товари: ${(e as Error).message || 'помилка мережі'}`);
+      })
+      .finally(() => setHasLoadedOnce(true));
   }, [page, search, categoryFilter, statusFilter]);
 
   useEffect(() => { load(); }, [load]);

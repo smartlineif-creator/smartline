@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -428,14 +428,40 @@ export default function ProductForm({ mode, productId }: Props) {
     return chain.join(' / ');
   };
 
+  const mergeProductOptions = useCallback((items: ProductOptionItem[]) => {
+    setProductOptions((prev) => {
+      const seen = new Set(prev.map((item) => item.id));
+      const fresh = items.filter((item) => !seen.has(item.id));
+      return fresh.length > 0 ? [...prev, ...fresh] : prev;
+    });
+  }, []);
+
   useEffect(() => {
     getCategories().then(setCategories).catch(() => {});
-    adminGetProductOptions({ limit: 250 }).then((items) => setProductOptions(items)).catch(() => {});
+    adminGetProductOptions({ limit: 250 }).then(mergeProductOptions).catch(() => {});
     adminGetBadges().then((rows) => {
       setCustomBadges(rows.map((r) => r.value));
       setBadgeUsage(Object.fromEntries(rows.map((r) => [r.value, r.count])));
     }).catch(() => {});
-  }, []);
+  }, [mergeProductOptions]);
+
+  useEffect(() => {
+    const q = recommendedQuery.trim();
+    if (!q) return;
+    const timer = setTimeout(() => {
+      adminGetProductOptions({ q, limit: 50 }).then(mergeProductOptions).catch(() => {});
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [recommendedQuery, mergeProductOptions]);
+
+  useEffect(() => {
+    const q = withThisBuyQuery.trim();
+    if (!q) return;
+    const timer = setTimeout(() => {
+      adminGetProductOptions({ q, limit: 50 }).then(mergeProductOptions).catch(() => {});
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [withThisBuyQuery, mergeProductOptions]);
 
   useEffect(() => {
     adminGetOptionGroupNames(categoryId || undefined)
@@ -509,6 +535,10 @@ export default function ProductForm({ mode, productId }: Props) {
     );
     setRecommendedProductIds(product.recommendedProducts?.map((item) => item.id) || []);
     setWithThisBuyProductIds(product.withThisBuyProducts?.map((item) => item.id) || []);
+    mergeProductOptions([
+      ...(product.recommendedProducts ?? []),
+      ...(product.withThisBuyProducts ?? []),
+    ]);
     if (product.recommendedCategoryIds && product.recommendedCategoryIds.length > 0) {
       setRecommendedMode('category');
       setRecommendedCategoryIds(product.recommendedCategoryIds);
@@ -1102,8 +1132,15 @@ export default function ProductForm({ mode, productId }: Props) {
         router.replace(`/admin/products/${createdProduct.id}/edit`);
         router.refresh();
       }
-    } catch {
-      toast.error('Помилка збереження');
+    } catch (e: unknown) {
+      const msg = (e as Error).message || '';
+      toast.error(
+        msg.includes('slug')
+          ? 'Slug вже зайнятий — товар або конфігурація з таким slug уже існує'
+          : msg.includes('SKU')
+            ? 'Артикул (SKU) вже зайнятий іншим товаром або конфігурацією'
+            : 'Помилка збереження',
+      );
     } finally {
       setSaving(false);
     }

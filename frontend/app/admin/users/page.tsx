@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { adminGetUsers, adminUpdateUser } from '@/lib/api';
-import { stripNegative, STATE_BADGE } from '@/lib/utils';
+import { pluralUk, stripNegative, STATE_BADGE } from '@/lib/utils';
 import SortableTh from '@/components/admin/SortableTh';
 import { useTableSort, compareText, compareNumber, compareDate, type SortComparators } from '@/lib/useTableSort';
 import { User } from '@/types';
@@ -25,18 +25,38 @@ const USER_COMPARATORS: SortComparators<UserSortColumn, User> = {
   date: (a, b) => compareDate(a.createdAt, b.createdAt),
 };
 
+const PAGE_SIZE = 20;
+
 export default function AdminUsersPage() {
   const [users, setUsers] = useState<User[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
   const [editing, setEditing] = useState<User | null>(null);
   const [discount, setDiscount] = useState('0');
   const [note, setNote] = useState('');
   const [role, setRole] = useState('USER');
   const [saving, setSaving] = useState(false);
+  const [searchDraft, setSearchDraft] = useState('');
   const [search, setSearch] = useState('');
-  const [loading, setLoading] = useState(true);
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
+  const loading = !hasLoadedOnce;
 
-  const load = () => adminGetUsers().then((r) => setUsers(r.data)).catch(() => {}).finally(() => setLoading(false));
-  useEffect(() => { load(); }, []);
+  const load = useCallback(() => {
+    adminGetUsers({ page, limit: PAGE_SIZE, q: search || undefined })
+      .then((r) => { setUsers(r.data); setTotal(r.total); })
+      .catch(() => { setUsers([]); setTotal(0); })
+      .finally(() => setHasLoadedOnce(true));
+  }, [page, search]);
+
+  useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setPage(1);
+      setSearch(searchDraft.trim());
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [searchDraft]);
 
   const openEdit = (u: User) => { setEditing(u); setDiscount(String(u.discount)); setNote((u as any).adminNote || ''); setRole(u.role || 'USER'); };
 
@@ -54,15 +74,8 @@ export default function AdminUsersPage() {
     finally { setSaving(false); }
   };
 
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return users;
-    return users.filter((u) =>
-      u.email.toLowerCase().includes(q) || (u.name ?? '').toLowerCase().includes(q)
-    );
-  }, [users, search]);
-
-  const { sorted, column, direction, onSort } = useTableSort(filtered, USER_COMPARATORS);
+  const { sorted, column, direction, onSort } = useTableSort(users, USER_COMPARATORS);
+  const totalPages = Math.ceil(total / PAGE_SIZE);
 
   return (
     <div>
@@ -75,14 +88,17 @@ export default function AdminUsersPage() {
         ]}
       />
       <div className="mb-6 flex items-center justify-between gap-4">
-        <h1 className="text-2xl font-semibold tracking-tight">Клієнти</h1>
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Клієнти</h1>
+          <p className="text-muted-foreground text-sm">{total} {pluralUk(total, 'клієнт', 'клієнти', 'клієнтів')}</p>
+        </div>
         <div className="relative w-64">
           <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
             className="pl-9"
-            placeholder="Пошук за email або ім'ям..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Пошук за email, ім'ям або телефоном..."
+            value={searchDraft}
+            onChange={(e) => setSearchDraft(e.target.value)}
           />
         </div>
       </div>
@@ -104,7 +120,7 @@ export default function AdminUsersPage() {
             <tbody className="divide-y">
               {loading ? (
                 <tr><td colSpan={7} className="py-10 text-center text-sm text-muted-foreground">Завантаження...</td></tr>
-              ) : filtered.length === 0 ? (
+              ) : users.length === 0 ? (
                 <tr><td colSpan={7} className="py-10 text-center text-sm text-muted-foreground">
                   {search ? 'Нічого не знайдено' : 'Клієнтів ще немає'}
                 </td></tr>
@@ -138,6 +154,14 @@ export default function AdminUsersPage() {
             </tbody>
           </table>
         </div>
+
+        {total > PAGE_SIZE && (
+          <div className="flex justify-center gap-2 border-t p-4">
+            <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>←</Button>
+            <span className="py-1.5 text-sm">Стор. {page} з {totalPages}</span>
+            <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>→</Button>
+          </div>
+        )}
       </div>
 
       {editing && (

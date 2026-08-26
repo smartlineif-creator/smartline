@@ -58,6 +58,10 @@ export default function AdminCategoriesPage() {
         const withChildren = data.filter((c: Category) => !c.parentId && (c.children?.length ?? 0) > 0);
         setCollapsedIds(new Set(withChildren.map((c: Category) => c.id)));
       })
+      .catch((e: unknown) => {
+        setCategories([]);
+        toast.error(`Не вдалося завантажити категорії: ${(e as Error).message || 'помилка мережі'}`);
+      })
       .finally(() => setLoading(false));
   useEffect(() => { load(); }, []);
 

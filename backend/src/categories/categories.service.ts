@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -73,26 +74,35 @@ export class CategoriesService {
     return category;
   }
 
+  private rethrowUniqueConflict(e: unknown): never {
+    if ((e as { code?: string }).code === 'P2002') {
+      throw new ConflictException('A category with this slug already exists');
+    }
+    throw e as Error;
+  }
+
   async create(dto: CreateCategoryDto) {
     const slug = dto.slug || this.toSlug(dto.name);
     const { attributeTemplates, optionGroupTemplates, ...rest } = dto;
     const sortOrder = await this.prisma.category.count({
       where: { parentId: dto.parentId ?? null },
     });
-    return this.prisma.category.create({
-      data: {
-        ...rest,
-        slug,
-        sortOrder,
-        attributeTemplates: attributeTemplates
-          ? { create: attributeTemplates }
-          : undefined,
-        optionGroupTemplates: optionGroupTemplates
-          ? { create: optionGroupTemplates }
-          : undefined,
-      },
-      include: { ...CATEGORY_INCLUDE },
-    });
+    return this.prisma.category
+      .create({
+        data: {
+          ...rest,
+          slug,
+          sortOrder,
+          attributeTemplates: attributeTemplates
+            ? { create: attributeTemplates }
+            : undefined,
+          optionGroupTemplates: optionGroupTemplates
+            ? { create: optionGroupTemplates }
+            : undefined,
+        },
+        include: { ...CATEGORY_INCLUDE },
+      })
+      .catch((e: unknown) => this.rethrowUniqueConflict(e));
   }
 
   async reorder(dto: ReorderCategoriesDto) {
@@ -104,30 +114,32 @@ export class CategoriesService {
 
   async update(id: string, dto: UpdateCategoryDto) {
     const { attributeTemplates, optionGroupTemplates, ...rest } = dto;
-    return this.prisma.category.update({
-      where: { id },
-      data: {
-        ...rest,
-        ...(dto.slug ? {} : { slug: this.toSlug(dto.name || '') }),
-        ...(attributeTemplates !== undefined
-          ? {
-              attributeTemplates: {
-                deleteMany: {},
-                create: attributeTemplates,
-              },
-            }
-          : {}),
-        ...(optionGroupTemplates !== undefined
-          ? {
-              optionGroupTemplates: {
-                deleteMany: {},
-                create: optionGroupTemplates,
-              },
-            }
-          : {}),
-      },
-      include: { ...CATEGORY_INCLUDE },
-    });
+    return this.prisma.category
+      .update({
+        where: { id },
+        data: {
+          ...rest,
+          ...(dto.slug ? {} : { slug: this.toSlug(dto.name || '') }),
+          ...(attributeTemplates !== undefined
+            ? {
+                attributeTemplates: {
+                  deleteMany: {},
+                  create: attributeTemplates,
+                },
+              }
+            : {}),
+          ...(optionGroupTemplates !== undefined
+            ? {
+                optionGroupTemplates: {
+                  deleteMany: {},
+                  create: optionGroupTemplates,
+                },
+              }
+            : {}),
+        },
+        include: { ...CATEGORY_INCLUDE },
+      })
+      .catch((e: unknown) => this.rethrowUniqueConflict(e));
   }
 
   async remove(id: string) {

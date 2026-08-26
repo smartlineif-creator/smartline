@@ -104,8 +104,13 @@ export default function CategoryForm({ mode, category }: Props) {
       }
       router.push('/admin/categories');
       router.refresh();
-    } catch {
-      toast.error('Не вдалося зберегти категорію');
+    } catch (e: unknown) {
+      const msg = (e as Error).message || '';
+      toast.error(
+        msg.includes('slug')
+          ? 'Slug вже зайнятий — категорія з таким slug уже існує'
+          : 'Не вдалося зберегти категорію',
+      );
     } finally {
       setSaving(false);
     }

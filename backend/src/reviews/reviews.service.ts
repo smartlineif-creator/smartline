@@ -39,20 +39,36 @@ export class CreateReviewDto {
 export class ReviewsService {
   constructor(private prisma: PrismaService) {}
 
-  async findByProduct(productId: string, onlyApproved = true) {
-    return this.prisma.review.findMany({
-      where: { productId, ...(onlyApproved ? { isApproved: true } : {}) },
-      include: { user: { select: { name: true } } },
-      orderBy: { createdAt: 'desc' },
-    });
+  async findByProduct(productId: string, onlyApproved = true, page = 1, limit = 10) {
+    const where = { productId, ...(onlyApproved ? { isApproved: true } : {}) };
+    const [data, total, agg] = await Promise.all([
+      this.prisma.review.findMany({
+        where,
+        include: { user: { select: { name: true } } },
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      this.prisma.review.count({ where }),
+      this.prisma.review.aggregate({ where, _avg: { rating: true } }),
+    ]);
+    return { data, total, page, limit, avgRating: Number(agg._avg.rating ?? 0) };
   }
 
-  async findByService(serviceId: string, onlyApproved = true) {
-    return this.prisma.review.findMany({
-      where: { serviceId, ...(onlyApproved ? { isApproved: true } : {}) },
-      include: { user: { select: { name: true } } },
-      orderBy: { createdAt: 'desc' },
-    });
+  async findByService(serviceId: string, onlyApproved = true, page = 1, limit = 10) {
+    const where = { serviceId, ...(onlyApproved ? { isApproved: true } : {}) };
+    const [data, total, agg] = await Promise.all([
+      this.prisma.review.findMany({
+        where,
+        include: { user: { select: { name: true } } },
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      this.prisma.review.count({ where }),
+      this.prisma.review.aggregate({ where, _avg: { rating: true } }),
+    ]);
+    return { data, total, page, limit, avgRating: Number(agg._avg.rating ?? 0) };
   }
 
   async findAll(page = 1, limit = 20, approved?: boolean) {

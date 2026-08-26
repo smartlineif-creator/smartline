@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   CreateProductDto,
@@ -64,6 +68,8 @@ const PRODUCT_RELATIONS_INCLUDE = {
   reviews: {
     where: { isApproved: true },
     include: { user: { select: { name: true } } },
+    orderBy: { createdAt: 'desc' as const },
+    take: 10,
   },
   crossSellsFrom: {
     include: { related: { include: CARD_PRODUCT_INCLUDE } },
@@ -625,6 +631,7 @@ export class ProductsService {
       limit = 20,
       featured,
       isActive,
+      ids,
     } = query;
 
     const where: Prisma.ProductWhereInput = {};
@@ -646,6 +653,14 @@ export class ProductsService {
     if (featured === 'true') where.isFeatured = true;
     if (isActive === 'true') where.isActive = true;
     if (isActive === 'false') where.isActive = false;
+
+    if (ids) {
+      const parsedIds = ids
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean);
+      if (parsedIds.length > 0) where.id = { in: parsedIds };
+    }
 
     if (q) {
       where.OR = [
@@ -709,12 +724,28 @@ export class ProductsService {
     return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
   }
 
+  // The detail include caps reviews at the first page (take: 10); the list is
+  // paginated further via GET /reviews, so avg/count must come from the DB.
+  private async withReviewStats<T extends object>(product: T, productId: string) {
+    const agg = await this.prisma.review.aggregate({
+      where: { productId, isApproved: true },
+      _avg: { rating: true },
+      _count: true,
+    });
+    return {
+      ...product,
+      reviewsTotal: agg._count,
+      reviewsAvg: Number(agg._avg.rating ?? 0),
+    };
+  }
+
   async findBySlug(slug: string) {
     const product = await this.prisma.product.findUnique({
       where: { slug },
       include: PRODUCT_INCLUDE as any,
     });
-    if (product) return this.enrichProduct(product);
+    if (product)
+      return this.withReviewStats(await this.enrichProduct(product), product.id);
 
     const variant = await this.prisma.variant.findUnique({
       where: { slug },
@@ -743,15 +774,18 @@ export class ProductsService {
       .trim();
 
     const enrichedProduct = await this.enrichProduct(variant.product);
-    return {
-      ...enrichedProduct,
-      selectedVariantId: variant.id,
-      variantSeo: {
-        title: variantTitle,
-        description: `${variantTitle}. Купити в Smartline з доставкою по Україні.`,
-        canonicalUrl: `/product/${variant.slug}`,
+    return this.withReviewStats(
+      {
+        ...enrichedProduct,
+        selectedVariantId: variant.id,
+        variantSeo: {
+          title: variantTitle,
+          description: `${variantTitle}. Купити в Smartline з доставкою по Україні.`,
+          canonicalUrl: `/product/${variant.slug}`,
+        },
       },
-    };
+      variant.product.id,
+    );
   }
 
   async findById(id: string) {
@@ -824,6 +858,27 @@ export class ProductsService {
     return { count: res.count };
   }
 
+  // P2002 from create/update used to bubble up as an opaque 500 — the admin
+  // form could not tell a duplicate slug from a real server failure.
+  private rethrowUniqueConflict(e: unknown): never {
+    const err = e as {
+      code?: string;
+      meta?: { target?: string[]; modelName?: string };
+    };
+    if (err.code === 'P2002') {
+      const model = err.meta?.modelName === 'Variant' ? 'variant' : 'product';
+      const target = err.meta?.target ?? [];
+      if (target.includes('slug')) {
+        throw new ConflictException(`A ${model} with this slug already exists`);
+      }
+      if (target.includes('sku')) {
+        throw new ConflictException(`A ${model} with this SKU already exists`);
+      }
+      throw new ConflictException('Duplicate value for a unique field');
+    }
+    throw e as Error;
+  }
+
   async create(dto: CreateProductDto) {
     const slug = dto.slug || this.toSlug(dto.name);
     const {
@@ -874,7 +929,7 @@ export class ProductsService {
         where: { id: product.id },
         include: ADMIN_PRODUCT_INCLUDE as any,
       });
-    });
+    }).catch((e: unknown) => this.rethrowUniqueConflict(e));
     return this.enrichProduct(createdProduct);
   }
 
@@ -933,7 +988,7 @@ export class ProductsService {
         where: { id },
         include: ADMIN_PRODUCT_INCLUDE as any,
       });
-    });
+    }).catch((e: unknown) => this.rethrowUniqueConflict(e));
     return this.enrichProduct(updatedProduct);
   }
 
