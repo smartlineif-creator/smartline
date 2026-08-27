@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -29,10 +30,38 @@ const NAV = [
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { logout } = useAuthStore();
+  const { user, loading, fetchUser, logout } = useAuthStore();
   const router = useRouter();
 
-  if (pathname === '/admin/login') return <>{children}</>;
+  const isLoginPage = pathname === '/admin/login';
+
+  // Gate the whole admin area on the ADMIN role. The API already rejects every
+  // admin action with 403 for non-admins, but the middleware only checks that a
+  // session cookie exists (not the role), so a logged-in USER could still SEE
+  // the (non-functional) shell. This confirms the role and bounces everyone else.
+  useEffect(() => {
+    if (!isLoginPage) fetchUser();
+  }, [isLoginPage, fetchUser]);
+
+  useEffect(() => {
+    if (isLoginPage || loading) return;
+    if (!user) {
+      router.replace('/admin/login');
+    } else if (user.role !== 'ADMIN') {
+      toast.error('Немає доступу до адмін-панелі');
+      router.replace('/');
+    }
+  }, [isLoginPage, loading, user, router]);
+
+  if (isLoginPage) return <>{children}</>;
+
+  if (loading || !user || user.role !== 'ADMIN') {
+    return (
+      <div className="flex h-screen items-center justify-center bg-gray-100 text-sm text-gray-500">
+        Перевірка доступу…
+      </div>
+    );
+  }
 
   const handleLogout = async () => {
     await logout();

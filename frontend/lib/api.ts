@@ -279,9 +279,12 @@ export async function getActivePromotions() {
 // ─── Orders ──────────────────────────────────────────────────────────────────
 
 export async function getOrders(params: Record<string, string> = {}) {
-  const query = new URLSearchParams(params).toString();
+  // Customer "My Orders" — always self-scoped, so an admin viewing their own
+  // account sees only their orders, not everyone's (admin panel uses
+  // adminGetAllOrders instead).
+  const query = new URLSearchParams({ mine: 'true', ...params }).toString();
   return apiFetch<PaginatedResponse<Order> & { stats?: OrderListStats }>(
-    `/orders${query ? `?${query}` : ''}`,
+    `/orders?${query}`,
   );
 }
 

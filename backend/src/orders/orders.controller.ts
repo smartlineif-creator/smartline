@@ -13,6 +13,7 @@ import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import { OrdersService } from './orders.service';
 import { CreateOrderDto, UpdateOrderStatusDto } from './dto/order.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -33,9 +34,13 @@ export class OrdersController {
     @Query('status') status?: string,
     @Query('hasService') hasService?: string,
     @Query('withStats') withStats?: string,
+    @Query('mine') mine?: string,
   ) {
     const isAdmin = user.role === Role.ADMIN;
-    const userId = isAdmin ? undefined : user.id;
+    // Admins see ALL orders (admin panel). But the customer "Мої замовлення"
+    // page passes ?mine=true, which forces self-scoping even for an admin so
+    // they don't see everyone's orders in their personal account.
+    const userId = !isAdmin || mine === 'true' ? user.id : undefined;
     const clampedPage = Math.max(1, Number(page) || 1);
     const clampedLimit = Math.min(100, Math.max(1, Number(limit) || 20));
     return this.ordersService.findAll(
@@ -57,7 +62,9 @@ export class OrdersController {
   }
 
   @Post()
-  @UseGuards(ThrottlerGuard)
+  // Optional auth: guests can still order, but a logged-in buyer's order is
+  // linked to their account so it shows up in /account/orders.
+  @UseGuards(ThrottlerGuard, OptionalJwtAuthGuard)
   @Throttle({ default: { limit: 5, ttl: 60000 } })
   create(@Body() dto: CreateOrderDto, @Request() req: any) {
     const userId = req.user?.id;

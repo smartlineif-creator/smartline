@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { AlertCircle, Eye, EyeOff, Loader2, Lock, TriangleAlert } from 'lucide-react';
-import { login, getMe, clearTokens } from '@/lib/api';
+import { login, getMe, clearTokens, hasStoredSession } from '@/lib/api';
 
 export default function AdminLoginPage() {
   const [email, setEmail] = useState('');
@@ -27,6 +27,16 @@ export default function AdminLoginPage() {
       window.removeEventListener('keyup', syncCapsLock);
     };
   }, [syncCapsLock]);
+
+  // Backstop for the middleware redirect: if already signed in as ADMIN (even
+  // when the 15-min access cookie has expired but the session can refresh),
+  // skip the login form and go straight to the panel.
+  useEffect(() => {
+    if (!hasStoredSession()) return;
+    getMe()
+      .then((me) => { if (me.role === 'ADMIN') window.location.assign('/admin'); })
+      .catch(() => {});
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
