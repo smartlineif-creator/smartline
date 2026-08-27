@@ -11,6 +11,11 @@ export const metadata: Metadata = {
     default: "SmartLine — інтернет-магазин електроніки",
   },
   description: "SmartLine — магазин перевіреної техніки в Івано-Франківську. Ноутбуки Dell, Lenovo, HP, ASUS з гарантією. Доставка Новою Поштою по всій Україні.",
+  // Google Search Console ownership — renders <meta name="google-site-verification">.
+  // Keep this even after verification, or Search Console loses access.
+  verification: {
+    google: 'Ts6SAg10-xb7R_rBFVUNewSKtkJ8h0XIAHFHsXGktLo',
+  },
   icons: {
     icon: [
       { url: '/favicon.png', type: 'image/png', sizes: '64x64' },
