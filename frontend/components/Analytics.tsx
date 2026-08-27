@@ -1,10 +1,17 @@
 'use client';
 
 import Script from 'next/script';
+import { usePathname } from 'next/navigation';
 
 export default function Analytics() {
+  const pathname = usePathname();
   const GA_ID = process.env.NEXT_PUBLIC_GA_ID;
   const PIXEL_ID = process.env.NEXT_PUBLIC_META_PIXEL;
+
+  // Don't track the admin panel — the owner's own work there would otherwise
+  // pollute visitor analytics (and the GA tag-coverage report would flag
+  // /admin/* as "untagged", which is now intentional).
+  if (pathname?.startsWith('/admin')) return null;
 
   return (
     <>
