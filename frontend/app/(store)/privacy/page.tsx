@@ -2,7 +2,7 @@ import { Metadata } from 'next';
 import Link from 'next/link';
 
 export const metadata: Metadata = {
-  title: 'Політика конфіденційності | SmartLine',
+  title: 'Політика конфіденційності',
   description: 'Політика конфіденційності SmartLine — як ми збираємо, використовуємо та захищаємо ваші персональні дані.',
 };
 

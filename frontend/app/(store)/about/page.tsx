@@ -2,7 +2,7 @@ import { Metadata } from 'next';
 import Link from 'next/link';
 
 export const metadata: Metadata = {
-  title: 'Про нас | SmartLine',
+  title: 'Про нас',
   description: 'SmartLine — магазин перевіреної техніки в Івано-Франківську (ТЦ Щедрик). Ноутбуки Dell, Lenovo, HP, ASUS з гарантією та доставкою по всій Україні.',
 };
 

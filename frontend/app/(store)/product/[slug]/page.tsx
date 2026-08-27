@@ -30,7 +30,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       : undefined;
 
     return {
-      title: `${title} — купити в SmartLine`,
+      // `absolute` avoids the root template appending "— SmartLine" twice.
+      title: { absolute: `${title} — купити в SmartLine` },
       description,
       openGraph: {
         title,

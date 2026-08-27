@@ -17,11 +17,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   try {
     const service = await getService(slug);
     return {
-      title: `${service.name} — SmartLine`,
+      title: service.name,
       description: service.description ?? `Послуга ${service.name} від SmartLine`,
     };
   } catch {
-    return { title: 'Послуга — SmartLine' };
+    return { title: 'Послуга' };
   }
 }
 

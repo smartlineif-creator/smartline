@@ -8,7 +8,7 @@ import SortBar from '@/components/store/SortBar';
 export const dynamic = 'force-dynamic';
 
 export const metadata = {
-  title: 'Каталог товарів — SmartLine',
+  title: 'Каталог товарів',
   description: 'Всі товари інтернет-магазину SmartLine: смартфони, ноутбуки, аксесуари.',
 };
 

@@ -9,6 +9,7 @@ import CategoryTabs from '@/components/store/CategoryTabs';
 import SortBar from '@/components/store/SortBar';
 import MobileFilterDrawer from '@/components/store/MobileFilterDrawer';
 import { SearchX } from 'lucide-react';
+import { categoryDescription } from '@/lib/category-seo';
 
 export const revalidate = 60;
 
@@ -21,7 +22,12 @@ export async function generateMetadata({ params }: { params: Promise<{ categoryS
   const { categorySlug } = await params;
   try {
     const cat = await getCategoryBySlug(categorySlug);
-    return { title: `${cat.name} — купити в SmartLine`, description: cat.seoText?.slice(0, 160) };
+    return {
+      // `absolute` so the root layout's "%s — SmartLine" template doesn't
+      // append a second "— SmartLine" onto a title that already has it.
+      title: { absolute: `${cat.name} — купити в SmartLine` },
+      description: categoryDescription(categorySlug, cat.name, cat.seoText),
+    };
   } catch {
     return { title: 'Каталог' };
   }

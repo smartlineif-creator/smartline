@@ -2,7 +2,7 @@ import { Metadata } from 'next';
 import Link from 'next/link';
 
 export const metadata: Metadata = {
-  title: 'Умови використання | SmartLine',
+  title: 'Умови використання',
   description: 'Умови використання інтернет-магазину SmartLine — правила оформлення замовлень, доставки та повернення товарів.',
 };
 

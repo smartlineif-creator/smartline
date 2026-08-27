@@ -7,7 +7,7 @@ import ServiceCard from '@/components/store/ServiceCard';
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
-  title: 'Послуги — SmartLine',
+  title: 'Послуги',
   description: 'Чистка ноутбуків, встановлення Windows та інші сервісні послуги від SmartLine в Івано-Франківську.',
 };
 
