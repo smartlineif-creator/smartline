@@ -66,8 +66,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const handleLogout = async () => {
     await logout();
     toast.success('Ви вийшли');
-    router.push('/admin/login');
-    router.refresh();
+    // Hard navigation: a soft router.push here races the layout's own
+    // role-gate redirect effect and can leave the page stuck on the access
+    // check. A full load resets cleanly (cookies already cleared by logout).
+    window.location.assign('/admin/login');
   };
 
   return (

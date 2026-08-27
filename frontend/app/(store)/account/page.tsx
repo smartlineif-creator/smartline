@@ -52,7 +52,8 @@ export default function AccountPage() {
   const handleLogout = async () => {
     await logout();
     toast.success('Ви вийшли з системи');
-    router.push('/');
+    // Hard navigation so it doesn't race the "!user → /login" guard effect.
+    window.location.assign('/');
   };
 
   if (loading || !user) {
