@@ -261,7 +261,9 @@ export async function getCategories() {
 }
 
 export async function getCategoryBySlug(slug: string) {
-  return apiFetch<Category>(`/categories/by-slug/${slug}`, { next: { revalidate: 300 } });
+  // 60s to match the category page's own revalidate, so an admin's SEO/name
+  // edit shows up within ~a minute instead of up to 5.
+  return apiFetch<Category>(`/categories/by-slug/${slug}`, { next: { revalidate: 60 } });
 }
 
 // ─── Banners ─────────────────────────────────────────────────────────────────
