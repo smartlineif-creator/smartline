@@ -30,6 +30,7 @@ export default function CategoryForm({ mode, category }: Props) {
   const router = useRouter();
   const [categories, setCategories] = useState<Category[]>([]);
   const [name, setName] = useState(category?.name || '');
+  const [seoText, setSeoText] = useState(category?.seoText || '');
   const [parentId, setParentId] = useState(category?.parentId || '');
   const [attrTemplates, setAttrTemplates] = useState<{ name: string; unit: string; filterable: boolean }[]>(
     (category?.attributeTemplates || []).map((t) => ({ name: t.name, unit: t.unit || '', filterable: t.filterable ?? true })),
@@ -86,6 +87,9 @@ export default function CategoryForm({ mode, category }: Props) {
       const payload = {
         name: name.trim(),
         icon: '',
+        // null (not undefined) so clearing the field actually removes the
+        // stored description; empty → falls back to curated/auto text on site.
+        seoText: seoText.trim() || null,
         parentId: parentId || undefined,
         attributeTemplates: attrTemplates
           .filter((t) => t.name.trim())
@@ -132,6 +136,22 @@ export default function CategoryForm({ mode, category }: Props) {
               placeholder="Наприклад, Смартфони"
               className="mt-2 h-11"
             />
+          </div>
+
+          <div>
+            <Label htmlFor="category-seo">SEO-опис (для Google)</Label>
+            <textarea
+              id="category-seo"
+              value={seoText}
+              onChange={(e) => setSeoText(e.target.value)}
+              rows={3}
+              maxLength={300}
+              placeholder="Напр.: Ноутбуки в SmartLine — Dell, Lenovo, HP, ASUS з гарантією. Доставка по Україні."
+              className="mt-2 w-full resize-y rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
+            />
+            <p className="mt-1.5 text-xs text-muted-foreground">
+              Показується під посиланням на категорію в результатах пошуку Google. Рекомендовано до 160 символів. Якщо лишити порожнім — підставиться типовий опис.
+            </p>
           </div>
 
           <div>
