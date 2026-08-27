@@ -9,7 +9,6 @@ import CategoryTabs from '@/components/store/CategoryTabs';
 import SortBar from '@/components/store/SortBar';
 import MobileFilterDrawer from '@/components/store/MobileFilterDrawer';
 import { SearchX } from 'lucide-react';
-import { categoryDescription } from '@/lib/category-seo';
 
 export const revalidate = 60;
 
@@ -26,7 +25,9 @@ export async function generateMetadata({ params }: { params: Promise<{ categoryS
       // `absolute` so the root layout's "%s — SmartLine" template doesn't
       // append a second "— SmartLine" onto a title that already has it.
       title: { absolute: `${cat.name} — купити в SmartLine` },
-      description: categoryDescription(categorySlug, cat.name, cat.seoText),
+      // Description comes ONLY from the admin-entered SEO field — no hardcoded
+      // or auto-generated text, so the admin form reflects the real state.
+      description: cat.seoText?.trim().slice(0, 160) || undefined,
     };
   } catch {
     return { title: 'Каталог' };

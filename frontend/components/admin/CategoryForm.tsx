@@ -150,7 +150,7 @@ export default function CategoryForm({ mode, category }: Props) {
               className="mt-2 w-full resize-y rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
             />
             <p className="mt-1.5 text-xs text-muted-foreground">
-              Показується під посиланням на категорію в результатах пошуку Google. Рекомендовано до 160 символів. Якщо лишити порожнім — підставиться типовий опис.
+              Показується під посиланням на категорію в результатах пошуку Google. Рекомендовано до 160 символів.
             </p>
           </div>
 
