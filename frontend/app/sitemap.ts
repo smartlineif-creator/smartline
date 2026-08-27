@@ -1,16 +1,40 @@
 import { MetadataRoute } from 'next';
 
-const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://smartline.com.ua';
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+// Regenerate hourly at runtime — if the API is unreachable during a build, the
+// sitemap must not stay frozen with only the static routes until the next deploy.
+export const revalidate = 3600;
+
+const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://smartlineif.com';
+// NEXT_PUBLIC_API_URL already includes the /api prefix (same convention as
+// lib/api.ts) — don't append it again or prod becomes /api/api/... → 404.
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
 
 async function fetchJSON(path: string) {
   try {
-    const res = await fetch(`${API_URL}/api${path}`, { next: { revalidate: 3600 } });
+    const res = await fetch(`${API_URL}${path}`, { next: { revalidate: 3600 } });
     if (!res.ok) return null;
     return res.json();
   } catch {
     return null;
   }
+}
+
+// The products endpoint caps limit at 100 (DTO @Max(100)), so a single
+// ?limit=1000 request 400s and yields nothing. Page through all products.
+async function fetchAllProducts(): Promise<any[]> {
+  const LIMIT = 100;
+  const first = await fetchJSON(`/products?limit=${LIMIT}&page=1`);
+  const data = first?.data;
+  if (!Array.isArray(data)) return [];
+  const total = typeof first.total === 'number' ? first.total : data.length;
+  const pages = Math.max(1, Math.ceil(total / LIMIT));
+  if (pages === 1) return data;
+  const rest = await Promise.all(
+    Array.from({ length: pages - 1 }, (_, i) =>
+      fetchJSON(`/products?limit=${LIMIT}&page=${i + 2}`),
+    ),
+  );
+  return [data, ...rest.map((r) => r?.data || [])].flat();
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
@@ -20,9 +44,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${BASE_URL}/contacts`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.5 },
   ];
 
-  const [categoriesRes, productsRes] = await Promise.all([
+  const [categoriesRes, products] = await Promise.all([
     fetchJSON('/categories'),
-    fetchJSON('/products?limit=1000'),
+    fetchAllProducts(),
   ]);
 
   const categoryRoutes: MetadataRoute.Sitemap = (categoriesRes || []).flatMap((cat: any) => {
@@ -33,7 +57,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     return routes;
   });
 
-  const productRoutes: MetadataRoute.Sitemap = ((productsRes?.data) || []).map((p: any) => ({
+  const productRoutes: MetadataRoute.Sitemap = products.map((p: any) => ({
     url: `${BASE_URL}/product/${p.slug}`,
     lastModified: new Date(p.updatedAt || p.createdAt),
     changeFrequency: 'weekly' as const,
