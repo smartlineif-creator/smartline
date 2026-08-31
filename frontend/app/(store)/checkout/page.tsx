@@ -241,7 +241,8 @@ export default function CheckoutPage() {
     else if (name.trim().length < 2) errors.name = "Ім'я закоротке";
     if (!phone.trim()) errors.phone = 'Вкажіть телефон';
     else if (!isValidUAPhone(phone)) errors.phone = 'Введіть повний номер: +380 XX XXX XX XX';
-    if (email.trim() && !isValidEmail(email)) errors.email = 'Невірний формат email';
+    if (!email.trim()) errors.email = 'Вкажіть email';
+    else if (!isValidEmail(email)) errors.email = 'Невірний формат email';
     setContactErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -352,7 +353,7 @@ export default function CheckoutPage() {
       const order = await createOrder({
         customerName: name.trim(),
         customerPhone: phone.trim(),
-        customerEmail: email.trim() || undefined,
+        customerEmail: email.trim(),
         items: items.map((item) => ({
           ...(item.itemType === 'service'
             ? { serviceId: item.serviceId, tierId: item.tierId }
@@ -364,6 +365,7 @@ export default function CheckoutPage() {
       });
 
       clearCart();
+      try { sessionStorage.setItem('sl_checkout_email', email.trim()); } catch {}
       router.push(`/checkout/success?orderId=${order.id}&orderNumber=${order.orderNumber}`);
     } catch (err: any) {
       toast.error(err.message || 'Помилка оформлення замовлення');
@@ -452,7 +454,7 @@ export default function CheckoutPage() {
                       inputMode="tel"
                     />
                   </Field>
-                  <Field label="Email" className="sm:col-span-2" error={contactErrors.email}>
+                  <Field label="Email" required className="sm:col-span-2" error={contactErrors.email}>
                     <input
                       className={inputClass}
                       style={contactErrors.email ? { borderColor: 'var(--sl-status-error)' } : undefined}

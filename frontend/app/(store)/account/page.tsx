@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { useAuthStore } from '@/store/auth';
 import { getOrders } from '@/lib/api';
+import { EmailVerifyBanner } from '@/components/store/EmailVerifyBanner';
 import { formatPrice, ORDER_STATUS_LABELS } from '@/lib/utils';
 import { Order } from '@/types';
 
@@ -86,6 +87,8 @@ export default function AccountPage() {
             Вийти
           </button>
         </div>
+
+        <EmailVerifyBanner />
 
         {/* Top grid: Profile + Last order */}
         <div className="grid gap-4 sm:grid-cols-2">

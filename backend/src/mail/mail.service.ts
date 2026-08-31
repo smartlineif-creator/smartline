@@ -216,6 +216,26 @@ export class MailService {
     await this.send(email, 'Скидання пароля — SmartLine', html);
   }
 
+  async sendEmailVerification(
+    email: string,
+    token: string,
+    frontendUrl: string,
+  ) {
+    const link = `${frontendUrl}/verify-email?token=${token}`;
+    const html = `
+      <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
+        <h1 style="color:#2563eb">SmartLine</h1>
+        <h2>Підтвердження пошти</h2>
+        <p>Дякуємо за реєстрацію! Підтвердіть свою пошту, щоб бачити всі свої замовлення в особистому кабінеті:</p>
+        <a href="${link}" style="display:inline-block;background:#2563eb;color:white;padding:12px 24px;border-radius:8px;text-decoration:none;margin:16px 0">
+          Підтвердити пошту
+        </a>
+        <p style="color:#6b7280;font-size:14px">Посилання дійсне 24 години. Якщо ви не реєструвалися — проігноруйте цей лист.</p>
+      </div>
+    `;
+    await this.send(email, 'Підтвердження пошти — SmartLine', html);
+  }
+
   async sendContactMessage(data: {
     name: string;
     phone: string;

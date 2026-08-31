@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { CheckCircle } from 'lucide-react';
+import { GuestAccountCta } from '@/components/store/GuestAccountCta';
 
 interface Props {
   searchParams: Promise<{ orderId?: string; orderNumber?: string }>;
@@ -56,6 +57,8 @@ export default async function CheckoutSuccessPage({ searchParams }: Props) {
             </span>
           </p>
         )}
+
+        <GuestAccountCta />
 
         <div className="flex gap-3 justify-center">
           <Link

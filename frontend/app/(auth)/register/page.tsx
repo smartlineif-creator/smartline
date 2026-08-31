@@ -1,9 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { AlertCircle, Eye, EyeOff, Loader2 } from 'lucide-react';
-import { register } from '@/lib/api';
+import { AlertCircle, Eye, EyeOff, Loader2, Mail, MailCheck } from 'lucide-react';
+import { register, resendVerification } from '@/lib/api';
 import { formatPhone, isValidUAPhone } from '@/lib/validation';
 
 export default function RegisterPage() {
@@ -14,6 +14,17 @@ export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [registered, setRegistered] = useState(false);
+  const [resending, setResending] = useState(false);
+  const [resent, setResent] = useState(false);
+
+  // Prefill email from a just-completed guest checkout (no PII in the URL).
+  useEffect(() => {
+    try {
+      const saved = sessionStorage.getItem('sl_checkout_email');
+      if (saved) setEmail(saved);
+    } catch {}
+  }, []);
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setPhone(formatPhone(e.target.value));
@@ -33,7 +44,7 @@ export default function RegisterPage() {
     setLoading(true);
     try {
       await register({ email, password, name, phone });
-      window.location.assign('/account');
+      setRegistered(true);
     } catch (err: any) {
       setError(err.message || 'Помилка реєстрації. Спробуйте ще раз.');
     } finally {
@@ -50,6 +61,72 @@ export default function RegisterPage() {
   };
   const onFocus = (e: React.FocusEvent<HTMLInputElement>) => (e.currentTarget.style.borderColor = 'var(--sl-accent)');
   const onBlur  = (e: React.FocusEvent<HTMLInputElement>) => (e.currentTarget.style.borderColor = 'var(--sl-border)');
+
+  const handleResend = async () => {
+    setResending(true);
+    try {
+      await resendVerification();
+      setResent(true);
+    } catch {
+      // Leave the option available so the user can retry.
+    } finally {
+      setResending(false);
+    }
+  };
+
+  if (registered) {
+    return (
+      <div className="w-full max-w-[480px]">
+        <div className="rounded-2xl p-7 text-center" style={{ background: 'var(--sl-bg-surface)', border: '1px solid var(--sl-border)' }}>
+          <div
+            className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl"
+            style={{ background: 'color-mix(in srgb, var(--sl-accent) 12%, transparent)' }}
+          >
+            <Mail className="h-7 w-7" style={{ color: 'var(--sl-accent)' }} />
+          </div>
+          <h1 className="mb-2 text-xl font-bold" style={{ color: 'var(--sl-text-primary)', fontFamily: 'var(--sl-font-body)' }}>
+            Майже готово!
+          </h1>
+          <p className="mb-1 text-sm leading-relaxed" style={{ color: 'var(--sl-text-secondary)', fontFamily: 'var(--sl-font-body)' }}>
+            Ми надіслали лист для підтвердження на
+          </p>
+          <p className="mb-5 text-sm font-semibold" style={{ color: 'var(--sl-accent)', fontFamily: 'var(--sl-font-mono)' }}>
+            {email}
+          </p>
+          <p className="mb-6 text-sm leading-relaxed" style={{ color: 'var(--sl-text-muted)', fontFamily: 'var(--sl-font-body)' }}>
+            Відкрийте його й натисніть кнопку підтвердження — і всі ваші замовлення зберуться в кабінеті.
+          </p>
+          <Link
+            href="/account"
+            className="sl-hover-btn-primary flex h-12 w-full items-center justify-center rounded-xl text-sm font-semibold"
+            style={{ background: 'var(--sl-accent)', color: '#fff', fontFamily: 'var(--sl-font-mono)' }}
+          >
+            Перейти до кабінету
+          </Link>
+          <div className="mt-4">
+            {resent ? (
+              <p className="inline-flex items-center gap-2 text-sm font-medium" style={{ color: 'var(--sl-status-success)', fontFamily: 'var(--sl-font-mono)' }}>
+                <MailCheck className="h-4 w-4" /> Лист надіслано ще раз
+              </p>
+            ) : (
+              <p className="text-sm" style={{ color: 'var(--sl-text-muted)', fontFamily: 'var(--sl-font-body)' }}>
+                Не отримали лист?{' '}
+                <button
+                  type="button"
+                  onClick={handleResend}
+                  disabled={resending}
+                  className="sl-hover-accent font-semibold underline underline-offset-4"
+                  style={{ color: 'var(--sl-accent)', fontFamily: 'var(--sl-font-mono)', textDecorationThickness: '1.5px', opacity: resending ? 0.6 : 1, cursor: resending ? 'default' : 'pointer' }}
+                >
+                  {resending ? 'Надсилаємо…' : 'Надіслати ще раз'}
+                </button>
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full max-w-[480px]">

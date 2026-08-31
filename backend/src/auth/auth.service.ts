@@ -48,7 +48,53 @@ export class AuthService {
       },
     });
 
+    await this.sendVerificationEmail(email);
+
     return this.issueTokens(user.id, user.email, user.role);
+  }
+
+  async verifyEmail(token: string) {
+    const record = await this.prisma.emailVerificationToken.findUnique({
+      where: { token },
+    });
+    if (!record || record.expiresAt < new Date()) {
+      throw new BadRequestException('Invalid or expired token');
+    }
+
+    const user = await this.prisma.user.update({
+      where: { email: record.email },
+      data: { emailVerified: true },
+    });
+
+    // Claim only unowned guest orders for this now-verified email — never
+    // reassign an order already linked to another account.
+    await this.prisma.order.updateMany({
+      where: {
+        customerEmail: { equals: record.email, mode: 'insensitive' },
+        userId: null,
+      },
+      data: { userId: user.id },
+    });
+
+    await this.prisma.emailVerificationToken.delete({ where: { token } });
+  }
+
+  async resendVerification(userId: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user || user.emailVerified) return;
+    await this.sendVerificationEmail(user.email);
+  }
+
+  private async sendVerificationEmail(email: string) {
+    const token = randomBytes(32).toString('hex');
+    await this.prisma.emailVerificationToken.deleteMany({ where: { email } });
+    await this.prisma.emailVerificationToken.create({
+      data: { email, token, expiresAt: addHours(new Date(), 24) },
+    });
+    const frontendUrl = getPrimaryFrontendUrl(
+      this.config.get<string>('FRONTEND_URL'),
+    );
+    this.mail.sendEmailVerification(email, token, frontendUrl).catch(() => {});
   }
 
   async login(dto: LoginDto) {

@@ -35,7 +35,9 @@ export class RegisterDto {
   @IsOptional()
   @MaxLength(32)
   @Transform(stripPhone)
-  @Matches(UA_PHONE, { message: 'phone must be a valid UA phone (+380XXXXXXXXX)' })
+  @Matches(UA_PHONE, {
+    message: 'phone must be a valid UA phone (+380XXXXXXXXX)',
+  })
   phone?: string;
 }
 
@@ -53,6 +55,11 @@ export class ResetPasswordDto {
   password: string;
 }
 
+export class VerifyEmailDto {
+  @IsString()
+  token: string;
+}
+
 export class UpdateProfileDto {
   @IsString()
   @IsOptional()
@@ -63,7 +70,9 @@ export class UpdateProfileDto {
   @IsOptional()
   @MaxLength(32)
   @Transform(stripPhone)
-  @Matches(UA_PHONE, { message: 'phone must be a valid UA phone (+380XXXXXXXXX)' })
+  @Matches(UA_PHONE, {
+    message: 'phone must be a valid UA phone (+380XXXXXXXXX)',
+  })
   phone?: string;
 }
 

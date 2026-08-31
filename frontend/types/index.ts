@@ -5,6 +5,7 @@ export interface User {
   phone?: string;
   role: 'USER' | 'ADMIN';
   discount: number;
+  emailVerified: boolean;
   createdAt: string;
 }
 

@@ -340,6 +340,17 @@ export async function register(data: { email: string; password: string; name?: s
   return tokens;
 }
 
+export async function verifyEmail(token: string) {
+  return apiFetch<{ message: string }>('/auth/verify-email', {
+    method: 'POST',
+    body: JSON.stringify({ token }),
+  });
+}
+
+export async function resendVerification() {
+  return apiFetch<{ message: string }>('/auth/resend-verification', { method: 'POST' });
+}
+
 export async function logout() {
   try {
     await apiFetch<void>('/auth/logout', { method: 'POST' });

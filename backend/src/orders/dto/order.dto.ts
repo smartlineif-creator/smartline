@@ -179,12 +179,13 @@ export class CreateOrderDto {
 
   @IsString()
   @Transform(stripPhone)
-  @Matches(UA_PHONE, { message: 'customerPhone must be a valid UA phone (+380XXXXXXXXX)' })
+  @Matches(UA_PHONE, {
+    message: 'customerPhone must be a valid UA phone (+380XXXXXXXXX)',
+  })
   customerPhone: string;
 
   @IsEmail()
-  @IsOptional()
-  customerEmail?: string;
+  customerEmail: string;
 
   @IsArray()
   @ArrayNotEmpty()
