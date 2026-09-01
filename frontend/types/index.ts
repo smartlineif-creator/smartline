@@ -177,6 +177,8 @@ export interface OrderItem {
   variantName?: string;
   price: number | string;
   quantity: number;
+  redeemedCount: number;
+  lastRedeemedAt?: string;
 }
 
 export type OrderStatus = 'NEW' | 'CONFIRMED' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED';
@@ -192,6 +194,7 @@ export interface Order {
   items?: OrderItem[];
   delivery: Record<string, any>;
   payment: Record<string, any>;
+  isPaid: boolean;
   ttn?: string;
   createdAt: string;
 }

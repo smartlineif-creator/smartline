@@ -278,3 +278,42 @@ export const STATE_BADGE = {
   on: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
   off: 'bg-gray-50 text-gray-500 ring-gray-200',
 } as const;
+
+/** Admin-only payment badge (Order.isPaid) — ring-style like ORDER_STATUS_COLORS. Client never sees this, so no --sl- tone. */
+export const PAYMENT_BADGE = {
+  paid: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
+  unpaid: 'bg-amber-50 text-amber-700 ring-amber-200',
+} as const;
+
+export const PAYMENT_LABELS = {
+  paid: 'Оплачено',
+  unpaid: 'Не оплачено',
+} as const;
+
+export type ServiceRedemptionState = 'available' | 'partial' | 'done';
+
+/** `0` погашень → ще не видавали; менше за quantity → видали частину; інакше все видано. */
+export function getServiceRedemptionState(item: { redeemedCount: number; quantity: number }): ServiceRedemptionState {
+  if (item.redeemedCount === 0) return 'available';
+  if (item.redeemedCount < item.quantity) return 'partial';
+  return 'done';
+}
+
+export function getServiceRedemptionLabel(item: { redeemedCount: number; quantity: number }): string {
+  const state = getServiceRedemptionState(item);
+  if (state === 'available') return 'Доступна';
+  if (state === 'done') return 'Використано';
+  return `${item.redeemedCount} з ${item.quantity}`;
+}
+
+/**
+ * Admin ring-badge colours per redemption state (light theme, pairs with
+ * `ring-1` like ORDER_STATUS_COLORS). Client surfaces use their own inline
+ * `--sl-` tone (see `getStatusTone` in account/orders/page.tsx) — kept
+ * separate on purpose, a shared map would break the dark theme.
+ */
+export const SERVICE_REDEMPTION_COLORS: Record<ServiceRedemptionState, string> = {
+  available: 'bg-gray-50 text-gray-600 ring-gray-200',
+  partial: 'bg-amber-50 text-amber-700 ring-amber-200',
+  done: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
+};

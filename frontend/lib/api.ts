@@ -1,5 +1,5 @@
 import {
-  Product, Category, Banner, Promotion, Order, CartItem,
+  Product, Category, Banner, Promotion, Order, OrderItem, CartItem,
   Review, User, PaginatedResponse, Service, ServiceInput,
   DashboardAttention, DashboardStats, OrderListStats,
 } from '@/types';
@@ -510,6 +510,17 @@ export async function adminGetOrder(id: string) {
 
 export async function adminUpdateOrderStatus(id: string, data: any) {
   return apiFetch<Order>(`/orders/${id}/status`, { method: 'PATCH', body: JSON.stringify(data) });
+}
+
+export async function adminSetOrderPaid(id: string, isPaid: boolean) {
+  return apiFetch<Order>(`/orders/${id}/paid`, { method: 'PATCH', body: JSON.stringify({ isPaid }) });
+}
+
+export async function adminRedeemServiceItem(itemId: string, delta: 1 | -1) {
+  return apiFetch<OrderItem>(`/orders/items/${itemId}/redeem`, {
+    method: 'PATCH',
+    body: JSON.stringify({ delta }),
+  });
 }
 
 export async function adminGetUsers(params: Record<string, string | number | undefined> = {}) {

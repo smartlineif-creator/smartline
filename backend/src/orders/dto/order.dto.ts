@@ -5,6 +5,7 @@ import {
   ArrayNotEmpty,
   IsEmail,
   IsEnum,
+  IsBoolean,
   ValidateNested,
   IsInt,
   Min,
@@ -213,4 +214,14 @@ export class UpdateOrderStatusDto {
   @IsString()
   @IsOptional()
   adminNote?: string;
+}
+
+export class RedeemServiceItemDto {
+  @IsIn([1, -1])
+  delta: number;
+}
+
+export class SetOrderPaidDto {
+  @IsBoolean()
+  isPaid: boolean;
 }

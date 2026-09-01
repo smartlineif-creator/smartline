@@ -26,6 +26,7 @@ export class OrdersService {
     statusCsv?: string,
     hasService?: boolean,
     includeStats?: boolean,
+    unpaidOnly?: boolean,
   ) {
     const skip = (page - 1) * limit;
     const where: Prisma.OrderWhereInput = {};
@@ -74,6 +75,10 @@ export class OrdersService {
           (Object.values(OrderStatus) as string[]).includes(s),
         );
       if (statuses.length > 0) where.status = { in: statuses };
+    }
+
+    if (unpaidOnly) {
+      where.isPaid = false;
     }
 
     const [data, total, grouped] = await Promise.all([
@@ -466,5 +471,41 @@ export class OrdersService {
       this.mail.sendOrderStatusUpdate(updated).catch(() => {});
     }
     return updated;
+  }
+
+  async setPaid(id: string, isPaid: boolean) {
+    return this.prisma.order.update({ where: { id }, data: { isPaid } });
+  }
+
+  // Погашення послуги (видача клієнту одиниці з quantity). Read-then-write у
+  // $transaction, НЕ CAS: порівняння redeemedCount з власним quantity не
+  // виражається в Prisma `where` без raw SQL, а потік single-owner (адмінка
+  // одного власника) — найгірший випадок (перегашення на 1) відкатний через
+  // delta:-1. Якщо колись стане multi-user — перейти на $executeRaw з
+  // WHERE redeemed_count < quantity.
+  async redeemServiceItem(itemId: string, delta: number) {
+    return this.prisma.$transaction(async (tx) => {
+      const item = await tx.orderItem.findUnique({ where: { id: itemId } });
+      if (!item) throw new NotFoundException('Позицію замовлення не знайдено');
+      if (!item.serviceId) {
+        throw new BadRequestException('Погашати можна лише послуги');
+      }
+
+      const next = item.redeemedCount + delta;
+      if (next < 0) {
+        throw new BadRequestException('Послугу ще не погашено');
+      }
+      if (next > item.quantity) {
+        throw new BadRequestException('Усі одиниці послуги вже видано');
+      }
+
+      return tx.orderItem.update({
+        where: { id: itemId },
+        data: {
+          redeemedCount: next,
+          ...(delta === 1 ? { lastRedeemedAt: new Date() } : {}),
+        },
+      });
+    });
   }
 }

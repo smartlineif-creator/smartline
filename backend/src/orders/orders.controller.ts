@@ -11,7 +11,12 @@ import {
 } from '@nestjs/common';
 import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import { OrdersService } from './orders.service';
-import { CreateOrderDto, UpdateOrderStatusDto } from './dto/order.dto';
+import {
+  CreateOrderDto,
+  UpdateOrderStatusDto,
+  RedeemServiceItemDto,
+  SetOrderPaidDto,
+} from './dto/order.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -35,6 +40,7 @@ export class OrdersController {
     @Query('hasService') hasService?: string,
     @Query('withStats') withStats?: string,
     @Query('mine') mine?: string,
+    @Query('unpaid') unpaid?: string,
   ) {
     const isAdmin = user.role === Role.ADMIN;
     // Admins see ALL orders (admin panel). But the customer "Мої замовлення"
@@ -52,6 +58,7 @@ export class OrdersController {
       status,
       hasService === 'true',
       isAdmin || withStats === 'true',
+      unpaid === 'true',
     );
   }
 
@@ -76,5 +83,19 @@ export class OrdersController {
   @Roles(Role.ADMIN)
   updateStatus(@Param('id') id: string, @Body() dto: UpdateOrderStatusDto) {
     return this.ordersService.updateStatus(id, dto);
+  }
+
+  @Patch(':id/paid')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
+  setPaid(@Param('id') id: string, @Body() dto: SetOrderPaidDto) {
+    return this.ordersService.setPaid(id, dto.isPaid);
+  }
+
+  @Patch('items/:itemId/redeem')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
+  redeemServiceItem(@Param('itemId') itemId: string, @Body() dto: RedeemServiceItemDto) {
+    return this.ordersService.redeemServiceItem(itemId, dto.delta);
   }
 }

@@ -6,7 +6,14 @@ import { useRouter } from 'next/navigation';
 import { ArrowRight, CalendarDays, Package, Search } from 'lucide-react';
 import { adminGetAllOrders } from '@/lib/api';
 import { Order, OrderListStats, OrderStatus } from '@/types';
-import { formatPrice, ORDER_STATUS_COLORS, ORDER_STATUS_LABELS, pluralUk } from '@/lib/utils';
+import {
+  formatPrice,
+  ORDER_STATUS_COLORS,
+  ORDER_STATUS_LABELS,
+  PAYMENT_BADGE,
+  PAYMENT_LABELS,
+  pluralUk,
+} from '@/lib/utils';
 import { MultiSelect } from '@/components/ui/multi-select';
 import { Button } from '@/components/ui/button';
 import SortableTh from '@/components/admin/SortableTh';
@@ -25,7 +32,7 @@ function getItemsCount(order: Order) {
   return order.items?.reduce((sum, item) => sum + item.quantity, 0) || 0;
 }
 
-type OrderSortColumn = 'number' | 'customer' | 'items' | 'total' | 'status' | 'date';
+type OrderSortColumn = 'number' | 'customer' | 'items' | 'total' | 'status' | 'paid' | 'date';
 
 const ORDER_COMPARATORS: SortComparators<OrderSortColumn, Order> = {
   number: (a, b) => compareNumber(a.orderNumber, b.orderNumber),
@@ -33,6 +40,7 @@ const ORDER_COMPARATORS: SortComparators<OrderSortColumn, Order> = {
   items: (a, b) => compareNumber(getItemsCount(a), getItemsCount(b)),
   total: (a, b) => compareNumber(Number(a.totalAmount), Number(b.totalAmount)),
   status: (a, b) => compareText(ORDER_STATUS_LABELS[a.status], ORDER_STATUS_LABELS[b.status]),
+  paid: (a, b) => Number(a.isPaid) - Number(b.isPaid),
   date: (a, b) => compareDate(a.createdAt, b.createdAt),
 };
 
@@ -45,6 +53,7 @@ export default function AdminOrdersPage() {
   const [searchDraft, setSearchDraft] = useState('');
   const [search, setSearch] = useState('');
   const [statuses, setStatuses] = useState<OrderStatus[]>([]);
+  const [unpaidOnly, setUnpaidOnly] = useState(false);
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
   const loading = !hasLoadedOnce;
 
@@ -54,6 +63,7 @@ export default function AdminOrdersPage() {
       limit: PAGE_SIZE,
       q: search || undefined,
       status: statuses.length > 0 ? statuses.join(',') : undefined,
+      unpaid: unpaidOnly ? 'true' : undefined,
     })
       .then((res) => {
         setOrders(res.data);
@@ -65,7 +75,7 @@ export default function AdminOrdersPage() {
         setTotal(0);
       })
       .finally(() => setHasLoadedOnce(true));
-  }, [page, search, statuses]);
+  }, [page, search, statuses, unpaidOnly]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -127,6 +137,13 @@ export default function AdminOrdersPage() {
             placeholder="Усі статуси"
             options={STATUSES.map((s) => ({ value: s, label: ORDER_STATUS_LABELS[s] }))}
           />
+          <Button
+            type="button"
+            variant={unpaidOnly ? 'default' : 'outline'}
+            onClick={() => { setUnpaidOnly((v) => !v); setPage(1); }}
+          >
+            Тільки неоплачені
+          </Button>
         </div>
       </div>
 
@@ -140,6 +157,7 @@ export default function AdminOrdersPage() {
                 <SortableTh column="items" active={column} direction={direction} onSort={onSort} className="px-5 py-4">Товари</SortableTh>
                 <SortableTh column="total" active={column} direction={direction} onSort={onSort} className="px-5 py-4">Сума</SortableTh>
                 <SortableTh column="status" active={column} direction={direction} onSort={onSort} className="px-5 py-4">Статус</SortableTh>
+                <SortableTh column="paid" active={column} direction={direction} onSort={onSort} className="px-5 py-4">Оплата</SortableTh>
                 <SortableTh column="date" active={column} direction={direction} onSort={onSort} className="px-5 py-4">Дата</SortableTh>
                 <th className="px-5 py-4 text-right font-semibold">Дія</th>
               </tr>
@@ -147,11 +165,11 @@ export default function AdminOrdersPage() {
             <tbody className="divide-y divide-gray-100">
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="py-12 text-center text-gray-500">Завантаження...</td>
+                  <td colSpan={8} className="py-12 text-center text-gray-500">Завантаження...</td>
                 </tr>
               ) : orders.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-12 text-center text-gray-500">Замовлень за цими умовами немає</td>
+                  <td colSpan={8} className="py-12 text-center text-gray-500">Замовлень за цими умовами немає</td>
                 </tr>
               ) : sorted.map((order) => (
                 <tr
@@ -178,6 +196,11 @@ export default function AdminOrdersPage() {
                   <td className="px-5 py-4">
                     <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ring-1 ${ORDER_STATUS_COLORS[order.status]}`}>
                       {ORDER_STATUS_LABELS[order.status]}
+                    </span>
+                  </td>
+                  <td className="px-5 py-4">
+                    <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ring-1 ${order.isPaid ? PAYMENT_BADGE.paid : PAYMENT_BADGE.unpaid}`}>
+                      {order.isPaid ? PAYMENT_LABELS.paid : PAYMENT_LABELS.unpaid}
                     </span>
                   </td>
                   <td className="px-5 py-4">

@@ -293,6 +293,7 @@ model Order {
   items         OrderItem[]
   delivery      Json
   payment       Json
+  isPaid        Boolean     @default(false)
   ttn           String?
   adminNote     String?
   customerName  String
@@ -318,6 +319,8 @@ model OrderItem {
   variantName String?
   price       Decimal  @db.Decimal(10, 2)
   quantity    Int
+  redeemedCount  Int       @default(0)
+  lastRedeemedAt DateTime?
 }
 
 // ─── Cart ───────────────────────────────────────────────────────────────────

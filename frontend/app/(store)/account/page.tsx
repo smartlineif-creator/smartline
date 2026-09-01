@@ -11,6 +11,7 @@ import {
   Package,
   User,
   UserCog,
+  Wrench,
 } from 'lucide-react';
 import { useAuthStore } from '@/store/auth';
 import { getOrders } from '@/lib/api';
@@ -28,6 +29,7 @@ const STATUS_DOT: Record<string, string> = {
 
 const NAV_ITEMS = [
   { href: '/account/orders', icon: Package,  label: 'Мої замовлення',    desc: 'Статус і деталі замовлень' },
+  { href: '/account/services', icon: Wrench, label: 'Мої послуги',      desc: 'Куплені послуги та їх стан' },
   { href: '/account/settings', icon: UserCog, label: 'Особисті дані',   desc: 'Ім\'я, телефон, пароль' },
   { href: '/wishlist',         icon: Heart,   label: 'Обране',           desc: 'Відкладені товари' },
 ];

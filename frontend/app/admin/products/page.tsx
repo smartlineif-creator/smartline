@@ -15,6 +15,7 @@ import SortableTh from '@/components/admin/SortableTh';
 import { useTableSort, compareText, compareNumber, type SortComparators } from '@/lib/useTableSort';
 import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
+import { Tooltip } from '@/components/ui/tooltip';
 import AdminPageHint from '@/components/admin/AdminPageHint';
 
 /** For the admin list thumbnail only: pick whichever variant actually has a photo,
@@ -401,7 +402,9 @@ export default function AdminProductsPage() {
                     </div>
                   </td>
                   <td className="px-4 py-3">
-                    <div className="font-medium line-clamp-1">{product.name}</div>
+                    <Tooltip label={product.name} className="block">
+                      <span className="font-medium line-clamp-1">{product.name}</span>
+                    </Tooltip>
                     <div className="text-xs text-muted-foreground font-mono">{product.slug}</div>
                     {product.sku && <div className="mt-0.5 text-xs text-muted-foreground">Арт. {product.sku}</div>}
                   </td>

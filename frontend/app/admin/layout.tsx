@@ -18,7 +18,7 @@ const NAV = [
   { href: '/admin/products', label: 'Товари', icon: Package },
   { href: '/admin/categories', label: 'Категорії', icon: Tag },
   { href: '/admin/orders', label: 'Замовлення', icon: ShoppingCart },
-  { href: '/admin/requests', label: 'Заявки', icon: ClipboardList },
+  { href: '/admin/requests', label: 'Послуги клієнтів', icon: ClipboardList },
   { href: '/admin/services', label: 'Послуги', icon: Wrench },
   { href: '/admin/users', label: 'Клієнти', icon: Users },
   { href: '/admin/promotions', label: 'Акції', icon: Percent },

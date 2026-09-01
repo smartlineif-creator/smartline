@@ -20,9 +20,16 @@ import {
   Truck,
   User,
 } from 'lucide-react';
-import { adminGetOrder, adminUpdateOrderStatus } from '@/lib/api';
+import { adminGetOrder, adminSetOrderPaid, adminUpdateOrderStatus } from '@/lib/api';
 import { Order, OrderStatus } from '@/types';
-import { formatPrice, ORDER_STATUS_COLORS, ORDER_STATUS_LABELS, pluralUk } from '@/lib/utils';
+import {
+  formatPrice,
+  ORDER_STATUS_COLORS,
+  ORDER_STATUS_LABELS,
+  PAYMENT_BADGE,
+  PAYMENT_LABELS,
+  pluralUk,
+} from '@/lib/utils';
 
 const STATUSES: OrderStatus[] = ['NEW', 'CONFIRMED', 'SHIPPED', 'DELIVERED', 'CANCELLED'];
 
@@ -157,6 +164,7 @@ export default function AdminOrderDetailPage() {
   const [adminNote, setAdminNote] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [paidPending, setPaidPending] = useState(false);
 
   const loadOrder = () => {
     setLoading(true);
@@ -197,6 +205,20 @@ export default function AdminOrderDetailPage() {
       toast.error('Не вдалося оновити замовлення');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleSetPaid = async (next: boolean) => {
+    if (!order || next === order.isPaid) return;
+    setPaidPending(true);
+    try {
+      await adminSetOrderPaid(order.id, next);
+      setOrder((current) => (current ? { ...current, isPaid: next } : current));
+      toast.success(next ? 'Позначено як оплачене' : 'Позначено як неоплачене');
+    } catch {
+      toast.error('Не вдалося оновити статус оплати');
+    } finally {
+      setPaidPending(false);
     }
   };
 
@@ -255,29 +277,49 @@ export default function AdminOrderDetailPage() {
               <h2 className="font-semibold text-gray-950">Що замовив покупець</h2>
             </div>
             <div className="divide-y divide-gray-100">
-              {order.items?.map((item) => (
-                <div key={item.id} className="grid gap-4 px-5 py-4 md:grid-cols-[76px_1fr_auto] md:items-center">
-                  <div className="relative h-20 w-20 overflow-hidden rounded-2xl bg-gray-100">
-                    {item.product?.images?.[0]?.url ? (
-                      <Image src={item.product.images[0].url} alt={item.name} fill className="object-contain p-2" sizes="76px" />
-                    ) : (
-                      <div className="flex h-full w-full items-center justify-center text-gray-400">
-                        <Package className="h-6 w-6" />
-                      </div>
-                    )}
-                  </div>
-                  <div className="min-w-0">
-                    <p className="font-semibold text-gray-950">{item.name}</p>
-                    {item.variantName && <p className="mt-1 text-sm text-gray-500">{item.variantName}</p>}
-                    <p className="mt-2 font-mono text-sm text-gray-500">
-                      {item.quantity} шт. × {formatPrice(item.price)}
-                    </p>
-                  </div>
-                  <div className="text-lg font-semibold text-gray-950 md:text-right">
-                    {formatPrice(Number(item.price) * item.quantity)}
-                  </div>
-                </div>
-              ))}
+              {order.items?.map((item) => {
+                const editHref = item.productId
+                  ? `/admin/products/${item.productId}/edit`
+                  : item.serviceId
+                    ? `/admin/services/${item.serviceId}`
+                    : null;
+                const rowClass = 'grid gap-4 px-5 py-4 md:grid-cols-[76px_1fr_auto] md:items-center';
+                const content = (
+                  <>
+                    <div className="relative h-20 w-20 overflow-hidden rounded-2xl bg-gray-100">
+                      {item.product?.images?.[0]?.url ? (
+                        <Image src={item.product.images[0].url} alt={item.name} fill className="object-contain p-2" sizes="76px" />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center text-gray-400">
+                          <Package className="h-6 w-6" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-semibold text-gray-950 transition-colors group-hover:text-blue-700">{item.name}</p>
+                      {item.variantName && <p className="mt-1 text-sm text-gray-500">{item.variantName}</p>}
+                      <p className="mt-2 font-mono text-sm text-gray-500">
+                        {item.quantity} шт. × {formatPrice(item.price)}
+                      </p>
+                    </div>
+                    <div className="text-lg font-semibold text-gray-950 md:text-right">
+                      {formatPrice(Number(item.price) * item.quantity)}
+                    </div>
+                  </>
+                );
+                return editHref ? (
+                  <Link
+                    key={item.id}
+                    href={editHref}
+                    title={item.serviceId ? 'Відкрити послугу в адмінці' : 'Відкрити товар в адмінці'}
+                    className={`${rowClass} group cursor-pointer transition-colors hover:bg-blue-50/60`}
+                  >
+                    {content}
+                  </Link>
+                ) : (
+                  <div key={item.id} className={rowClass}>{content}</div>
+                );
+              })}
             </div>
           </section>
 
@@ -363,6 +405,30 @@ export default function AdminOrderDetailPage() {
                   </button>
                 );
               })}
+            </div>
+
+            <label className="mt-5 block text-sm font-medium text-gray-700">Оплата</label>
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => handleSetPaid(true)}
+                disabled={paidPending}
+                className={`rounded-xl px-3 py-2 text-sm font-medium ring-1 transition disabled:cursor-not-allowed disabled:opacity-60 ${
+                  order.isPaid ? PAYMENT_BADGE.paid : 'bg-white text-gray-600 ring-gray-200 hover:ring-emerald-200'
+                }`}
+              >
+                {PAYMENT_LABELS.paid}
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSetPaid(false)}
+                disabled={paidPending}
+                className={`rounded-xl px-3 py-2 text-sm font-medium ring-1 transition disabled:cursor-not-allowed disabled:opacity-60 ${
+                  order.isPaid ? 'bg-white text-gray-600 ring-gray-200 hover:ring-amber-200' : PAYMENT_BADGE.unpaid
+                }`}
+              >
+                {PAYMENT_LABELS.unpaid}
+              </button>
             </div>
 
             <label className="mt-5 block text-sm font-medium text-gray-700">ТТН Нової Пошти</label>

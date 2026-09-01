@@ -6,7 +6,15 @@ import { useRouter } from 'next/navigation';
 import { ArrowRight, Search, Wrench } from 'lucide-react';
 import { adminGetAllOrders } from '@/lib/api';
 import { Order, OrderStatus } from '@/types';
-import { formatPrice, ORDER_STATUS_COLORS, ORDER_STATUS_LABELS, pluralUk } from '@/lib/utils';
+import {
+  formatPrice,
+  getServiceRedemptionLabel,
+  getServiceRedemptionState,
+  ORDER_STATUS_COLORS,
+  ORDER_STATUS_LABELS,
+  pluralUk,
+  SERVICE_REDEMPTION_COLORS,
+} from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import SortableTh from '@/components/admin/SortableTh';
 import { useTableSort, compareText, compareNumber, compareDate, type SortComparators } from '@/lib/useTableSort';
@@ -86,7 +94,7 @@ export default function AdminRequestsPage() {
       <div>
         <h1 className="flex items-center gap-2 text-3xl font-bold tracking-tight text-gray-950">
           <Wrench className="h-6 w-6 text-blue-600" />
-          Заявки на послуги
+          Послуги клієнтів
         </h1>
         <p className="mt-1 text-sm text-gray-500">
           {loading ? '...' : `${total} ${pluralUk(total, 'замовлення', 'замовлення', 'замовлень')} із послугами`}
@@ -133,7 +141,7 @@ export default function AdminRequestsPage() {
                 return (
                   <tr
                     key={order.id}
-                    onClick={() => router.push(`/admin/orders/${order.id}`)}
+                    onClick={() => router.push(`/admin/requests/${order.id}`)}
                     className="group cursor-pointer hover:bg-gray-50 transition-colors"
                   >
                     <td className="py-3 pr-4 font-mono text-xs text-gray-500">#{order.orderNumber}</td>
@@ -142,11 +150,14 @@ export default function AdminRequestsPage() {
                       <p className="text-xs text-gray-500">{order.customerPhone}</p>
                     </td>
                     <td className="py-3 pr-4">
-                      <div className="flex flex-col gap-0.5">
+                      <div className="flex flex-col gap-1">
                         {serviceItems.map((item, i) => (
-                          <span key={i} className="flex items-center gap-1 text-xs text-blue-700">
+                          <span key={i} className="flex items-center gap-1.5 text-xs text-blue-700">
                             <Wrench className="h-3 w-3 shrink-0 opacity-70" />
                             {item.name} × {item.quantity}
+                            <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-medium ring-1 ${SERVICE_REDEMPTION_COLORS[getServiceRedemptionState(item)]}`}>
+                              {getServiceRedemptionLabel(item)}
+                            </span>
                           </span>
                         ))}
                       </div>
@@ -158,7 +169,7 @@ export default function AdminRequestsPage() {
                     <td className="py-3 pr-4 text-xs text-gray-500">{formatDate(order.createdAt)}</td>
                     <td className="py-3" onClick={(e) => e.stopPropagation()}>
                       <Link
-                        href={`/admin/orders/${order.id}`}
+                        href={`/admin/requests/${order.id}`}
                         className="flex items-center gap-1 text-xs text-gray-400 transition-colors group-hover:text-blue-600 hover:text-blue-600"
                       >
                         Відкрити <ArrowRight className="h-3.5 w-3.5" />
