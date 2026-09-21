@@ -1,4 +1,4 @@
-import { Suspense } from 'react';
+import { cache, Suspense } from 'react';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import Breadcrumbs from '@/components/store/Breadcrumbs';
@@ -9,10 +9,19 @@ import CategoryTabs from '@/components/store/CategoryTabs';
 import SortBar from '@/components/store/SortBar';
 import MobileFilterDrawer from '@/components/store/MobileFilterDrawer';
 import { Pagination } from '@/components/store/Pagination';
-import { buildPageHref, firstParam } from '@/lib/utils';
+import {
+  buildPageHref,
+  firstParam,
+  pageNumberFrom,
+  parseOptionsParam,
+  parsePriceParam,
+} from '@/lib/utils';
 import { SearchX } from 'lucide-react';
 
 export const revalidate = 60;
+
+const PAGE_SIZE = 24;
+const DEFAULT_SORT = 'newest';
 
 /** Repeated query params arrive as arrays — see `firstParam`. */
 type SearchParams = Record<string, string | string[] | undefined>;
@@ -23,68 +32,99 @@ interface Props {
 }
 
 /**
- * Price bounds are typed by hand into the URL as often as they are clicked.
- * Anything that is not a usable number is treated as absent: the API rejects
- * NaN with a 400, and the catch around the fetch would then strip the entire
- * filter sidebar off the page.
+ * The sanitised view of the URL. Everything downstream — the API call, the
+ * sidebar, the pagination links and the metadata — reads this instead of the
+ * raw params, so junk input cannot reach the API and tracking params cannot
+ * leak into internal links.
  */
-/** Page numbers reach us from bookmarks and hand-edited URLs — clamp to a real one. */
-function pageNumberFrom(value: string | string[] | undefined): number {
-  return Math.max(1, Math.floor(Number(firstParam(value))) || 1);
-}
+function readParams(sp: SearchParams) {
+  const sort = firstParam(sp.sort) || DEFAULT_SORT;
+  const minPrice = parsePriceParam(sp.minPrice);
+  const maxPrice = parsePriceParam(sp.maxPrice);
+  const activeOptions = parseOptionsParam(sp.options);
+  const hasOptions = Object.keys(activeOptions).length > 0;
 
-function parsePrice(value: string | string[] | undefined): string | undefined {
-  const raw = firstParam(value);
-  if (!raw) return undefined;
-  const parsed = Number(raw);
-  return Number.isFinite(parsed) && parsed >= 0 ? String(parsed) : undefined;
+  return {
+    page: pageNumberFrom(sp.page),
+    sort,
+    minPrice,
+    maxPrice,
+    activeOptions,
+    // Sorting reorders the catalogue into a different page-2, so it counts as
+    // a facet for indexing purposes just like a price or option filter does.
+    hasFilters: hasOptions || Boolean(minPrice) || Boolean(maxPrice) || sort !== DEFAULT_SORT,
+    linkParams: {
+      sort: sort !== DEFAULT_SORT ? sort : undefined,
+      minPrice,
+      maxPrice,
+      options: hasOptions ? JSON.stringify(activeOptions) : undefined,
+    },
+  };
 }
 
 /**
- * `options` is a JSON record of group → selected values. Validate the shape,
- * don't just trust `typeof === 'object'`: an array or a non-array value used
- * to reach the chip renderer and crash the whole page on `values.map`.
+ * The page body and `generateMetadata` both need this list — the latter only to
+ * learn whether the requested page exists at all. `cache` keys on the primitive
+ * arguments, so the two callers share one result instead of racing the fetch
+ * layer's own deduplication.
  */
-function parseOptions(value: string | string[] | undefined): Record<string, string[]> {
-  const raw = firstParam(value);
-  if (!raw) return {};
-
-  const result: Record<string, string[]> = {};
-  try {
-    const parsed: unknown = JSON.parse(raw);
-    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-      for (const [group, values] of Object.entries(parsed as Record<string, unknown>)) {
-        if (!Array.isArray(values)) continue;
-        const clean = values.filter((entry): entry is string => typeof entry === 'string');
-        if (clean.length > 0) result[group] = clean;
-      }
-    }
-  } catch { /* malformed JSON — fall through to "no filters" */ }
-  return result;
-}
+const loadProducts = cache(
+  async (
+    categorySlug: string,
+    page: number,
+    sortBy: string,
+    minPrice: string | undefined,
+    maxPrice: string | undefined,
+    optionsJson: string | undefined,
+  ) =>
+    getProducts({
+      categorySlug,
+      page,
+      limit: PAGE_SIZE,
+      sortBy,
+      ...(minPrice ? { minPrice: Number(minPrice) } : {}),
+      ...(maxPrice ? { maxPrice: Number(maxPrice) } : {}),
+      ...(optionsJson ? { options: JSON.parse(optionsJson) as Record<string, string[]> } : {}),
+    }).catch(() => ({
+      data: [],
+      total: 0,
+      page: 1,
+      limit: PAGE_SIZE,
+      totalPages: 0,
+      availableFilters: [],
+      priceRange: null,
+    })),
+);
 
 export async function generateMetadata({ params, searchParams }: Props) {
   const { categorySlug } = await params;
   const sp = await searchParams;
   try {
     const cat = await getCategoryBySlug(categorySlug);
+    const { page, sort, minPrice, maxPrice, hasFilters, linkParams } = readParams(sp);
 
-    // Judged by the parsed values, not by mere presence: `?minPrice=abc`
-    // filters nothing, so it must not mark the page as a noindex duplicate.
-    const hasFilters =
-      Object.keys(parseOptions(sp.options)).length > 0 ||
-      parsePrice(sp.minPrice) !== undefined ||
-      parsePrice(sp.maxPrice) !== undefined;
-    const pageNumber = pageNumberFrom(sp.page);
-    // A filtered URL is a near-duplicate of the clean category page, so it
-    // points its canonical there. Plain pagination stays indexable on its own
-    // — `?page=1` is folded into the bare URL to avoid a second address for
-    // the same first page.
+    // Shares the page body's result — metadata only needs the one thing it
+    // cannot work out on its own: whether this page number exists at all.
+    const { totalPages } = await loadProducts(
+      categorySlug,
+      page,
+      sort,
+      minPrice,
+      maxPrice,
+      linkParams.options,
+    );
+
+    const isOutOfRange = page > Math.max(totalPages ?? 0, 1);
+    // A filtered URL is a near-duplicate of the clean category page, and a page
+    // that does not exist is not a page at all — both point their canonical at
+    // the bare category. Plain pagination stays indexable on its own, with
+    // `?page=1` folded away so the first page keeps a single address.
     const canonical =
-      hasFilters || pageNumber === 1
+      hasFilters || isOutOfRange || page === 1
         ? `/catalog/${categorySlug}`
-        : `/catalog/${categorySlug}?page=${pageNumber}`;
-    const pageSuffix = pageNumber > 1 ? ` — сторінка ${pageNumber}` : '';
+        : `/catalog/${categorySlug}?page=${page}`;
+    const pageSuffix = page > 1 ? ` — сторінка ${page}` : '';
+    const noindex = hasFilters || isOutOfRange;
 
     return {
       // `absolute` so the root layout's "%s — SmartLine" template doesn't
@@ -95,7 +135,7 @@ export async function generateMetadata({ params, searchParams }: Props) {
       description: cat.seoText?.trim().slice(0, 160) || undefined,
       alternates: { canonical },
       // `follow` stays on so the crawler still walks through to the products.
-      ...(hasFilters ? { robots: { index: false, follow: true } } : {}),
+      ...(noindex ? { robots: { index: false, follow: true } } : {}),
     };
   } catch {
     return { title: 'Каталог' };
@@ -113,27 +153,23 @@ export default async function CatalogPage({ params, searchParams }: Props) {
     notFound();
   }
 
-  const page = pageNumberFrom(sp.page);
-  const sortBy = firstParam(sp.sort) || 'newest';
-  const minPrice = parsePrice(sp.minPrice);
-  const maxPrice = parsePrice(sp.maxPrice);
-  const activeOptions = parseOptions(sp.options);
+  const { page, sort: sortBy, minPrice, maxPrice, activeOptions, linkParams } = readParams(sp);
 
-  const products = await getProducts({
+  const products = await loadProducts(
     categorySlug,
     page,
-    limit: 24,
     sortBy,
-    ...(minPrice ? { minPrice: Number(minPrice) } : {}),
-    ...(maxPrice ? { maxPrice: Number(maxPrice) } : {}),
-    ...(Object.keys(activeOptions).length > 0 ? { options: activeOptions } : {}),
-  }).catch(() => ({ data: [], total: 0, page: 1, limit: 24, totalPages: 0, availableFilters: [], priceRange: null }));
+    minPrice,
+    maxPrice,
+    linkParams.options,
+  );
 
   const activeOptionCount = Object.values(activeOptions).flat().length;
 
-  // Paging must carry the whole query string forward — building the href from
-  // scratch used to drop price and option filters on every page change.
-  const pageHref = (target: number) => buildPageHref(`/catalog/${categorySlug}`, sp, target);
+  // Paging carries the active filters forward — building the href from scratch
+  // used to drop price and option filters on every page change.
+  const basePath = `/catalog/${categorySlug}`;
+  const pageHref = (target: number) => buildPageHref(basePath, linkParams, target);
 
   const totalPages = products.totalPages || 0;
   // A bookmarked or shared page can outlive the stock it was built on.
@@ -298,50 +334,50 @@ export default async function CatalogPage({ params, searchParams }: Props) {
                 </div>
               </div>
             ) : (
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-                  {products.data.flatMap((product) => {
-                    const variants = product.variants ?? [];
-                    const hasOptions = variants.some((v) => v.selections && v.selections.length > 0);
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+                {products.data.flatMap((product) => {
+                  const variants = product.variants ?? [];
+                  const hasOptions = variants.some((v) => v.selections && v.selections.length > 0);
 
-                    if (!hasOptions || variants.length <= 1) {
-                      return [<ProductCard key={product.id} product={product} selectedVariant={variants[0]} />];
-                    }
+                  if (!hasOptions || variants.length <= 1) {
+                    return [<ProductCard key={product.id} product={product} selectedVariant={variants[0]} />];
+                  }
 
-                    // When option filters are active — show only matching variants
-                    const variantGroupNames = new Set(
-                      variants.flatMap((v) => v.selections?.map((s) => s.optionValue.group.name) ?? [])
-                    );
-                    const optionEntries = Object.entries(activeOptions).filter(
-                      ([groupName, vals]) => vals.length > 0 && variantGroupNames.has(groupName),
-                    );
-                    const visibleVariants = optionEntries.length > 0
-                      ? variants.filter((v) =>
-                          optionEntries.every(([groupName, values]) =>
-                            v.selections?.some(
-                              (s) =>
-                                s.optionValue.group.name === groupName &&
-                                values.includes(s.optionValue.value),
-                            ),
+                  // When option filters are active — show only matching variants
+                  const variantGroupNames = new Set(
+                    variants.flatMap((v) => v.selections?.map((s) => s.optionValue.group.name) ?? [])
+                  );
+                  const optionEntries = Object.entries(activeOptions).filter(
+                    ([groupName, vals]) => vals.length > 0 && variantGroupNames.has(groupName),
+                  );
+                  const visibleVariants = optionEntries.length > 0
+                    ? variants.filter((v) =>
+                        optionEntries.every(([groupName, values]) =>
+                          v.selections?.some(
+                            (s) =>
+                              s.optionValue.group.name === groupName &&
+                              values.includes(s.optionValue.value),
                           ),
-                        )
-                      : variants;
+                        ),
+                      )
+                    : variants;
 
-                    if (visibleVariants.length === 0) return [];
+                  if (visibleVariants.length === 0) return [];
 
-                    return visibleVariants.map((variant) => (
-                      <ProductCard
-                        key={`${product.id}-${variant.id}`}
-                        product={product}
-                        selectedVariant={variant}
-                      />
-                    ));
-                  })}
-                </div>
+                  return visibleVariants.map((variant) => (
+                    <ProductCard
+                      key={`${product.id}-${variant.id}`}
+                      product={product}
+                      selectedVariant={variant}
+                    />
+                  ));
+                })}
+              </div>
             )}
 
             {/* Outside the branch above: an out-of-range page renders the empty
                 state, and that is exactly when paging back is needed most. */}
-            <Pagination page={page} totalPages={totalPages} hrefFor={pageHref} />
+            <Pagination page={page} totalPages={totalPages} basePath={basePath} params={linkParams} />
           </div>
         </div>
 

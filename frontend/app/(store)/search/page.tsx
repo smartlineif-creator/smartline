@@ -2,7 +2,7 @@ import Link from 'next/link';
 import Breadcrumbs from '@/components/store/Breadcrumbs';
 import { SearchX } from 'lucide-react';
 import { getProducts } from '@/lib/api';
-import { buildPageHref, firstParam, pluralUk } from '@/lib/utils';
+import { firstParam, pageNumberFrom, pluralUk } from '@/lib/utils';
 import ProductCard from '@/components/store/ProductCard';
 import { Pagination } from '@/components/store/Pagination';
 
@@ -20,11 +20,14 @@ export async function generateMetadata({ searchParams }: Props) {
 export default async function SearchPage({ searchParams }: Props) {
   const sp = await searchParams;
   const q = firstParam(sp.q);
-  const page = Math.max(1, Math.floor(Number(firstParam(sp.page))) || 1);
+  const page = pageNumberFrom(sp.page);
 
   const results = q && q.trim().length >= 2
     ? await getProducts({ q, page, limit: 24 }).catch(() => ({ data: [], total: 0, page: 1, limit: 24, totalPages: 0 }))
     : { data: [], total: 0, page: 1, limit: 24, totalPages: 0 };
+
+  const totalPages = results.totalPages || 0;
+  const isOutOfRange = totalPages > 0 && page > totalPages;
 
   return (
     <div className="min-h-screen" style={{ background: 'var(--sl-bg-primary)' }}>
@@ -42,19 +45,11 @@ export default async function SearchPage({ searchParams }: Props) {
         </p>
 
         {results.data.length > 0 ? (
-          <>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-              {results.data.map((product) => (
-                <ProductCard key={product.id} product={product} />
-              ))}
-            </div>
-
-            <Pagination
-              page={page}
-              totalPages={results.totalPages || 0}
-              hrefFor={(target) => buildPageHref('/search', sp, target)}
-            />
-          </>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+            {results.data.map((product) => (
+              <ProductCard key={product.id} product={product} />
+            ))}
+          </div>
         ) : (
           <div className="flex flex-col items-center justify-center py-20 text-center">
             <div
@@ -67,20 +62,36 @@ export default async function SearchPage({ searchParams }: Props) {
               className="mb-2 text-base font-medium"
               style={{ color: 'var(--sl-text-primary)', fontFamily: 'var(--sl-font-mono)' }}
             >
-              {q ? 'Нічого не знайдено' : 'Введіть запит для пошуку'}
+              {isOutOfRange
+                ? `Сторінки ${page} не існує`
+                : q
+                  ? 'Нічого не знайдено'
+                  : 'Введіть запит для пошуку'}
             </p>
             <p className="mb-6 text-sm" style={{ color: 'var(--sl-text-muted)', fontFamily: 'var(--sl-font-mono)' }}>
-              {q ? `За запитом "${q}" товарів не знайдено` : 'Мінімум 2 символи'}
+              {isOutOfRange
+                ? 'Поверніться на першу сторінку результатів'
+                : q
+                  ? `За запитом "${q}" товарів не знайдено`
+                  : 'Мінімум 2 символи'}
             </p>
             <Link
-              href="/catalog"
+              href={isOutOfRange && q ? `/search?q=${encodeURIComponent(q)}` : '/catalog'}
               className="inline-flex h-11 items-center justify-center rounded-xl px-6 text-sm font-semibold"
-              style={{ background: 'var(--sl-accent)', color: '#fff', fontFamily: 'var(--sl-font-mono)' }}
+              style={{ background: 'var(--sl-accent)', color: 'var(--sl-text-on-accent)', fontFamily: 'var(--sl-font-mono)' }}
             >
-              Перейти до каталогу
+              {isOutOfRange ? 'До перших результатів' : 'Перейти до каталогу'}
             </Link>
           </div>
         )}
+
+        {/* Outside the branch above, so an out-of-range page still offers a way back. */}
+        <Pagination
+          page={page}
+          totalPages={totalPages}
+          basePath="/search"
+          params={{ q: q?.trim() || undefined }}
+        />
       </div>
     </div>
   );

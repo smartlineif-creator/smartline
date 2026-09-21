@@ -4,7 +4,7 @@ import ProductCard from '@/components/store/ProductCard';
 import CategoryTabs from '@/components/store/CategoryTabs';
 import SortBar from '@/components/store/SortBar';
 import { Pagination } from '@/components/store/Pagination';
-import { buildPageHref, firstParam } from '@/lib/utils';
+import { firstParam, pageNumberFrom } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,8 +19,9 @@ interface Props {
 
 export default async function CatalogIndexPage({ searchParams }: Props) {
   const sp = await searchParams;
-  const page = Math.max(1, Math.floor(Number(firstParam(sp.page))) || 1);
+  const page = pageNumberFrom(sp.page);
   const sortBy = firstParam(sp.sort) || 'newest';
+  const linkParams = { sort: sortBy !== 'newest' ? sortBy : undefined };
 
   const [categories, products] = await Promise.all([
     getCategories().catch(() => []),
@@ -28,6 +29,9 @@ export default async function CatalogIndexPage({ searchParams }: Props) {
       data: [], total: 0, page: 1, limit: 24, totalPages: 0,
     })),
   ]);
+
+  const totalPages = products.totalPages || 0;
+  const isOutOfRange = totalPages > 0 && page > totalPages;
 
   return (
     <div className="min-h-screen" style={{ background: 'var(--sl-bg-primary)' }}>
@@ -84,23 +88,18 @@ export default async function CatalogIndexPage({ searchParams }: Props) {
             className="py-16 text-center text-sm"
             style={{ color: 'var(--sl-text-muted)', fontFamily: 'var(--sl-font-mono)' }}
           >
-            Товарів не знайдено.
+            {isOutOfRange ? `Сторінки ${page} не існує.` : 'Товарів не знайдено.'}
           </div>
         ) : (
-          <>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-              {products.data.map((product) => (
-                <ProductCard key={product.id} product={product} />
-              ))}
-            </div>
-
-            <Pagination
-              page={page}
-              totalPages={products.totalPages || 0}
-              hrefFor={(target) => buildPageHref('/catalog', sp, target)}
-            />
-          </>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+            {products.data.map((product) => (
+              <ProductCard key={product.id} product={product} />
+            ))}
+          </div>
         )}
+
+        {/* Outside the branch above, so an out-of-range page still offers a way back. */}
+        <Pagination page={page} totalPages={totalPages} basePath="/catalog" params={linkParams} />
       </div>
     </div>
   );

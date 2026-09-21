@@ -19,24 +19,84 @@ export function firstParam(value: string | string[] | undefined): string | undef
   return Array.isArray(value) ? value[0] : value;
 }
 
+/** Deep enough for any real catalogue, shallow enough to keep OFFSET sane. */
+const MAX_PAGE = 10_000;
+
 /**
- * Page link that carries the whole current query string forward, so filters,
- * sorting and campaign params survive paging. Repeats stay repeats: handing
- * an array straight to `URLSearchParams` would join it into one comma-joined
- * value, which turns a duplicated `options` param into invalid JSON.
+ * Page numbers arrive from bookmarks and hand-edited URLs. `Infinity` and
+ * `1e18` both survive a naive `Number(...) || 1`, and the API answers 400 or
+ * 500 to them — which takes the whole filter sidebar down with it.
+ */
+export function pageNumberFrom(value: string | string[] | undefined): number {
+  const parsed = Math.floor(Number(firstParam(value)));
+  if (!Number.isFinite(parsed) || parsed < 1) return 1;
+  return Math.min(parsed, MAX_PAGE);
+}
+
+/**
+ * Price bound, or undefined when the input cannot filter anything. Zero counts
+ * as absent: it narrows nothing, and treating it as an active filter would
+ * mark the page `noindex` for no reason.
+ */
+export function parsePriceParam(value: string | string[] | undefined): string | undefined {
+  const raw = firstParam(value)?.trim();
+  if (!raw) return undefined;
+  const parsed = Number(raw);
+  if (!Number.isFinite(parsed) || parsed <= 0 || parsed > 1e9) return undefined;
+  return String(parsed);
+}
+
+/**
+ * `options` is a JSON record of group → selected values. Validate the shape
+ * rather than trusting `typeof === 'object'`: an array, or a value that is not
+ * an array of strings, used to reach the chip renderer and crash the page.
+ * Blank groups and blank values are dropped so no empty chip is rendered.
+ */
+export function parseOptionsParam(
+  value: string | string[] | undefined,
+): Record<string, string[]> {
+  const raw = firstParam(value);
+  if (!raw) return {};
+
+  const result: Record<string, string[]> = {};
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      for (const [group, values] of Object.entries(parsed as Record<string, unknown>)) {
+        const name = group.trim();
+        if (!name || !Array.isArray(values)) continue;
+        const clean = values
+          .filter((entry): entry is string => typeof entry === 'string')
+          .map((entry) => entry.trim())
+          .filter(Boolean);
+        if (clean.length > 0) result[name] = clean;
+      }
+    }
+  } catch { /* malformed JSON — treat as no filters */ }
+  return result;
+}
+
+/**
+ * Page link built from an explicit, already-sanitised set of params.
+ *
+ * It deliberately does NOT mirror the whole query string: doing that turned
+ * every pagination link into a copy of whatever junk or tracking param the
+ * visitor arrived with, inflating the document and re-attributing the GA4
+ * campaign on each page change. `page=1` is left out so the first page keeps
+ * the one address its canonical points at.
  */
 export function buildPageHref(
   pathname: string,
-  sp: Record<string, string | string[] | undefined>,
+  params: Record<string, string | undefined>,
   page: number,
 ): string {
-  const qs = new URLSearchParams();
-  for (const [key, value] of Object.entries(sp)) {
-    if (value === undefined) continue;
-    for (const one of Array.isArray(value) ? value : [value]) qs.append(key, one);
+  const parts: string[] = [];
+  for (const [key, value] of Object.entries(params)) {
+    if (!value) continue;
+    parts.push(`${encodeURIComponent(key)}=${encodeURIComponent(value)}`);
   }
-  qs.set('page', String(page));
-  return `${pathname}?${qs.toString()}`;
+  if (page > 1) parts.push(`page=${page}`);
+  return parts.length > 0 ? `${pathname}?${parts.join('&')}` : pathname;
 }
 
 /** Ukrainian plural form: pluralUk(3, 'товар', 'товари', 'товарів') → 'товари' */
