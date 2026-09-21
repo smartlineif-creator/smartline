@@ -190,11 +190,10 @@ export class ProductsService {
       ];
     }
 
-    if (minPrice !== undefined || maxPrice !== undefined) {
-      where.basePrice = {};
-      if (minPrice !== undefined) where.basePrice.gte = minPrice;
-      if (maxPrice !== undefined) where.basePrice.lte = maxPrice;
-    }
+    // Price and attribute filters both belong in `where.AND`. They are gathered
+    // here instead of assigned directly: `where.AND = …` twice silently dropped
+    // whichever clause was written first.
+    const andClauses: Prisma.ProductWhereInput[] = [];
 
     // Option variant filters: product must have at least one variant satisfying ALL groups
     const parsedOptions: Record<string, string[]> = {};
@@ -263,10 +262,23 @@ export class ProductsService {
     }
 
     if (attributeOptionEntries.length > 0) {
-      where.AND = attributeOptionEntries.map(([name, values]) => ({
-        attributes: { some: { name, value: { in: values } } },
-      }));
+      andClauses.push(
+        ...attributeOptionEntries.map(([name, values]) => ({
+          attributes: { some: { name, value: { in: values } } },
+        })),
+      );
     }
+
+    // The price clause is kept apart so `buildPriceRange` can be handed a
+    // selection WITHOUT it: the «Від / До» placeholders describe what the user
+    // could pick, so constraining them by the user's own input would collapse
+    // the lower bound onto whatever they just typed.
+    const priceClause = this.buildPriceClause(minPrice, maxPrice);
+    const whereWithoutPrice: Prisma.ProductWhereInput =
+      andClauses.length > 0 ? { ...where, AND: [...andClauses] } : where;
+    const whereFinal: Prisma.ProductWhereInput = priceClause
+      ? { ...where, AND: [...andClauses, priceClause] }
+      : whereWithoutPrice;
 
     const orderBy: Prisma.ProductOrderByWithRelationInput =
       sortBy === 'popular'
@@ -282,10 +294,13 @@ export class ProductsService {
     let pageIdFilter: string[] | null = null;
     if (sortBy === 'price_asc' || sortBy === 'price_desc') {
       const [prods, variantMins] = await Promise.all([
-        this.prisma.product.findMany({ where, select: { id: true, basePrice: true } }),
+        this.prisma.product.findMany({
+          where: whereFinal,
+          select: { id: true, basePrice: true },
+        }),
         this.prisma.variant.groupBy({
           by: ['productId'],
-          where: { isActive: true, price: { gt: 0 }, product: where },
+          where: { isActive: true, price: { gt: 0 }, product: whereFinal },
           _min: { price: true },
         }),
       ]);
@@ -301,7 +316,7 @@ export class ProductsService {
 
     const [data, total, availableFilters] = await Promise.all([
       this.prisma.product.findMany({
-        where: pageIdFilter ? { id: { in: pageIdFilter } } : where,
+        where: pageIdFilter ? { id: { in: pageIdFilter } } : whereFinal,
         include: {
           category: true,
           attributes: true,
@@ -332,7 +347,7 @@ export class ProductsService {
         // With the id page filter the page is already cut and ordered in JS.
         ...(pageIdFilter ? {} : { orderBy, skip, take: limit }),
       }),
-      this.prisma.product.count({ where }),
+      this.prisma.product.count({ where: whereFinal }),
       this.buildAvailableFilters(
         resolvedCategoryIds,
         parsedOptions,
@@ -355,7 +370,33 @@ export class ProductsService {
       limit,
       totalPages: Math.ceil(total / limit),
       availableFilters,
-      priceRange: await this.buildPriceRange(where),
+      priceRange: await this.buildPriceRange(whereWithoutPrice),
+    };
+  }
+
+  /**
+   * Price filter matching a product's EFFECTIVE price. Matching `basePrice`
+   * alone dropped every variant product, because those keep basePrice null
+   * (their price lives on the variants) and Prisma discards NULL on gte/lte —
+   * the same asymmetry price sorting already works around in `findAll`.
+   * Returns null when the user set no bounds, so callers can skip the clause.
+   */
+  private buildPriceClause(
+    minPrice?: number,
+    maxPrice?: number,
+  ): Prisma.ProductWhereInput | null {
+    if (minPrice === undefined && maxPrice === undefined) return null;
+
+    const range = {
+      ...(minPrice !== undefined ? { gte: minPrice } : {}),
+      ...(maxPrice !== undefined ? { lte: maxPrice } : {}),
+    };
+
+    return {
+      OR: [
+        { basePrice: range },
+        { variants: { some: { isActive: true, price: { gt: 0, ...range } } } },
+      ],
     };
   }
 
@@ -363,21 +404,21 @@ export class ProductsService {
    * Real price bounds of the current selection (ignoring the user's own
    * min/max input) — the storefront shows them as placeholders so the price
    * filter suggests actual values instead of «0 … ∞».
+   *
+   * Callers must pass a selection that does NOT already carry the price
+   * filter, otherwise the bounds collapse onto whatever the user just typed.
    */
   private async buildPriceRange(
     where: Prisma.ProductWhereInput,
   ): Promise<{ min: number; max: number } | null> {
-    const boundsWhere = { ...where };
-    delete boundsWhere.basePrice;
-
     const [productAgg, variantAgg] = await Promise.all([
       this.prisma.product.aggregate({
-        where: { ...boundsWhere, basePrice: { not: null } },
+        where: { ...where, basePrice: { not: null } },
         _min: { basePrice: true },
         _max: { basePrice: true },
       }),
       this.prisma.variant.aggregate({
-        where: { isActive: true, price: { gt: 0 }, product: boundsWhere },
+        where: { isActive: true, price: { gt: 0 }, product: where },
         _min: { price: true },
         _max: { price: true },
       }),
@@ -408,19 +449,15 @@ export class ProductsService {
     // Then compute facets in-memory using the "exclude-self" faceted pattern:
     // for each group G, show values that still yield results when combined
     // with all OTHER currently selected groups (not G itself).
+    const priceClause = this.buildPriceClause(minPrice, maxPrice);
     const baseProductWhere: Prisma.ProductWhereInput = {
       isActive: true,
       ...(categoryIds && categoryIds.length > 0
         ? { categoryId: { in: categoryIds } }
         : {}),
-      ...(minPrice !== undefined || maxPrice !== undefined
-        ? {
-            basePrice: {
-              ...(minPrice !== undefined ? { gte: minPrice } : {}),
-              ...(maxPrice !== undefined ? { lte: maxPrice } : {}),
-            },
-          }
-        : {}),
+      // Same effective-price clause as the result query, so facet counts and
+      // the grid never disagree on which products the price filter keeps.
+      ...(priceClause ? { AND: [priceClause] } : {}),
     };
 
     const variants = await this.prisma.variant.findMany({

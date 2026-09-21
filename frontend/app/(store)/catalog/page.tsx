@@ -1,9 +1,10 @@
-import Link from 'next/link';
 import Breadcrumbs from '@/components/store/Breadcrumbs';
 import { getCategories, getProducts } from '@/lib/api';
 import ProductCard from '@/components/store/ProductCard';
 import CategoryTabs from '@/components/store/CategoryTabs';
 import SortBar from '@/components/store/SortBar';
+import { Pagination } from '@/components/store/Pagination';
+import { buildPageHref, firstParam } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,13 +14,13 @@ export const metadata = {
 };
 
 interface Props {
-  searchParams: Promise<Record<string, string>>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
 export default async function CatalogIndexPage({ searchParams }: Props) {
   const sp = await searchParams;
-  const page = Number(sp.page) || 1;
-  const sortBy = sp.sort || 'newest';
+  const page = Math.max(1, Math.floor(Number(firstParam(sp.page))) || 1);
+  const sortBy = firstParam(sp.sort) || 'newest';
 
   const [categories, products] = await Promise.all([
     getCategories().catch(() => []),
@@ -93,53 +94,11 @@ export default async function CatalogIndexPage({ searchParams }: Props) {
               ))}
             </div>
 
-            {/* Pagination */}
-            {(products.totalPages || 1) > 1 && (
-              <div className="mt-8 flex justify-center gap-2">
-                {page > 1 && (
-                  <Link
-                    href={`/catalog?sort=${sortBy}&page=${page - 1}`}
-                    className="rounded-lg px-3 py-2 text-sm transition-all"
-                    style={{
-                      background: 'var(--sl-bg-elevated)',
-                      border: '1px solid var(--sl-border)',
-                      color: 'var(--sl-text-secondary)',
-                      fontFamily: 'var(--sl-font-mono)',
-                    }}
-                  >
-                    ←
-                  </Link>
-                )}
-                {Array.from({ length: products.totalPages || 1 }, (_, i) => i + 1).map((p) => (
-                  <Link
-                    key={p}
-                    href={`/catalog?sort=${sortBy}&page=${p}`}
-                    className="rounded-lg px-3 py-2 text-sm transition-all"
-                    style={
-                      p === page
-                        ? { background: 'var(--sl-accent)', color: '#fff', border: '1px solid var(--sl-accent)', fontFamily: 'var(--sl-font-mono)' }
-                        : { background: 'var(--sl-bg-elevated)', border: '1px solid var(--sl-border)', color: 'var(--sl-text-secondary)', fontFamily: 'var(--sl-font-mono)' }
-                    }
-                  >
-                    {p}
-                  </Link>
-                ))}
-                {page < (products.totalPages || 1) && (
-                  <Link
-                    href={`/catalog?sort=${sortBy}&page=${page + 1}`}
-                    className="rounded-lg px-3 py-2 text-sm transition-all"
-                    style={{
-                      background: 'var(--sl-bg-elevated)',
-                      border: '1px solid var(--sl-border)',
-                      color: 'var(--sl-text-secondary)',
-                      fontFamily: 'var(--sl-font-mono)',
-                    }}
-                  >
-                    →
-                  </Link>
-                )}
-              </div>
-            )}
+            <Pagination
+              page={page}
+              totalPages={products.totalPages || 0}
+              hrefFor={(target) => buildPageHref('/catalog', sp, target)}
+            />
           </>
         )}
       </div>

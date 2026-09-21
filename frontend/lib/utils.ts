@@ -10,6 +10,35 @@ export function stripNegative(value: string): string {
   return value.replace(/-/g, '');
 }
 
+/**
+ * A `searchParams` entry is `string | string[]` — repeated query params arrive
+ * as an array. Reads that expect a single value go through this instead of
+ * trusting the key to be a string.
+ */
+export function firstParam(value: string | string[] | undefined): string | undefined {
+  return Array.isArray(value) ? value[0] : value;
+}
+
+/**
+ * Page link that carries the whole current query string forward, so filters,
+ * sorting and campaign params survive paging. Repeats stay repeats: handing
+ * an array straight to `URLSearchParams` would join it into one comma-joined
+ * value, which turns a duplicated `options` param into invalid JSON.
+ */
+export function buildPageHref(
+  pathname: string,
+  sp: Record<string, string | string[] | undefined>,
+  page: number,
+): string {
+  const qs = new URLSearchParams();
+  for (const [key, value] of Object.entries(sp)) {
+    if (value === undefined) continue;
+    for (const one of Array.isArray(value) ? value : [value]) qs.append(key, one);
+  }
+  qs.set('page', String(page));
+  return `${pathname}?${qs.toString()}`;
+}
+
 /** Ukrainian plural form: pluralUk(3, 'товар', 'товари', 'товарів') → 'товари' */
 export function pluralUk(n: number, one: string, few: string, many: string): string {
   const mod10 = n % 10;

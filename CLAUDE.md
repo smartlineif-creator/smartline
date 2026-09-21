@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## ⚠️ Next.js Version Warning
 
-This project runs **Next.js 16.2.4** with **React 19**. APIs and conventions differ significantly from training data. Before writing frontend code, check `frontend/node_modules/next/dist/docs/`. The `frontend/AGENTS.md` file repeats this warning.
+This project runs **Next.js 16.2.4** with **React 19**. APIs and conventions differ significantly from training data. Before writing frontend code, check the bundled docs at `node_modules/next/dist/docs/` — **at the monorepo root**, not under `frontend/`: npm hoists the workspace dependency, so `frontend/node_modules/next/` does not exist. The `frontend/AGENTS.md` file repeats this warning.
 
 ---
 

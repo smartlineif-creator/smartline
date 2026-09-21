@@ -2,23 +2,25 @@ import Link from 'next/link';
 import Breadcrumbs from '@/components/store/Breadcrumbs';
 import { SearchX } from 'lucide-react';
 import { getProducts } from '@/lib/api';
-import { pluralUk } from '@/lib/utils';
+import { buildPageHref, firstParam, pluralUk } from '@/lib/utils';
 import ProductCard from '@/components/store/ProductCard';
+import { Pagination } from '@/components/store/Pagination';
 
 export const dynamic = 'force-dynamic';
 
 interface Props {
-  searchParams: Promise<{ q?: string; page?: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
 export async function generateMetadata({ searchParams }: Props) {
-  const { q } = await searchParams;
+  const q = firstParam((await searchParams).q);
   return { title: q ? `Пошук: "${q}"` : 'Пошук' };
 }
 
 export default async function SearchPage({ searchParams }: Props) {
-  const { q, page: pageStr } = await searchParams;
-  const page = Number(pageStr) || 1;
+  const sp = await searchParams;
+  const q = firstParam(sp.q);
+  const page = Math.max(1, Math.floor(Number(firstParam(sp.page))) || 1);
 
   const results = q && q.trim().length >= 2
     ? await getProducts({ q, page, limit: 24 }).catch(() => ({ data: [], total: 0, page: 1, limit: 24, totalPages: 0 }))
@@ -47,42 +49,11 @@ export default async function SearchPage({ searchParams }: Props) {
               ))}
             </div>
 
-            {(results.totalPages || 1) > 1 && (
-              <div className="mt-8 flex justify-center gap-2">
-                {page > 1 && (
-                  <Link
-                    href={`/search?q=${encodeURIComponent(q ?? '')}&page=${page - 1}`}
-                    className="rounded-lg px-3 py-2 text-sm transition-all"
-                    style={{ background: 'var(--sl-bg-elevated)', border: '1px solid var(--sl-border)', color: 'var(--sl-text-secondary)', fontFamily: 'var(--sl-font-mono)' }}
-                  >
-                    ←
-                  </Link>
-                )}
-                {Array.from({ length: results.totalPages || 1 }, (_, i) => i + 1).map((p) => (
-                  <Link
-                    key={p}
-                    href={`/search?q=${encodeURIComponent(q ?? '')}&page=${p}`}
-                    className="rounded-lg px-3 py-2 text-sm transition-all"
-                    style={
-                      p === page
-                        ? { background: 'var(--sl-accent)', color: '#fff', border: '1px solid var(--sl-accent)', fontFamily: 'var(--sl-font-mono)' }
-                        : { background: 'var(--sl-bg-elevated)', border: '1px solid var(--sl-border)', color: 'var(--sl-text-secondary)', fontFamily: 'var(--sl-font-mono)' }
-                    }
-                  >
-                    {p}
-                  </Link>
-                ))}
-                {page < (results.totalPages || 1) && (
-                  <Link
-                    href={`/search?q=${encodeURIComponent(q ?? '')}&page=${page + 1}`}
-                    className="rounded-lg px-3 py-2 text-sm transition-all"
-                    style={{ background: 'var(--sl-bg-elevated)', border: '1px solid var(--sl-border)', color: 'var(--sl-text-secondary)', fontFamily: 'var(--sl-font-mono)' }}
-                  >
-                    →
-                  </Link>
-                )}
-              </div>
-            )}
+            <Pagination
+              page={page}
+              totalPages={results.totalPages || 0}
+              hrefFor={(target) => buildPageHref('/search', sp, target)}
+            />
           </>
         ) : (
           <div className="flex flex-col items-center justify-center py-20 text-center">
